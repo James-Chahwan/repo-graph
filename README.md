@@ -209,4 +209,12 @@ Register it in `analyzers/__init__.py` by adding it to `_analyzer_classes()`.
 
 MIT
 
+## Support
+
+If repo-graph saved you time, consider buying me a coffee.
+
+<p align="center">
+  <img src="docs/bmc-qr.png" alt="Buy Me a Coffee" width="200">
+</p>
+
 <!-- mcp-name: io.github.James-Chahwan/repo-graph -->
