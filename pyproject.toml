@@ -1,0 +1,12 @@
+[project]
+name = "repo-graph"
+version = "0.1.0"
+description = "MCP server for codebase structural navigation, context budgeting, and health analysis"
+requires-python = ">=3.11"
+dependencies = [
+    "mcp[cli]>=1.0.0",
+]
+
+[project.scripts]
+repo-graph = "repo_graph.server:main"
+repo-graph-generate = "repo_graph.generator:main"
