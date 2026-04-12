@@ -57,7 +57,7 @@ Multiple analyzers can match one repo (e.g., Go backend + Angular frontend + SCS
 ## Install
 
 ```bash
-pip install -e .
+pip install mcp-repo-graph
 ```
 
 Requires Python 3.11+. Only runtime dependency: `mcp[cli]`.
@@ -110,6 +110,25 @@ The AI assistant now has access to all 12 tools. Example queries it can answer:
 - *"What files do I need for this bug?"* -> `minimal_read` tool
 - *"This file is too big, how should I split it?"* -> `split_plan` tool
 - *"Show me the auth flow visually"* -> `graph_view` tool
+
+### 4. Keep it fresh with a git hook (recommended)
+
+Add `repo-graph-generate` to a pre-commit hook so the graph stays up to date automatically — no LLM context spent on regeneration:
+
+```bash
+# .git/hooks/pre-commit (or add to your existing hook)
+#!/bin/sh
+repo-graph-generate --repo .
+git add .ai/repo-graph/
+```
+
+```bash
+chmod +x .git/hooks/pre-commit
+```
+
+Every commit keeps the graph current. The LLM always has a fresh map without wasting a single token on `generate`.
+
+> **Tip:** If you don't want graph data in version control, add `.ai/repo-graph/` to `.gitignore` and skip the `git add` line — the graph will just live locally.
 
 ## MCP tools reference
 
