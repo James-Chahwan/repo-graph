@@ -377,7 +377,7 @@ def split_plan(file_path: str) -> str:
         if scss_path.exists():
             scss = analyze_scss_file(scss_path)
 
-        clusters = suggest_splits(component_name, ts, scss)
+        clusters = suggest_splits(component_name, ts, scss, file_path=full_path)
         if not clusters:
             return f"No split suggestions for {file_path} — too few methods or services."
 

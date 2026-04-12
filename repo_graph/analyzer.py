@@ -76,24 +76,34 @@ def analyze_ts_component(file_path: Path) -> dict:
     lines = content.splitlines()
     total = len(lines)
 
-    # Injected services
+    # Injected services — match constructor params: `private fooService: FooService`
+    # Only count types ending in Service, Store, or known Angular DI types.
     svc_pattern = re.compile(
         r'private\s+(?:readonly\s+)?(\w+)\s*:\s*(\w+)', re.MULTILINE
     )
+    # Types that are injected but not domain services
+    angular_types = {"ElementRef", "Renderer2", "ChangeDetectorRef", "NgZone",
+                     "Injector", "ViewContainerRef", "TemplateRef"}
+    # Non-service types that leak through (native TS / DOM types)
+    skip_types = {"Map", "Set", "Array", "Object", "MediaStream", "HTMLElement",
+                  "FormGroup", "FormControl", "Subject", "BehaviorSubject",
+                  "Subscription", "Observable"}
     services = []
     for m in svc_pattern.finditer(content):
         field, type_name = m.group(1), m.group(2)
-        if type_name[0].isupper() and type_name != "ElementRef":
+        if type_name[0].isupper() and type_name not in angular_types and type_name not in skip_types:
             services.append({"field": field, "type": type_name})
 
-    # Methods
+    # Methods — skip control flow keywords and lifecycle hooks
     method_pattern = re.compile(r'^\s+(?:async\s+)?(\w+)\s*\([^)]*\)\s*[:{]', re.MULTILINE)
     lifecycle = {"ngOnInit", "ngOnDestroy", "ngAfterViewChecked", "ngOnChanges",
                  "constructor", "ngAfterViewInit"}
+    control_flow = {"if", "for", "while", "switch", "catch", "else", "return",
+                    "throw", "try", "finally", "case", "default"}
     methods = []
     for m in method_pattern.finditer(content):
         name = m.group(1)
-        if name not in lifecycle and not name.startswith("_"):
+        if name not in lifecycle and name not in control_flow and not name.startswith("_"):
             start_line = content[:m.start()].count("\n") + 1
             methods.append({"name": name, "line": start_line})
 
@@ -158,12 +168,18 @@ def analyze_scss_file(file_path: Path) -> dict:
     }
 
 
-def suggest_splits(component_name: str, ts_analysis: dict, scss_analysis: dict | None = None) -> list[dict]:
+def suggest_splits(
+    component_name: str,
+    ts_analysis: dict,
+    scss_analysis: dict | None = None,
+    file_path: Path | None = None,
+) -> list[dict]:
     """
-    Suggest component splits based on service clustering.
+    Suggest component splits based on which service each method actually references.
 
-    Groups methods by which service they likely use (heuristic: method name
-    contains service-related keywords). Returns proposed child components.
+    Reads the source file to find which injected service field names appear in
+    each method body, then clusters methods by their dominant service. No
+    hardcoded keyword dictionaries — derived entirely from the code.
     """
     services = ts_analysis.get("services_injected", [])
     methods = ts_analysis.get("methods", [])
@@ -171,53 +187,76 @@ def suggest_splits(component_name: str, ts_analysis: dict, scss_analysis: dict |
     if not services or not methods:
         return []
 
-    # Build keyword clusters from service names
-    # e.g., ChatClientService -> ["chat", "message", "typing", "send"]
-    clusters: list[dict] = []
-    service_keywords = {
-        "chat": ["chat", "message", "typing", "send", "stream", "ws"],
-        "group": ["group", "select", "filter", "panel", "sidebar"],
-        "auth": ["auth", "login", "user", "token", "session"],
-        "activity": ["activity", "activities", "rsvp", "join", "event"],
-        "matching": ["match", "swipe", "recommend", "feedback", "rating"],
-        "notification": ["notif", "alert", "badge"],
-        "friend": ["friend", "request", "pending"],
-        "profile": ["profile", "avatar", "bio", "edit"],
-    }
+    # Read the actual file to map methods → service usage
+    source_lines: list[str] = []
+    if file_path and file_path.is_file():
+        source_lines = file_path.read_text(encoding="utf-8", errors="ignore").splitlines()
 
-    # Map methods to clusters
-    for cluster_name, keywords in service_keywords.items():
-        # Check if any injected service relates to this cluster
-        has_service = any(
-            cluster_name.lower() in s["type"].lower()
-            for s in services
-        )
-        if not has_service:
+    # Build service field name → cluster name mapping from actual injected services.
+    # e.g. "chatClient" (field) → "chat-client" (cluster), type "ChatClientService"
+    # Cluster name = service type with "Service" stripped, lowered, hyphenated.
+    svc_field_to_cluster: dict[str, str] = {}
+    cluster_to_type: dict[str, list[str]] = {}
+    for svc in services:
+        field = svc["field"]
+        type_name = svc["type"]
+        # Skip Angular/utility types — not domain services
+        if type_name in ("Router", "ActivatedRoute", "DomSanitizer",
+                         "HttpClient", "ElementRef", "Renderer2"):
             continue
+        # Derive cluster name from type: "ChatClientService" → "chat-client"
+        cluster = re.sub(r"Service$", "", type_name)
+        cluster = re.sub(r"([a-z])([A-Z])", r"\1-\2", cluster).lower()
+        svc_field_to_cluster[field] = cluster
+        cluster_to_type.setdefault(cluster, []).append(type_name)
 
-        cluster_methods = [
-            m for m in methods
-            if any(kw in m["name"].lower() for kw in keywords)
-        ]
-        if cluster_methods:
-            total_lines = sum(m.get("approx_lines", 0) for m in cluster_methods)
-            clusters.append({
-                "suggested_name": f"{component_name}-{cluster_name}",
-                "methods": [m["name"] for m in cluster_methods],
-                "method_count": len(cluster_methods),
-                "approx_lines": total_lines,
-                "related_services": [
-                    s["type"] for s in services
-                    if cluster_name.lower() in s["type"].lower()
-                ],
-            })
+    if not svc_field_to_cluster:
+        return []
+
+    # For each method, find which service fields are referenced in its body
+    method_clusters: dict[str, dict[str, int]] = {}  # method_name → {cluster: ref_count}
+
+    for i, method in enumerate(methods):
+        start = method.get("line", 0) - 1  # 0-indexed
+        end = start + method.get("approx_lines", 20)
+        body = "\n".join(source_lines[start:end]) if source_lines else ""
+
+        refs: dict[str, int] = {}
+        for field, cluster in svc_field_to_cluster.items():
+            # Count references like `this.chatClient.` or `this.chatClient,`
+            count = len(re.findall(rf'\bthis\.{re.escape(field)}\b', body))
+            if count > 0:
+                refs[cluster] = refs.get(cluster, 0) + count
+
+        if refs:
+            method_clusters[method["name"]] = refs
+
+    # Assign each method to its dominant cluster (most references)
+    assignments: dict[str, list[dict]] = {}  # cluster → [methods]
+    assigned_names: set[str] = set()
+
+    for method in methods:
+        name = method["name"]
+        refs = method_clusters.get(name, {})
+        if refs:
+            dominant = max(refs, key=refs.get)
+            assignments.setdefault(dominant, []).append(method)
+            assigned_names.add(name)
+
+    # Build cluster output
+    clusters: list[dict] = []
+    for cluster, cluster_methods in sorted(assignments.items(), key=lambda x: -len(x[1])):
+        total_lines = sum(m.get("approx_lines", 0) for m in cluster_methods)
+        clusters.append({
+            "suggested_name": f"{component_name}-{cluster}",
+            "methods": [m["name"] for m in cluster_methods],
+            "method_count": len(cluster_methods),
+            "approx_lines": total_lines,
+            "related_services": cluster_to_type.get(cluster, []),
+        })
 
     # Catch unclustered methods as the "shell" remainder
-    clustered_names = set()
-    for c in clusters:
-        clustered_names.update(c["methods"])
-
-    remaining = [m for m in methods if m["name"] not in clustered_names]
+    remaining = [m for m in methods if m["name"] not in assigned_names]
     if remaining:
         clusters.append({
             "suggested_name": f"{component_name} (shell/orchestrator)",
