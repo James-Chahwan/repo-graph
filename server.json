@@ -10,7 +10,7 @@
   "packages": [
     {
       "registryType": "pypi",
-      "identifier": "repo-graph",
+      "identifier": "mcp-repo-graph",
       "version": "0.1.0",
       "transport": {
         "type": "stdio"

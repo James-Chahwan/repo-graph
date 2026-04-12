@@ -1,5 +1,5 @@
 [project]
-name = "repo-graph"
+name = "mcp-repo-graph"
 version = "0.1.0"
 description = "MCP server that gives LLMs a structural map of any codebase — entities, relationships, and flows — so they navigate to the right files without reading everything first."
 readme = "README.md"
