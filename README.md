@@ -214,7 +214,11 @@ MIT
 If repo-graph saved you time, consider buying me a coffee.
 
 <p align="center">
-  <img src="docs/bmc-qr.png" alt="Buy Me a Coffee" width="200">
+  <a href="https://buymeacoffee.com/polycrisis">
+    <img src="docs/bmc-qr.png" alt="Buy Me a Coffee" width="200">
+  </a>
+  <br>
+  <a href="https://buymeacoffee.com/polycrisis">buymeacoffee.com/polycrisis</a>
 </p>
 
 <!-- mcp-name: io.github.James-Chahwan/repo-graph -->
