@@ -80,3 +80,66 @@ repo_graph/
 - `graph.py` is fully generic — it only reads `nodes.json`/`edges.json`/`flows/*.yaml`. No language assumptions.
 - Graph singleton in `server.py` is lazy-loaded and reset by `reload`/`generate` tools.
 - The `generate` tool allows Claude to trigger graph rebuilds mid-conversation without restarting the server.
+
+## Publishing & Releases
+
+Package is live on PyPI as `mcp-repo-graph` and on the MCP Registry as `io.github.James-Chahwan/repo-graph`.
+
+### Release process (version bump)
+
+```bash
+# 1. Update version in BOTH files
+#    - pyproject.toml: version = "X.Y.Z"
+#    - server.json: "version": "X.Y.Z" (appears twice — top-level and in packages)
+
+# 2. Build
+rm -rf dist/ && python -m build
+
+# 3. Upload to PyPI
+twine upload dist/* -u __token__ -p <PYPI_TOKEN>
+
+# 4. Publish to MCP Registry (token expires each session)
+/tmp/mcp-publisher login github
+/tmp/mcp-publisher publish
+
+# 5. Commit and push
+git add pyproject.toml server.json
+git commit -m "chore: bump to X.Y.Z"
+git push github main && git push gitlab main
+```
+
+If `/tmp/mcp-publisher` is missing, re-download:
+```bash
+curl -sL "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_linux_amd64.tar.gz" | tar xz -C /tmp/
+```
+
+### Check stats
+
+```bash
+# PyPI downloads (takes ~24h for first data)
+pypistats overall mcp-repo-graph
+
+# GitHub traffic (last 14 days, owner only)
+gh api repos/James-Chahwan/repo-graph/traffic/clones
+gh api repos/James-Chahwan/repo-graph/traffic/views
+gh api repos/James-Chahwan/repo-graph --jq '.stargazers_count'
+```
+
+Web: https://pypistats.org/packages/mcp-repo-graph
+
+### Remotes
+
+- `github` — git@github.com:James-Chahwan/repo-graph.git (public, primary)
+- `gitlab` — git@gitlab.com:jameschahwan/repo-graph.git (private, backup)
+
+Always push to both: `git push github main && git push gitlab main`
+
+## Roadmap
+
+Planned features (not yet implemented):
+
+- **Init/bootstrap system** — `repo-graph-init` command where the LLM helps discover project structure on first run, saves config to `.ai/repo-graph/config.yaml` for future generations
+- **Promotion** — share on Reddit (r/ChatGPTPro, r/ClaudeAI, r/MachineLearning), Hacker News, X/Twitter, MCP community channels, Claude Code Discord. Lead with the pitch: "stop wasting LLM context on orientation — give it a map instead"
+- **More analyzers** — Elixir, Dart/Flutter, Scala, Zig as community requests come in
+- **Smarter flows** — use call graph analysis to build more precise flows instead of BFS from routes
+- **Config file** — let users define custom entry points, skip patterns, and feature groupings
