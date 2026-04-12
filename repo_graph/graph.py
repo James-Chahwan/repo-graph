@@ -116,11 +116,22 @@ class RepoGraph:
     # -- Lookups --
 
     def nodes_for_feature(self, feature: str) -> list[dict]:
-        """All nodes reachable from a feature's frontend page."""
-        page_id = f"fe_page_{feature.replace('-', '_')}"
-        if page_id not in self.nodes:
-            return []
-        return self.downstream(page_id, depth=10)
+        """All nodes reachable from a feature's entry point."""
+        slug = feature.lower().replace("-", "_").replace(" ", "_")
+
+        # Try common ID patterns for feature entry points
+        for prefix in ("ng_page_", "fe_page_", "page_", "module_", "entry_", ""):
+            candidate = f"{prefix}{slug}"
+            if candidate in self.nodes:
+                return self.downstream(candidate, depth=10)
+
+        # Fuzzy fallback — match on node name or id
+        page_types = {"ng_page", "fe_page", "frontend_page", "page", "module", "entry_point"}
+        for node_id, node in self.nodes.items():
+            if slug in node_id.lower() and node["type"] in page_types:
+                return self.downstream(node_id, depth=10)
+
+        return []
 
     def nodes_by_type(self, node_type: str) -> list[dict]:
         """All nodes of a given type."""

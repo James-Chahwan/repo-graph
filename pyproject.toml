@@ -1,12 +1,36 @@
 [project]
 name = "repo-graph"
 version = "0.1.0"
-description = "MCP server for codebase structural navigation, context budgeting, and health analysis"
+description = "MCP server that gives LLMs a structural map of any codebase — entities, relationships, and flows — so they navigate to the right files without reading everything first."
+readme = "README.md"
+license = "MIT"
 requires-python = ">=3.11"
+authors = [
+    {name = "James Chahwan"},
+]
+keywords = ["mcp", "llm", "codebase", "graph", "navigation", "context", "ai"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
 dependencies = [
     "mcp[cli]>=1.0.0",
 ]
 
+[project.urls]
+Homepage = "https://github.com/James-Chahwan/repo-graph"
+Repository = "https://github.com/James-Chahwan/repo-graph"
+Issues = "https://github.com/James-Chahwan/repo-graph/issues"
+
 [project.scripts]
 repo-graph = "repo_graph.server:main"
 repo-graph-generate = "repo_graph.generator:main"
+
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
