@@ -6,3 +6,4 @@ build/
 .eggs/
 .ai/
 .mcpregistry_*
+*.mp4

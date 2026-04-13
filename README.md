@@ -8,12 +8,9 @@ Instead of flooding an LLM's context window with your entire codebase (or hoping
 
 ## Demo
 
-<!-- TODO: Replace with actual video URLs after upload -->
-<!-- <p align="center">
-  <a href="https://www.youtube.com/watch?v=VIDEO_ID">
-    <img src="https://img.youtube.com/vi/VIDEO_ID/maxresdefault.jpg" alt="repo-graph demo" width="600">
-  </a>
-</p> -->
+https://github.com/James-Chahwan/repo-graph/releases/download/v0.1.2/repographbefore.mp4
+
+https://github.com/James-Chahwan/repo-graph/releases/download/v0.1.2/repographafter.mp4
 
 Same bug, same model, same prompt — the only difference is whether repo-graph is installed.
 
@@ -21,12 +18,12 @@ Same bug, same model, same prompt — the only difference is whether repo-graph 
 
 | | Without repo-graph | With repo-graph |
 |---|---|---|
-| **Tokens used** | 85,986 | 29,838 |
+| **Tokens used** | 75,308 | 29,838 |
 | **Time to fix** | 4m 36s | ~30s |
 | **Files explored** | ~15 (grep, read, grep, read...) | 2 (flow lookup + handler file) |
 | **Outcome** | Found and fixed the bug | Found and fixed the bug |
 
-**2.9x fewer tokens. ~9x faster. Same correct fix.**
+**2.5x fewer tokens. ~9x faster. Same correct fix.**
 
 ### How the test was run
 
