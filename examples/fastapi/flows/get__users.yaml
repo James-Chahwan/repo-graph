@@ -1,0 +1,7 @@
+flow: get__users
+paths:
+  - name: get__users
+    steps:
+      - {id: route_GET_users, type: route}
+      - {id: py_mod_fastapi_applications, type: py_module, edge: handled_by}
+      - {id: py_class_py_mod_fastapi_applications_FastAPI, type: py_class, edge: defines}

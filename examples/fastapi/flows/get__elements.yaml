@@ -1,0 +1,9 @@
+flow: get__elements
+paths:
+  - name: get__elements
+    steps:
+      - {id: route_GET_elements, type: route}
+      - {id: py_mod_docs_src_path_operation_configuration_tutorial006_py310, type: py_module, edge: handled_by}
+      - {id: py_func_py_mod_docs_src_path_operation_configuration_tutorial006_py310_read_items, type: py_function, edge: defines}
+      - {id: py_func_py_mod_docs_src_path_operation_configuration_tutorial006_py310_read_users, type: py_function, edge: defines}
+      - {id: py_func_py_mod_docs_src_path_operation_configuration_tutorial006_py310_read_elements, type: py_function, edge: defines}

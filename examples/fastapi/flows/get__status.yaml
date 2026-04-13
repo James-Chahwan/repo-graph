@@ -1,0 +1,21 @@
+flow: get__status
+paths:
+  - name: get__status
+    steps:
+      - {id: route_GET_status, type: route}
+      - {id: py_mod_docs_src_security_tutorial005_an_py310, type: py_module, edge: handled_by}
+      - {id: py_class_py_mod_docs_src_security_tutorial005_an_py310_Token, type: py_class, edge: defines}
+      - {id: py_class_py_mod_docs_src_security_tutorial005_an_py310_TokenData, type: py_class, edge: defines}
+      - {id: py_class_py_mod_docs_src_security_tutorial005_an_py310_User, type: py_class, edge: defines}
+      - {id: py_class_py_mod_docs_src_security_tutorial005_an_py310_UserInDB, type: py_class, edge: defines}
+      - {id: py_func_py_mod_docs_src_security_tutorial005_an_py310_verify_password, type: py_function, edge: defines}
+      - {id: py_func_py_mod_docs_src_security_tutorial005_an_py310_get_password_hash, type: py_function, edge: defines}
+      - {id: py_func_py_mod_docs_src_security_tutorial005_an_py310_get_user, type: py_function, edge: defines}
+      - {id: py_func_py_mod_docs_src_security_tutorial005_an_py310_authenticate_user, type: py_function, edge: defines}
+      - {id: py_func_py_mod_docs_src_security_tutorial005_an_py310_create_access_token, type: py_function, edge: defines}
+      - {id: py_func_py_mod_docs_src_security_tutorial005_an_py310_get_current_user, type: py_function, edge: defines}
+      - {id: py_func_py_mod_docs_src_security_tutorial005_an_py310_get_current_active_user, type: py_function, edge: defines}
+      - {id: py_func_py_mod_docs_src_security_tutorial005_an_py310_login_for_access_token, type: py_function, edge: defines}
+      - {id: py_func_py_mod_docs_src_security_tutorial005_an_py310_read_users_me, type: py_function, edge: defines}
+      - {id: py_func_py_mod_docs_src_security_tutorial005_an_py310_read_own_items, type: py_function, edge: defines}
+      - {id: py_func_py_mod_docs_src_security_tutorial005_an_py310_read_system_status, type: py_function, edge: defines}

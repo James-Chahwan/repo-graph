@@ -1,0 +1,2087 @@
+[
+  {
+    "from": "go_mod_gin-test",
+    "to": "go_pkg_.",
+    "type": "contains"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._search_credential",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._basic_auth_for_realm",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._basic_auth",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._process_accounts",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._authorization_header",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._basic_auth_for_proxy",
+    "type": "defines"
+  },
+  {
+    "from": "go_mod_gin-test",
+    "to": "go_pkg_binding",
+    "type": "contains"
+  },
+  {
+    "from": "go_pkg_binding",
+    "to": "go_func_binding_default",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_binding",
+    "to": "go_func_binding_validate",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_binding",
+    "to": "go_func_binding_name",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_binding",
+    "to": "go_func_binding_bind",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_binding",
+    "to": "go_func_binding_bind_body",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_binding",
+    "to": "go_func_binding_error",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_binding",
+    "to": "go_func_binding_validate_struct",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_binding",
+    "to": "go_func_binding_engine",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_binding",
+    "to": "go_func_binding_lazyinit",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_binding",
+    "to": "go_func_binding_map_uri",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_binding",
+    "to": "go_func_binding_map_form",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_binding",
+    "to": "go_func_binding_map_form_with_tag",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_binding",
+    "to": "go_func_binding_map_form_by_tag",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_binding",
+    "to": "go_func_binding_try_set",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_binding",
+    "to": "go_func_binding_mapping_by_ptr",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_binding",
+    "to": "go_func_binding_mapping",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_binding",
+    "to": "go_func_binding_try_to_set_value",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_binding",
+    "to": "go_func_binding_try_set_custom",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_binding",
+    "to": "go_func_binding_try_set_using_parser",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_binding",
+    "to": "go_func_binding_try_split",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_binding",
+    "to": "go_func_binding_set_by_form",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_binding",
+    "to": "go_func_binding_set_with_proper_type",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_binding",
+    "to": "go_func_binding_set_int_field",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_binding",
+    "to": "go_func_binding_set_uint_field",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_binding",
+    "to": "go_func_binding_set_bool_field",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_binding",
+    "to": "go_func_binding_set_float_field",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_binding",
+    "to": "go_func_binding_set_time_field",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_binding",
+    "to": "go_func_binding_set_array",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_binding",
+    "to": "go_func_binding_set_slice",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_binding",
+    "to": "go_func_binding_set_time_duration",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_binding",
+    "to": "go_func_binding_head",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_binding",
+    "to": "go_func_binding_set_form_map",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_binding",
+    "to": "go_func_binding_map_header",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_binding",
+    "to": "go_func_binding_decode_json",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_binding",
+    "to": "go_func_binding_decode_msg_pack",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_binding",
+    "to": "go_func_binding_set_by_multipart_form_file",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_binding",
+    "to": "go_func_binding_set_array_of_multipart_form_files",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_binding",
+    "to": "go_func_binding_decode_plain",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_binding",
+    "to": "go_func_binding_decode_toml",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_binding",
+    "to": "go_func_binding_bind_uri",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_binding",
+    "to": "go_func_binding_decode_xml",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_binding",
+    "to": "go_func_binding_decode_yaml",
+    "type": "defines"
+  },
+  {
+    "from": "go_mod_gin-test",
+    "to": "go_pkg_codec_json",
+    "type": "contains"
+  },
+  {
+    "from": "go_pkg_codec_json",
+    "to": "go_func_codec_json_init",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_codec_json",
+    "to": "go_func_codec_json_marshal",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_codec_json",
+    "to": "go_func_codec_json_unmarshal",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_codec_json",
+    "to": "go_func_codec_json_marshal_indent",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_codec_json",
+    "to": "go_func_codec_json_new_encoder",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_codec_json",
+    "to": "go_func_codec_json_new_decoder",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._reset",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._copy",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._handler_name",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._handler_names",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._handler",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._full_path",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._next",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._is_aborted",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._abort",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._abort_with_status",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._abort_with_status_pure_json",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._abort_with_status_json",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._abort_with_error",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._error",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._set",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._get",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._must_get",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._get_string",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._get_bool",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._get_int",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._get_int8",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._get_int16",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._get_int32",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._get_int64",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._get_uint",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._get_uint8",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._get_uint16",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._get_uint32",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._get_uint64",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._get_float32",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._get_float64",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._get_time",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._get_duration",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._get_error",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._get_int_slice",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._get_int8_slice",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._get_int16_slice",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._get_int32_slice",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._get_int64_slice",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._get_uint_slice",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._get_uint8_slice",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._get_uint16_slice",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._get_uint32_slice",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._get_uint64_slice",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._get_float32_slice",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._get_float64_slice",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._get_string_slice",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._get_error_slice",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._get_string_map",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._get_string_map_string",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._get_string_map_string_slice",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._delete",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._param",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._add_param",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._query",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._default_query",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._get_query",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._query_array",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._init_query_cache",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._get_query_array",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._query_map",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._get_query_map",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._post_form",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._default_post_form",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._get_post_form",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._post_form_array",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._init_form_cache",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._get_post_form_array",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._post_form_map",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._get_post_form_map",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._get_map_from_form_data",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._form_file",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._multipart_form",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._save_uploaded_file",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._bind",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._bind_json",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._bind_xml",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._bind_query",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._bind_yaml",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._bind_toml",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._bind_plain",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._bind_header",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._bind_uri",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._must_bind_with",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._should_bind",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._should_bind_json",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._should_bind_xml",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._should_bind_query",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._should_bind_yaml",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._should_bind_toml",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._should_bind_plain",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._should_bind_header",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._should_bind_uri",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._should_bind_with",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._should_bind_body_with",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._should_bind_body_with_json",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._should_bind_body_with_xml",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._should_bind_body_with_yaml",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._should_bind_body_with_toml",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._should_bind_body_with_plain",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._client_ip",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._remote_ip",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._content_type",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._is_websocket",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._request_header",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._body_allowed_for_status",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._status",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._header",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._get_header",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._get_raw_data",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._set_same_site",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._set_cookie",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._set_cookie_data",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._cookie",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._render",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._html",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._indented_json",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._secure_json",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._jsonp",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._json",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._ascii_json",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._pure_json",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._xml",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._pdf",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._yaml",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._toml",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._proto_buf",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._bson",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._string",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._redirect",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._data",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._data_from_reader",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._file",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._file_from_fs",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._escape_quotes",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._file_attachment",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._ss_event",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._stream",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._negotiate",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._negotiate_format",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._set_accepted",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._has_request_context",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._deadline",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._done",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._err",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._value",
+    "type": "defines"
+  },
+  {
+    "from": "route_GET_user__id",
+    "to": "go_pkg_.",
+    "type": "handled_by"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._init",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._is_debugging",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._debug_print_route",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._debug_print_load_template",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._debug_print",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._get_min_ver",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._debug_print_warning_default",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._debug_print_warning_new",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._debug_print_warning_set_html_template",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._debug_print_error",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._bind_with",
+    "type": "defines"
+  },
+  {
+    "from": "route_GET_ping",
+    "to": "go_pkg_.",
+    "type": "handled_by"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._set_type",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._set_meta",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._marshal_json",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._is_type",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._unwrap",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._by_type",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._last",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._errors",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._open",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._readdir",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._dir",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._new",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._default",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._allocate_context",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._delims",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._secure_json_prefix",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._load_html_glob",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._load_html_files",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._load_htmlfs",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._set_html_template",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._set_func_map",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._no_route",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._no_method",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._use",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._with",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._rebuild404_handlers",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._rebuild405_handlers",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._add_route",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._routes",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._iterate",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._prepare_trusted_cid_rs",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._set_trusted_proxies",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._is_unsafe_trusted_proxies",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._parse_trusted_proxies",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._is_trusted_proxy",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._validate_header",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._update_route_tree",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._update_route_trees",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._parse_ip",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._run",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._run_tls",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._run_unix",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._run_fd",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._run_quic",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._run_listener",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._serve_http",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._handle_context",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._handle_http_request",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._serve_error",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._redirect_trailing_slash",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._sanitize_path_chars",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._redirect_fixed_path",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._redirect_request",
+    "type": "defines"
+  },
+  {
+    "from": "go_mod_gin-test",
+    "to": "go_pkg_ginS",
+    "type": "contains"
+  },
+  {
+    "from": "go_pkg_ginS",
+    "to": "go_func_ginS_load_html_glob",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_ginS",
+    "to": "go_func_ginS_load_html_files",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_ginS",
+    "to": "go_func_ginS_load_htmlfs",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_ginS",
+    "to": "go_func_ginS_set_html_template",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_ginS",
+    "to": "go_func_ginS_no_route",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_ginS",
+    "to": "go_func_ginS_no_method",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_ginS",
+    "to": "go_func_ginS_group",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_ginS",
+    "to": "go_func_ginS_handle",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_ginS",
+    "to": "go_func_ginS_post",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_ginS",
+    "to": "go_func_ginS_get",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_ginS",
+    "to": "go_func_ginS_delete",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_ginS",
+    "to": "go_func_ginS_patch",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_ginS",
+    "to": "go_func_ginS_put",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_ginS",
+    "to": "go_func_ginS_options",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_ginS",
+    "to": "go_func_ginS_head",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_ginS",
+    "to": "go_func_ginS_any",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_ginS",
+    "to": "go_func_ginS_static_file",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_ginS",
+    "to": "go_func_ginS_static",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_ginS",
+    "to": "go_func_ginS_static_fs",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_ginS",
+    "to": "go_func_ginS_use",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_ginS",
+    "to": "go_func_ginS_routes",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_ginS",
+    "to": "go_func_ginS_run",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_ginS",
+    "to": "go_func_ginS_run_tls",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_ginS",
+    "to": "go_func_ginS_run_unix",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_ginS",
+    "to": "go_func_ginS_run_fd",
+    "type": "defines"
+  },
+  {
+    "from": "go_mod_gin-test",
+    "to": "go_pkg_internal_bytesconv",
+    "type": "contains"
+  },
+  {
+    "from": "go_pkg_internal_bytesconv",
+    "to": "go_func_internal_bytesconv_string_to_bytes",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_internal_bytesconv",
+    "to": "go_func_internal_bytesconv_bytes_to_string",
+    "type": "defines"
+  },
+  {
+    "from": "go_mod_gin-test",
+    "to": "go_pkg_internal_fs",
+    "type": "contains"
+  },
+  {
+    "from": "go_pkg_internal_fs",
+    "to": "go_func_internal_fs_open",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._status_code_color",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._latency_color",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._method_color",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._reset_color",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._is_output_color",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._disable_console_color",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._force_console_color",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._error_logger",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._error_logger_t",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._logger",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._logger_with_formatter",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._logger_with_writer",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._logger_with_config",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._set_mode",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._disable_bind_validation",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._enable_json_decoder_use_number",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._enable_json_decoder_disallow_unknown_fields",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._mode",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._clean_path",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._buf_app",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._remove_repeated_char",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._recovery",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._custom_recovery",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._recovery_with_writer",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._custom_recovery_with_writer",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._secure_request_dump",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._default_handle_recovery",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._stack",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._read_nth_line",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._function",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._time_format",
+    "type": "defines"
+  },
+  {
+    "from": "go_mod_gin-test",
+    "to": "go_pkg_render",
+    "type": "contains"
+  },
+  {
+    "from": "go_pkg_render",
+    "to": "go_func_render_render",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_render",
+    "to": "go_func_render_write_content_type",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_render",
+    "to": "go_func_render_instance",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_render",
+    "to": "go_func_render_load_template",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_render",
+    "to": "go_func_render_write_json",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_render",
+    "to": "go_func_render_write_msg_pack",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_render",
+    "to": "go_func_render_write_headers",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_render",
+    "to": "go_func_render_write_string",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._write_header",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._write_header_now",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._write",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._write_string",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._size",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._written",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._hijack",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._close_notify",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._flush",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._pusher",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._group",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._base_path",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._handle",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._post",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._patch",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._put",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._options",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._head",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._any",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._match",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._static_file",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._static_file_fs",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._static_file_handler",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._static",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._static_fs",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._create_static_handler",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._combine_handlers",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._calculate_absolute_path",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._return_obj",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._create_test_context",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._create_test_context_only",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._wait_for_server_ready",
+    "type": "defines"
+  },
+  {
+    "from": "go_mod_gin-test",
+    "to": "go_pkg_testdata_protoexample",
+    "type": "contains"
+  },
+  {
+    "from": "go_pkg_testdata_protoexample",
+    "to": "go_func_testdata_protoexample_enum",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_testdata_protoexample",
+    "to": "go_func_testdata_protoexample_string",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_testdata_protoexample",
+    "to": "go_func_testdata_protoexample_descriptor",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_testdata_protoexample",
+    "to": "go_func_testdata_protoexample_type",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_testdata_protoexample",
+    "to": "go_func_testdata_protoexample_number",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_testdata_protoexample",
+    "to": "go_func_testdata_protoexample_unmarshal_json",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_testdata_protoexample",
+    "to": "go_func_testdata_protoexample_enum_descriptor",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_testdata_protoexample",
+    "to": "go_func_testdata_protoexample_reset",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_testdata_protoexample",
+    "to": "go_func_testdata_protoexample_proto_message",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_testdata_protoexample",
+    "to": "go_func_testdata_protoexample_proto_reflect",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_testdata_protoexample",
+    "to": "go_func_testdata_protoexample_get_label",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_testdata_protoexample",
+    "to": "go_func_testdata_protoexample_get_type",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_testdata_protoexample",
+    "to": "go_func_testdata_protoexample_get_reps",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_testdata_protoexample",
+    "to": "go_func_testdata_protoexample_get_optionalgroup",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_testdata_protoexample",
+    "to": "go_func_testdata_protoexample_get_required_field",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_testdata_protoexample",
+    "to": "go_func_testdata_protoexample_file_test_proto_raw_desc_gzip",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_testdata_protoexample",
+    "to": "go_func_testdata_protoexample_init",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_testdata_protoexample",
+    "to": "go_func_testdata_protoexample_file_test_proto_init",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._by_name",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._longest_common_prefix",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._add_child",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._count_params",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._count_sections",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._increment_child_prio",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._find_wildcard",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._insert_child",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._get_value",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._find_case_insensitive_path",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._shift_n_rune_bytes",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._find_case_insensitive_path_rec",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._wrap_f",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._wrap_h",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._marshal_xml",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._assert1",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._filter_flags",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._choose_data",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._parse_accept",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._last_char",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._name_of_function",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._join_paths",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._resolve_address",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._is_ascii",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._safe_int8",
+    "type": "defines"
+  },
+  {
+    "from": "go_pkg_.",
+    "to": "go_func_._safe_uint16",
+    "type": "defines"
+  }
+]

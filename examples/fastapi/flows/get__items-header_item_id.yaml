@@ -1,0 +1,7 @@
+flow: get__items-header_item_id
+paths:
+  - name: get__items-header_item_id
+    steps:
+      - {id: route_GET_items-header_{item_id}, type: route}
+      - {id: py_mod_docs_src_handling_errors_tutorial002_py310, type: py_module, edge: handled_by}
+      - {id: py_func_py_mod_docs_src_handling_errors_tutorial002_py310_read_item_header, type: py_function, edge: defines}

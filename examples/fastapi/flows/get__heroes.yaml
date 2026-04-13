@@ -1,0 +1,14 @@
+flow: get__heroes
+paths:
+  - name: get__heroes
+    steps:
+      - {id: route_GET_heroes, type: route}
+      - {id: py_mod_docs_src_sql_databases_tutorial001_an_py310, type: py_module, edge: handled_by}
+      - {id: py_class_py_mod_docs_src_sql_databases_tutorial001_an_py310_Hero, type: py_class, edge: defines}
+      - {id: py_func_py_mod_docs_src_sql_databases_tutorial001_an_py310_create_db_and_tables, type: py_function, edge: defines}
+      - {id: py_func_py_mod_docs_src_sql_databases_tutorial001_an_py310_get_session, type: py_function, edge: defines}
+      - {id: py_func_py_mod_docs_src_sql_databases_tutorial001_an_py310_on_startup, type: py_function, edge: defines}
+      - {id: py_func_py_mod_docs_src_sql_databases_tutorial001_an_py310_create_hero, type: py_function, edge: defines}
+      - {id: py_func_py_mod_docs_src_sql_databases_tutorial001_an_py310_read_heroes, type: py_function, edge: defines}
+      - {id: py_func_py_mod_docs_src_sql_databases_tutorial001_an_py310_read_hero, type: py_function, edge: defines}
+      - {id: py_func_py_mod_docs_src_sql_databases_tutorial001_an_py310_delete_hero, type: py_function, edge: defines}

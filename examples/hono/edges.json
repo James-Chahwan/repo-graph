@@ -1,0 +1,3042 @@
+[
+  {
+    "from": "ts_mod_src_adapter_aws_lambda_conninfo",
+    "to": "ts_func_ts_mod_src_adapter_aws_lambda_conninfo_getConnInfo",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_adapter_aws_lambda_handler",
+    "to": "ts_class_ts_mod_src_adapter_aws_lambda_handler_LatticeProxyEventV2",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_adapter_aws_lambda_handler",
+    "to": "ts_class_ts_mod_src_adapter_aws_lambda_handler_APIGatewayProxyEventV2",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_adapter_aws_lambda_handler",
+    "to": "ts_class_ts_mod_src_adapter_aws_lambda_handler_APIGatewayProxyEvent",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_adapter_aws_lambda_handler",
+    "to": "ts_class_ts_mod_src_adapter_aws_lambda_handler_ALBProxyEvent",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_adapter_aws_lambda_handler",
+    "to": "ts_class_ts_mod_src_adapter_aws_lambda_handler_EventProcessor",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_adapter_aws_lambda_handler",
+    "to": "ts_class_ts_mod_src_adapter_aws_lambda_handler_EventV2Processor",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_adapter_aws_lambda_handler",
+    "to": "ts_class_ts_mod_src_adapter_aws_lambda_handler_EventV1Processor",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_adapter_aws_lambda_handler",
+    "to": "ts_class_ts_mod_src_adapter_aws_lambda_handler_ALBProcessor",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_adapter_aws_lambda_handler",
+    "to": "ts_class_ts_mod_src_adapter_aws_lambda_handler_LatticeV2Processor",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_adapter_aws_lambda_handler",
+    "to": "ts_func_ts_mod_src_adapter_aws_lambda_handler_streamHandle",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_adapter_aws_lambda_handler",
+    "to": "ts_func_ts_mod_src_adapter_aws_lambda_handler_handle",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_adapter_aws_lambda_handler",
+    "to": "ts_func_ts_mod_src_adapter_aws_lambda_handler_getProcessor",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_adapter_aws_lambda_handler",
+    "to": "ts_func_ts_mod_src_adapter_aws_lambda_handler_defaultIsContentTypeBinary",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_adapter_aws_lambda_handler",
+    "to": "ts_func_ts_mod_src_adapter_aws_lambda_handler_isContentEncodingBinary",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_adapter_aws_lambda_index",
+    "to": "ts_mod_src_adapter_aws_lambda_handler",
+    "type": "imports"
+  },
+  {
+    "from": "ts_mod_src_adapter_aws_lambda_index",
+    "to": "ts_mod_src_adapter_aws_lambda_conninfo",
+    "type": "imports"
+  },
+  {
+    "from": "ts_mod_src_adapter_aws_lambda_types",
+    "to": "ts_class_ts_mod_src_adapter_aws_lambda_types_CognitoIdentity",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_adapter_aws_lambda_types",
+    "to": "ts_class_ts_mod_src_adapter_aws_lambda_types_ClientContext",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_adapter_aws_lambda_types",
+    "to": "ts_class_ts_mod_src_adapter_aws_lambda_types_ClientContextClient",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_adapter_aws_lambda_types",
+    "to": "ts_class_ts_mod_src_adapter_aws_lambda_types_ClientContextEnv",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_adapter_aws_lambda_types",
+    "to": "ts_class_ts_mod_src_adapter_aws_lambda_types_LambdaContext",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_adapter_aws_lambda_types",
+    "to": "ts_class_ts_mod_src_adapter_aws_lambda_types_ClientCert",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_adapter_aws_lambda_types",
+    "to": "ts_class_ts_mod_src_adapter_aws_lambda_types_Identity",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_adapter_aws_lambda_types",
+    "to": "ts_class_ts_mod_src_adapter_aws_lambda_types_ApiGatewayRequestContext",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_adapter_aws_lambda_types",
+    "to": "ts_class_ts_mod_src_adapter_aws_lambda_types_Authorizer",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_adapter_aws_lambda_types",
+    "to": "ts_class_ts_mod_src_adapter_aws_lambda_types_ApiGatewayRequestContextV2",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_adapter_aws_lambda_types",
+    "to": "ts_class_ts_mod_src_adapter_aws_lambda_types_ALBRequestContext",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_adapter_aws_lambda_types",
+    "to": "ts_class_ts_mod_src_adapter_aws_lambda_types_LatticeRequestContextV2",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_adapter_bun_conninfo",
+    "to": "ts_func_ts_mod_src_adapter_bun_conninfo_getConnInfo",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_adapter_bun_index",
+    "to": "ts_mod_src_adapter_bun_conninfo",
+    "type": "imports"
+  },
+  {
+    "from": "ts_mod_src_adapter_bun_serve_static",
+    "to": "ts_func_ts_mod_src_adapter_bun_serve_static_serveStatic",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_adapter_bun_server",
+    "to": "ts_func_ts_mod_src_adapter_bun_server_getBunServer",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_adapter_bun_ssg",
+    "to": "ts_func_ts_mod_src_adapter_bun_ssg_bunFileSystemModule",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_adapter_bun_ssg",
+    "to": "ts_func_ts_mod_src_adapter_bun_ssg_toSSG",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_adapter_bun_websocket",
+    "to": "ts_class_ts_mod_src_adapter_bun_websocket_BunServerWebSocket",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_adapter_bun_websocket",
+    "to": "ts_class_ts_mod_src_adapter_bun_websocket_BunWebSocketHandler",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_adapter_bun_websocket",
+    "to": "ts_class_ts_mod_src_adapter_bun_websocket_CreateWebSocket",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_adapter_bun_websocket",
+    "to": "ts_class_ts_mod_src_adapter_bun_websocket_BunWebSocketData",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_adapter_bun_websocket",
+    "to": "ts_func_ts_mod_src_adapter_bun_websocket_createWSContext",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_adapter_bun_websocket",
+    "to": "ts_func_ts_mod_src_adapter_bun_websocket_upgradeWebSocket",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_adapter_bun_websocket",
+    "to": "ts_func_ts_mod_src_adapter_bun_websocket_websocket",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_adapter_bun_websocket",
+    "to": "ts_func_ts_mod_src_adapter_bun_websocket_createBunWebSocket",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_adapter_bun_websocket",
+    "to": "ts_mod_src_adapter_bun_server",
+    "type": "imports"
+  },
+  {
+    "from": "ts_mod_src_adapter_cloudflare_pages_conninfo",
+    "to": "ts_func_ts_mod_src_adapter_cloudflare_pages_conninfo_getConnInfo",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_adapter_cloudflare_pages_handler",
+    "to": "ts_func_ts_mod_src_adapter_cloudflare_pages_handler_handle",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_adapter_cloudflare_pages_handler",
+    "to": "ts_func_ts_mod_src_adapter_cloudflare_pages_handler_handleMiddleware",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_adapter_cloudflare_pages_handler",
+    "to": "ts_func_ts_mod_src_adapter_cloudflare_pages_handler_serveStatic",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_adapter_cloudflare_pages_index",
+    "to": "ts_mod_src_adapter_cloudflare_pages_handler",
+    "type": "imports"
+  },
+  {
+    "from": "ts_mod_src_adapter_cloudflare_pages_index",
+    "to": "ts_mod_src_adapter_cloudflare_pages_conninfo",
+    "type": "imports"
+  },
+  {
+    "from": "ts_mod_src_adapter_cloudflare_workers_conninfo",
+    "to": "ts_func_ts_mod_src_adapter_cloudflare_workers_conninfo_getConnInfo",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_adapter_cloudflare_workers_index",
+    "to": "ts_mod_src_adapter_cloudflare_workers_conninfo",
+    "type": "imports"
+  },
+  {
+    "from": "ts_mod_src_adapter_cloudflare_workers_serve_static",
+    "to": "ts_func_ts_mod_src_adapter_cloudflare_workers_serve_static_serveStatic",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_adapter_cloudflare_workers_utils",
+    "to": "ts_func_ts_mod_src_adapter_cloudflare_workers_utils_getContentFromKVAsset",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_adapter_cloudflare_workers_websocket",
+    "to": "ts_func_ts_mod_src_adapter_cloudflare_workers_websocket_upgradeWebSocket",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_adapter_deno_conninfo",
+    "to": "ts_func_ts_mod_src_adapter_deno_conninfo_getConnInfo",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_adapter_deno_index",
+    "to": "ts_mod_src_adapter_deno_conninfo",
+    "type": "imports"
+  },
+  {
+    "from": "ts_mod_src_adapter_deno_serve_static",
+    "to": "ts_func_ts_mod_src_adapter_deno_serve_static_serveStatic",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_adapter_deno_ssg",
+    "to": "ts_func_ts_mod_src_adapter_deno_ssg_denoFileSystemModule",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_adapter_deno_ssg",
+    "to": "ts_func_ts_mod_src_adapter_deno_ssg_toSSG",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_adapter_deno_websocket",
+    "to": "ts_func_ts_mod_src_adapter_deno_websocket_upgradeWebSocket",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_adapter_lambda_edge_conninfo",
+    "to": "ts_func_ts_mod_src_adapter_lambda_edge_conninfo_getConnInfo",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_adapter_lambda_edge_handler",
+    "to": "ts_class_ts_mod_src_adapter_lambda_edge_handler_CloudFrontHeader",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_adapter_lambda_edge_handler",
+    "to": "ts_class_ts_mod_src_adapter_lambda_edge_handler_CloudFrontHeaders",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_adapter_lambda_edge_handler",
+    "to": "ts_class_ts_mod_src_adapter_lambda_edge_handler_CloudFrontCustomOrigin",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_adapter_lambda_edge_handler",
+    "to": "ts_class_ts_mod_src_adapter_lambda_edge_handler_CloudFrontS3Origin",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_adapter_lambda_edge_handler",
+    "to": "ts_class_ts_mod_src_adapter_lambda_edge_handler_CloudFrontRequest",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_adapter_lambda_edge_handler",
+    "to": "ts_class_ts_mod_src_adapter_lambda_edge_handler_CloudFrontResponse",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_adapter_lambda_edge_handler",
+    "to": "ts_class_ts_mod_src_adapter_lambda_edge_handler_CloudFrontConfig",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_adapter_lambda_edge_handler",
+    "to": "ts_class_ts_mod_src_adapter_lambda_edge_handler_CloudFrontEvent",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_adapter_lambda_edge_handler",
+    "to": "ts_class_ts_mod_src_adapter_lambda_edge_handler_CloudFrontEdgeEvent",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_adapter_lambda_edge_handler",
+    "to": "ts_class_ts_mod_src_adapter_lambda_edge_handler_Callback",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_adapter_lambda_edge_handler",
+    "to": "ts_class_ts_mod_src_adapter_lambda_edge_handler_CloudFrontResult",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_adapter_lambda_edge_handler",
+    "to": "ts_func_ts_mod_src_adapter_lambda_edge_handler_handle",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_adapter_lambda_edge_handler",
+    "to": "ts_func_ts_mod_src_adapter_lambda_edge_handler_createBody",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_adapter_lambda_edge_handler",
+    "to": "ts_func_ts_mod_src_adapter_lambda_edge_handler_isContentTypeBinary",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_adapter_lambda_edge_index",
+    "to": "ts_mod_src_adapter_lambda_edge_handler",
+    "type": "imports"
+  },
+  {
+    "from": "ts_mod_src_adapter_lambda_edge_index",
+    "to": "ts_mod_src_adapter_lambda_edge_conninfo",
+    "type": "imports"
+  },
+  {
+    "from": "ts_mod_src_adapter_netlify_conninfo",
+    "to": "ts_func_ts_mod_src_adapter_netlify_conninfo_getConnInfo",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_adapter_netlify_handler",
+    "to": "ts_func_ts_mod_src_adapter_netlify_handler_handle",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_adapter_netlify_mod",
+    "to": "ts_mod_src_adapter_netlify_handler",
+    "type": "imports"
+  },
+  {
+    "from": "ts_mod_src_adapter_netlify_mod",
+    "to": "ts_mod_src_adapter_netlify_conninfo",
+    "type": "imports"
+  },
+  {
+    "from": "ts_mod_src_adapter_service_worker_handler",
+    "to": "ts_func_ts_mod_src_adapter_service_worker_handler_handle",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_adapter_service_worker_index",
+    "to": "ts_mod_src_adapter_service_worker_handler",
+    "type": "imports"
+  },
+  {
+    "from": "ts_mod_src_adapter_service_worker_types",
+    "to": "ts_class_ts_mod_src_adapter_service_worker_types_ExtendableEvent",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_adapter_service_worker_types",
+    "to": "ts_class_ts_mod_src_adapter_service_worker_types_FetchEvent",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_adapter_vercel_conninfo",
+    "to": "ts_func_ts_mod_src_adapter_vercel_conninfo_getConnInfo",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_adapter_vercel_handler",
+    "to": "ts_func_ts_mod_src_adapter_vercel_handler_handle",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_adapter_vercel_index",
+    "to": "ts_mod_src_adapter_vercel_handler",
+    "type": "imports"
+  },
+  {
+    "from": "ts_mod_src_adapter_vercel_index",
+    "to": "ts_mod_src_adapter_vercel_conninfo",
+    "type": "imports"
+  },
+  {
+    "from": "ts_mod_src_client_client",
+    "to": "ts_class_ts_mod_src_client_client_ClientRequestImpl",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_client_client",
+    "to": "ts_func_ts_mod_src_client_client_hc",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_client_fetch_result_please",
+    "to": "ts_class_ts_mod_src_client_fetch_result_please_DetailedError",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_client_fetch_result_please",
+    "to": "ts_func_ts_mod_src_client_fetch_result_please_fetchRP",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_client_index",
+    "to": "ts_mod_src_client_client",
+    "type": "imports"
+  },
+  {
+    "from": "ts_mod_src_client_types",
+    "to": "ts_class_ts_mod_src_client_types_ClientResponse",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_client_types",
+    "to": "ts_class_ts_mod_src_client_types_TypedURL",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_client_types",
+    "to": "ts_class_ts_mod_src_client_types_Response",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_client_types",
+    "to": "ts_class_ts_mod_src_client_types_CallbackOptions",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_client_utils",
+    "to": "ts_func_ts_mod_src_client_utils_mergePath",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_client_utils",
+    "to": "ts_func_ts_mod_src_client_utils_replaceUrlParam",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_client_utils",
+    "to": "ts_func_ts_mod_src_client_utils_buildSearchParams",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_client_utils",
+    "to": "ts_func_ts_mod_src_client_utils_replaceUrlProtocol",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_client_utils",
+    "to": "ts_func_ts_mod_src_client_utils_removeIndexString",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_client_utils",
+    "to": "ts_func_ts_mod_src_client_utils_deepMerge",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_client_utils",
+    "to": "ts_func_ts_mod_src_client_utils_parseResponse",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_client_utils",
+    "to": "ts_mod_src_client_fetch_result_please",
+    "type": "imports"
+  },
+  {
+    "from": "ts_mod_src_client_utils",
+    "to": "ts_mod_src_client_types",
+    "type": "imports"
+  },
+  {
+    "from": "ts_mod_src_compose",
+    "to": "ts_func_ts_mod_src_compose_compose",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_context",
+    "to": "ts_class_ts_mod_src_context_ExecutionContext",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_context",
+    "to": "ts_class_ts_mod_src_context_ContextVariableMap",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_context",
+    "to": "ts_class_ts_mod_src_context_ContextRenderer",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_context",
+    "to": "ts_class_ts_mod_src_context_DefaultRenderer",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_context",
+    "to": "ts_class_ts_mod_src_context_Get",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_context",
+    "to": "ts_class_ts_mod_src_context_Set",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_context",
+    "to": "ts_class_ts_mod_src_context_NewResponse",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_context",
+    "to": "ts_class_ts_mod_src_context_BodyRespond",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_context",
+    "to": "ts_class_ts_mod_src_context_TextRespond",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_context",
+    "to": "ts_class_ts_mod_src_context_JSONRespond",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_context",
+    "to": "ts_class_ts_mod_src_context_HTMLRespond",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_context",
+    "to": "ts_class_ts_mod_src_context_SetHeadersOptions",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_context",
+    "to": "ts_class_ts_mod_src_context_SetHeaders",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_context",
+    "to": "ts_class_ts_mod_src_context_ResponseInit",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_context",
+    "to": "ts_class_ts_mod_src_context_Context",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_context",
+    "to": "ts_func_ts_mod_src_context_TEXT_PLAIN",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_helper_accepts_accepts",
+    "to": "ts_class_ts_mod_src_helper_accepts_accepts_Accept",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_helper_accepts_accepts",
+    "to": "ts_class_ts_mod_src_helper_accepts_accepts_acceptsConfig",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_helper_accepts_accepts",
+    "to": "ts_class_ts_mod_src_helper_accepts_accepts_acceptsOptions",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_helper_accepts_accepts",
+    "to": "ts_func_ts_mod_src_helper_accepts_accepts_defaultMatch",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_helper_accepts_accepts",
+    "to": "ts_func_ts_mod_src_helper_accepts_accepts_accepts",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_helper_accepts_index",
+    "to": "ts_mod_src_helper_accepts_accepts",
+    "type": "imports"
+  },
+  {
+    "from": "ts_mod_src_helper_adapter_index",
+    "to": "ts_func_ts_mod_src_helper_adapter_index_env",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_helper_adapter_index",
+    "to": "ts_func_ts_mod_src_helper_adapter_index_knownUserAgents",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_helper_adapter_index",
+    "to": "ts_func_ts_mod_src_helper_adapter_index_getRuntimeKey",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_helper_adapter_index",
+    "to": "ts_func_ts_mod_src_helper_adapter_index_checkUserAgentEquals",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_helper_conninfo_types",
+    "to": "ts_class_ts_mod_src_helper_conninfo_types_ConnInfo",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_helper_cookie_index",
+    "to": "ts_class_ts_mod_src_helper_cookie_index_GetCookie",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_helper_cookie_index",
+    "to": "ts_class_ts_mod_src_helper_cookie_index_GetSignedCookie",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_helper_cookie_index",
+    "to": "ts_func_ts_mod_src_helper_cookie_index_getCookie",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_helper_cookie_index",
+    "to": "ts_func_ts_mod_src_helper_cookie_index_getSignedCookie",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_helper_cookie_index",
+    "to": "ts_func_ts_mod_src_helper_cookie_index_generateCookie",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_helper_cookie_index",
+    "to": "ts_func_ts_mod_src_helper_cookie_index_setCookie",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_helper_cookie_index",
+    "to": "ts_func_ts_mod_src_helper_cookie_index_generateSignedCookie",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_helper_cookie_index",
+    "to": "ts_func_ts_mod_src_helper_cookie_index_setSignedCookie",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_helper_cookie_index",
+    "to": "ts_func_ts_mod_src_helper_cookie_index_deleteCookie",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_helper_css_common",
+    "to": "ts_class_ts_mod_src_helper_css_common_CssClassName",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_helper_css_common",
+    "to": "ts_class_ts_mod_src_helper_css_common_CssEscapedString",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_helper_css_common",
+    "to": "ts_func_ts_mod_src_helper_css_common_PSEUDO_GLOBAL_SELECTOR",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_helper_css_common",
+    "to": "ts_func_ts_mod_src_helper_css_common_isPseudoGlobalSelectorRe",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_helper_css_common",
+    "to": "ts_func_ts_mod_src_helper_css_common_DEFAULT_STYLE_ID",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_helper_css_common",
+    "to": "ts_func_ts_mod_src_helper_css_common_SELECTOR",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_helper_css_common",
+    "to": "ts_func_ts_mod_src_helper_css_common_CLASS_NAME",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_helper_css_common",
+    "to": "ts_func_ts_mod_src_helper_css_common_STYLE_STRING",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_helper_css_common",
+    "to": "ts_func_ts_mod_src_helper_css_common_SELECTORS",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_helper_css_common",
+    "to": "ts_func_ts_mod_src_helper_css_common_EXTERNAL_CLASS_NAMES",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_helper_css_common",
+    "to": "ts_func_ts_mod_src_helper_css_common_IS_CSS_ESCAPED",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_helper_css_common",
+    "to": "ts_func_ts_mod_src_helper_css_common_rawCssString",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_helper_css_common",
+    "to": "ts_func_ts_mod_src_helper_css_common_minify",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_helper_css_common",
+    "to": "ts_func_ts_mod_src_helper_css_common_buildStyleString",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_helper_css_common",
+    "to": "ts_func_ts_mod_src_helper_css_common_cssCommon",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_helper_css_common",
+    "to": "ts_func_ts_mod_src_helper_css_common_cxCommon",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_helper_css_common",
+    "to": "ts_func_ts_mod_src_helper_css_common_keyframesCommon",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_helper_css_common",
+    "to": "ts_func_ts_mod_src_helper_css_common_viewTransitionCommon",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_helper_css_index",
+    "to": "ts_class_ts_mod_src_helper_css_index_CssType",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_helper_css_index",
+    "to": "ts_class_ts_mod_src_helper_css_index_CxType",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_helper_css_index",
+    "to": "ts_class_ts_mod_src_helper_css_index_KeyframesType",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_helper_css_index",
+    "to": "ts_class_ts_mod_src_helper_css_index_ViewTransitionType",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_helper_css_index",
+    "to": "ts_class_ts_mod_src_helper_css_index_StyleType",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_helper_css_index",
+    "to": "ts_class_ts_mod_src_helper_css_index_DefaultContextType",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_helper_css_index",
+    "to": "ts_func_ts_mod_src_helper_css_index_createCssContext",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_helper_css_index",
+    "to": "ts_func_ts_mod_src_helper_css_index_css",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_helper_css_index",
+    "to": "ts_func_ts_mod_src_helper_css_index_cx",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_helper_css_index",
+    "to": "ts_func_ts_mod_src_helper_css_index_keyframes",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_helper_css_index",
+    "to": "ts_func_ts_mod_src_helper_css_index_viewTransition",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_helper_css_index",
+    "to": "ts_func_ts_mod_src_helper_css_index_Style",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_helper_css_index",
+    "to": "ts_mod_src_helper_css_common",
+    "type": "imports"
+  },
+  {
+    "from": "ts_mod_src_helper_dev_index",
+    "to": "ts_class_ts_mod_src_helper_dev_index_ShowRoutesOptions",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_helper_dev_index",
+    "to": "ts_class_ts_mod_src_helper_dev_index_RouteData",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_helper_dev_index",
+    "to": "ts_func_ts_mod_src_helper_dev_index_inspectRoutes",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_helper_dev_index",
+    "to": "ts_func_ts_mod_src_helper_dev_index_showRoutes",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_helper_dev_index",
+    "to": "ts_func_ts_mod_src_helper_dev_index_getRouterName",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_helper_factory_index",
+    "to": "ts_class_ts_mod_src_helper_factory_index_CreateHandlersInterface",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_helper_factory_index",
+    "to": "ts_class_ts_mod_src_helper_factory_index_Factory",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_helper_factory_index",
+    "to": "ts_func_ts_mod_src_helper_factory_index_createFactory",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_helper_factory_index",
+    "to": "ts_func_ts_mod_src_helper_factory_index_createMiddleware",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_helper_html_index",
+    "to": "ts_func_ts_mod_src_helper_html_index_html",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_helper_proxy_index",
+    "to": "ts_class_ts_mod_src_helper_proxy_index_ProxyRequestInit",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_helper_proxy_index",
+    "to": "ts_class_ts_mod_src_helper_proxy_index_ProxyFetch",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_helper_proxy_index",
+    "to": "ts_func_ts_mod_src_helper_proxy_index_proxy",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_helper_route_index",
+    "to": "ts_func_ts_mod_src_helper_route_index_matchedRoutes",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_helper_route_index",
+    "to": "ts_func_ts_mod_src_helper_route_index_routePath",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_helper_route_index",
+    "to": "ts_func_ts_mod_src_helper_route_index_baseRoutePath",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_helper_route_index",
+    "to": "ts_func_ts_mod_src_helper_route_index_basePath",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_helper_ssg_middleware",
+    "to": "ts_class_ts_mod_src_helper_ssg_middleware_SSGParam",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_helper_ssg_middleware",
+    "to": "ts_class_ts_mod_src_helper_ssg_middleware_SSGParamsMiddleware",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_helper_ssg_middleware",
+    "to": "ts_func_ts_mod_src_helper_ssg_middleware_SSG_CONTEXT",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_helper_ssg_middleware",
+    "to": "ts_func_ts_mod_src_helper_ssg_middleware_X_HONO_DISABLE_SSG_HEADER_KEY",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_helper_ssg_middleware",
+    "to": "ts_func_ts_mod_src_helper_ssg_middleware_SSG_DISABLED_RESPONSE",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_helper_ssg_middleware",
+    "to": "ts_func_ts_mod_src_helper_ssg_middleware_ssgParams",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_helper_ssg_middleware",
+    "to": "ts_func_ts_mod_src_helper_ssg_middleware_isSSGContext",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_helper_ssg_middleware",
+    "to": "ts_func_ts_mod_src_helper_ssg_middleware_disableSSG",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_helper_ssg_middleware",
+    "to": "ts_func_ts_mod_src_helper_ssg_middleware_onlySSG",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_helper_ssg_plugins",
+    "to": "ts_func_ts_mod_src_helper_ssg_plugins_defaultPlugin",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_helper_ssg_plugins",
+    "to": "ts_func_ts_mod_src_helper_ssg_plugins_redirectPlugin",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_helper_ssg_ssg",
+    "to": "ts_class_ts_mod_src_helper_ssg_ssg_FileSystemModule",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_helper_ssg_ssg",
+    "to": "ts_class_ts_mod_src_helper_ssg_ssg_ToSSGResult",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_helper_ssg_ssg",
+    "to": "ts_class_ts_mod_src_helper_ssg_ssg_SSGPlugin",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_helper_ssg_ssg",
+    "to": "ts_class_ts_mod_src_helper_ssg_ssg_ToSSGOptions",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_helper_ssg_ssg",
+    "to": "ts_class_ts_mod_src_helper_ssg_ssg_ToSSGInterface",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_helper_ssg_ssg",
+    "to": "ts_class_ts_mod_src_helper_ssg_ssg_ToSSGAdaptorInterface",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_helper_ssg_ssg",
+    "to": "ts_func_ts_mod_src_helper_ssg_ssg_DEFAULT_OUTPUT_DIR",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_helper_ssg_ssg",
+    "to": "ts_func_ts_mod_src_helper_ssg_ssg_defaultExtensionMap",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_helper_ssg_ssg",
+    "to": "ts_func_ts_mod_src_helper_ssg_ssg_combineBeforeRequestHooks",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_helper_ssg_ssg",
+    "to": "ts_func_ts_mod_src_helper_ssg_ssg_combineAfterResponseHooks",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_helper_ssg_ssg",
+    "to": "ts_func_ts_mod_src_helper_ssg_ssg_combineAfterGenerateHooks",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_helper_ssg_ssg",
+    "to": "ts_func_ts_mod_src_helper_ssg_ssg_fetchRoutesContent",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_helper_ssg_ssg",
+    "to": "ts_func_ts_mod_src_helper_ssg_ssg_saveContentToFile",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_helper_ssg_ssg",
+    "to": "ts_func_ts_mod_src_helper_ssg_ssg_toSSG",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_helper_ssg_ssg",
+    "to": "ts_mod_src_helper_ssg_middleware",
+    "type": "imports"
+  },
+  {
+    "from": "ts_mod_src_helper_ssg_ssg",
+    "to": "ts_mod_src_helper_ssg_plugins",
+    "type": "imports"
+  },
+  {
+    "from": "ts_mod_src_helper_ssg_utils",
+    "to": "ts_class_ts_mod_src_helper_ssg_utils_FilterStaticGenerateRouteData",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_helper_ssg_utils",
+    "to": "ts_func_ts_mod_src_helper_ssg_utils_dirname",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_helper_ssg_utils",
+    "to": "ts_func_ts_mod_src_helper_ssg_utils_joinPaths",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_helper_ssg_utils",
+    "to": "ts_func_ts_mod_src_helper_ssg_utils_filterStaticGenerateRoutes",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_helper_ssg_utils",
+    "to": "ts_func_ts_mod_src_helper_ssg_utils_isDynamicRoute",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_helper_ssg_utils",
+    "to": "ts_func_ts_mod_src_helper_ssg_utils_ensureWithinOutDir",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_helper_streaming_sse",
+    "to": "ts_class_ts_mod_src_helper_streaming_sse_SSEMessage",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_helper_streaming_sse",
+    "to": "ts_class_ts_mod_src_helper_streaming_sse_SSEStreamingApi",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_helper_streaming_sse",
+    "to": "ts_func_ts_mod_src_helper_streaming_sse_streamSSE",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_helper_streaming_stream",
+    "to": "ts_func_ts_mod_src_helper_streaming_stream_stream",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_helper_streaming_text",
+    "to": "ts_func_ts_mod_src_helper_streaming_text_streamText",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_helper_streaming_text",
+    "to": "ts_mod_src_helper_streaming_index",
+    "type": "imports"
+  },
+  {
+    "from": "ts_mod_src_helper_testing_index",
+    "to": "ts_func_ts_mod_src_helper_testing_index_testClient",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_helper_websocket_index",
+    "to": "ts_class_ts_mod_src_helper_websocket_index_WSEvents",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_helper_websocket_index",
+    "to": "ts_class_ts_mod_src_helper_websocket_index_UpgradeWebSocket",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_helper_websocket_index",
+    "to": "ts_class_ts_mod_src_helper_websocket_index_WSContextInit",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_helper_websocket_index",
+    "to": "ts_class_ts_mod_src_helper_websocket_index_SendOptions",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_helper_websocket_index",
+    "to": "ts_class_ts_mod_src_helper_websocket_index_WSContext",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_helper_websocket_index",
+    "to": "ts_class_ts_mod_src_helper_websocket_index_WebSocketHelperDefineContext",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_helper_websocket_index",
+    "to": "ts_func_ts_mod_src_helper_websocket_index_createWSMessageEvent",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_helper_websocket_index",
+    "to": "ts_func_ts_mod_src_helper_websocket_index_defineWebSocketHelper",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_hono_base",
+    "to": "ts_class_ts_mod_src_hono_base_Hono",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_hono_base",
+    "to": "ts_mod_src_compose",
+    "type": "imports"
+  },
+  {
+    "from": "ts_mod_src_hono_base",
+    "to": "ts_mod_src_context",
+    "type": "imports"
+  },
+  {
+    "from": "ts_mod_src_hono",
+    "to": "ts_class_ts_mod_src_hono_Hono",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_hono",
+    "to": "ts_mod_src_hono_base",
+    "type": "imports"
+  },
+  {
+    "from": "ts_mod_src_http_exception",
+    "to": "ts_class_ts_mod_src_http_exception_HTTPException",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_index",
+    "to": "ts_mod_src_hono",
+    "type": "imports"
+  },
+  {
+    "from": "ts_mod_src_index",
+    "to": "ts_mod_src_context",
+    "type": "imports"
+  },
+  {
+    "from": "ts_mod_src_index",
+    "to": "ts_mod_src_client_index",
+    "type": "imports"
+  },
+  {
+    "from": "ts_mod_src_jsx_base",
+    "to": "ts_class_ts_mod_src_jsx_base_JSXNode",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_jsx_base",
+    "to": "ts_class_ts_mod_src_jsx_base_JSXFunctionNode",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_jsx_base",
+    "to": "ts_class_ts_mod_src_jsx_base_JSXFragmentNode",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_jsx_base",
+    "to": "ts_func_ts_mod_src_jsx_base_getNameSpaceContext",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_base",
+    "to": "ts_func_ts_mod_src_jsx_base_booleanAttributes",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_base",
+    "to": "ts_func_ts_mod_src_jsx_base_jsx",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_base",
+    "to": "ts_func_ts_mod_src_jsx_base_jsxFn",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_base",
+    "to": "ts_func_ts_mod_src_jsx_base_shallowEqual",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_base",
+    "to": "ts_func_ts_mod_src_jsx_base_memo",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_base",
+    "to": "ts_func_ts_mod_src_jsx_base_Fragment",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_base",
+    "to": "ts_func_ts_mod_src_jsx_base_isValidElement",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_base",
+    "to": "ts_func_ts_mod_src_jsx_base_cloneElement",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_base",
+    "to": "ts_func_ts_mod_src_jsx_base_reactAPICompatVersion",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_children",
+    "to": "ts_func_ts_mod_src_jsx_children_toArray",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_children",
+    "to": "ts_func_ts_mod_src_jsx_children_Children",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_children",
+    "to": "ts_mod_src_jsx_base",
+    "type": "imports"
+  },
+  {
+    "from": "ts_mod_src_jsx_components",
+    "to": "ts_func_ts_mod_src_jsx_components_childrenToString",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_components",
+    "to": "ts_func_ts_mod_src_jsx_components_ErrorBoundary",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_components",
+    "to": "ts_mod_src_jsx_base",
+    "type": "imports"
+  },
+  {
+    "from": "ts_mod_src_jsx_constants",
+    "to": "ts_func_ts_mod_src_jsx_constants_DOM_RENDERER",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_constants",
+    "to": "ts_func_ts_mod_src_jsx_constants_DOM_ERROR_HANDLER",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_constants",
+    "to": "ts_func_ts_mod_src_jsx_constants_DOM_STASH",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_constants",
+    "to": "ts_func_ts_mod_src_jsx_constants_DOM_INTERNAL_TAG",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_constants",
+    "to": "ts_func_ts_mod_src_jsx_constants_DOM_MEMO",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_constants",
+    "to": "ts_func_ts_mod_src_jsx_constants_PERMALINK",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_context",
+    "to": "ts_class_ts_mod_src_jsx_context_Context",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_jsx_context",
+    "to": "ts_func_ts_mod_src_jsx_context_globalContexts",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_context",
+    "to": "ts_func_ts_mod_src_jsx_context_createContext",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_context",
+    "to": "ts_func_ts_mod_src_jsx_context_useContext",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_context",
+    "to": "ts_mod_src_jsx_base",
+    "type": "imports"
+  },
+  {
+    "from": "ts_mod_src_jsx_context",
+    "to": "ts_mod_src_jsx_constants",
+    "type": "imports"
+  },
+  {
+    "from": "ts_mod_src_jsx_dom_client",
+    "to": "ts_class_ts_mod_src_jsx_dom_client_Root",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_jsx_dom_client",
+    "to": "ts_func_ts_mod_src_jsx_dom_client_createRoot",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_dom_client",
+    "to": "ts_func_ts_mod_src_jsx_dom_client_hydrateRoot",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_dom_components",
+    "to": "ts_func_ts_mod_src_jsx_dom_components_ErrorBoundary",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_dom_components",
+    "to": "ts_func_ts_mod_src_jsx_dom_components_Suspense",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_dom_context",
+    "to": "ts_func_ts_mod_src_jsx_dom_context_createContextProviderFunction",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_dom_context",
+    "to": "ts_func_ts_mod_src_jsx_dom_context_createContext",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_dom_css",
+    "to": "ts_class_ts_mod_src_jsx_dom_css_CreateCssJsxDomObjectsType",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_jsx_dom_css",
+    "to": "ts_class_ts_mod_src_jsx_dom_css_CssType",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_jsx_dom_css",
+    "to": "ts_class_ts_mod_src_jsx_dom_css_CxType",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_jsx_dom_css",
+    "to": "ts_class_ts_mod_src_jsx_dom_css_KeyframesType",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_jsx_dom_css",
+    "to": "ts_class_ts_mod_src_jsx_dom_css_ViewTransitionType",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_jsx_dom_css",
+    "to": "ts_class_ts_mod_src_jsx_dom_css_DefaultContextType",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_jsx_dom_css",
+    "to": "ts_func_ts_mod_src_jsx_dom_css_createCssJsxDomObjects",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_dom_css",
+    "to": "ts_func_ts_mod_src_jsx_dom_css_createCssContext",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_dom_css",
+    "to": "ts_func_ts_mod_src_jsx_dom_css_css",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_dom_css",
+    "to": "ts_func_ts_mod_src_jsx_dom_css_cx",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_dom_css",
+    "to": "ts_func_ts_mod_src_jsx_dom_css_keyframes",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_dom_css",
+    "to": "ts_func_ts_mod_src_jsx_dom_css_viewTransition",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_dom_css",
+    "to": "ts_func_ts_mod_src_jsx_dom_css_Style",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_dom_hooks_index",
+    "to": "ts_func_ts_mod_src_jsx_dom_hooks_index_FormContext",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_dom_hooks_index",
+    "to": "ts_func_ts_mod_src_jsx_dom_hooks_index_registerAction",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_dom_hooks_index",
+    "to": "ts_func_ts_mod_src_jsx_dom_hooks_index_useFormStatus",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_dom_hooks_index",
+    "to": "ts_func_ts_mod_src_jsx_dom_hooks_index_useOptimistic",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_dom_hooks_index",
+    "to": "ts_func_ts_mod_src_jsx_dom_hooks_index_useActionState",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_dom_index",
+    "to": "ts_mod_src_jsx_dom_components",
+    "type": "imports"
+  },
+  {
+    "from": "ts_mod_src_jsx_dom_index",
+    "to": "ts_mod_src_jsx_dom_context",
+    "type": "imports"
+  },
+  {
+    "from": "ts_mod_src_jsx_dom_index",
+    "to": "ts_mod_src_jsx_dom_hooks_index",
+    "type": "imports"
+  },
+  {
+    "from": "ts_mod_src_jsx_dom_intrinsic_element_components",
+    "to": "ts_func_ts_mod_src_jsx_dom_intrinsic_element_components_clearCache",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_dom_intrinsic_element_components",
+    "to": "ts_func_ts_mod_src_jsx_dom_intrinsic_element_components_composeRef",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_dom_intrinsic_element_components",
+    "to": "ts_func_ts_mod_src_jsx_dom_intrinsic_element_components_title",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_dom_intrinsic_element_components",
+    "to": "ts_func_ts_mod_src_jsx_dom_intrinsic_element_components_script",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_dom_intrinsic_element_components",
+    "to": "ts_func_ts_mod_src_jsx_dom_intrinsic_element_components_style",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_dom_intrinsic_element_components",
+    "to": "ts_func_ts_mod_src_jsx_dom_intrinsic_element_components_link",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_dom_intrinsic_element_components",
+    "to": "ts_func_ts_mod_src_jsx_dom_intrinsic_element_components_meta",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_dom_intrinsic_element_components",
+    "to": "ts_func_ts_mod_src_jsx_dom_intrinsic_element_components_form",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_dom_intrinsic_element_components",
+    "to": "ts_func_ts_mod_src_jsx_dom_intrinsic_element_components_input",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_dom_intrinsic_element_components",
+    "to": "ts_func_ts_mod_src_jsx_dom_intrinsic_element_components_button",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_dom_jsx_dev_runtime",
+    "to": "ts_func_ts_mod_src_jsx_dom_jsx_dev_runtime_jsxDEV",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_dom_jsx_dev_runtime",
+    "to": "ts_func_ts_mod_src_jsx_dom_jsx_dev_runtime_Fragment",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_dom_jsx_dev_runtime",
+    "to": "ts_mod_src_jsx_dom_intrinsic_element_components",
+    "type": "imports"
+  },
+  {
+    "from": "ts_mod_src_jsx_dom_jsx_runtime",
+    "to": "ts_mod_src_jsx_dom_jsx_dev_runtime",
+    "type": "imports"
+  },
+  {
+    "from": "ts_mod_src_jsx_dom_render",
+    "to": "ts_func_ts_mod_src_jsx_dom_render_buildDataStack",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_dom_render",
+    "to": "ts_func_ts_mod_src_jsx_dom_render_getNameSpaceContext",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_dom_render",
+    "to": "ts_func_ts_mod_src_jsx_dom_render_build",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_dom_render",
+    "to": "ts_func_ts_mod_src_jsx_dom_render_buildNode",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_dom_render",
+    "to": "ts_func_ts_mod_src_jsx_dom_render_update",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_dom_render",
+    "to": "ts_func_ts_mod_src_jsx_dom_render_renderNode",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_dom_render",
+    "to": "ts_func_ts_mod_src_jsx_dom_render_render",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_dom_render",
+    "to": "ts_func_ts_mod_src_jsx_dom_render_flushSync",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_dom_render",
+    "to": "ts_func_ts_mod_src_jsx_dom_render_createPortal",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_dom_render",
+    "to": "ts_mod_src_jsx_dom_context",
+    "type": "imports"
+  },
+  {
+    "from": "ts_mod_src_jsx_dom_server",
+    "to": "ts_class_ts_mod_src_jsx_dom_server_RenderToStringOptions",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_jsx_dom_server",
+    "to": "ts_class_ts_mod_src_jsx_dom_server_RenderToReadableStreamOptions",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_jsx_dom_server",
+    "to": "ts_mod_src_jsx_dom_index",
+    "type": "imports"
+  },
+  {
+    "from": "ts_mod_src_jsx_dom_utils",
+    "to": "ts_func_ts_mod_src_jsx_dom_utils_setInternalTagFlag",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_hooks_index",
+    "to": "ts_func_ts_mod_src_jsx_hooks_index_STASH_EFFECT",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_hooks_index",
+    "to": "ts_func_ts_mod_src_jsx_hooks_index_startViewTransition",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_hooks_index",
+    "to": "ts_func_ts_mod_src_jsx_hooks_index_useViewTransition",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_hooks_index",
+    "to": "ts_func_ts_mod_src_jsx_hooks_index_startTransition",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_hooks_index",
+    "to": "ts_func_ts_mod_src_jsx_hooks_index_useTransition",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_hooks_index",
+    "to": "ts_func_ts_mod_src_jsx_hooks_index_useDeferredValue",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_hooks_index",
+    "to": "ts_func_ts_mod_src_jsx_hooks_index_useState",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_hooks_index",
+    "to": "ts_func_ts_mod_src_jsx_hooks_index_useReducer",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_hooks_index",
+    "to": "ts_func_ts_mod_src_jsx_hooks_index_useEffect",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_hooks_index",
+    "to": "ts_func_ts_mod_src_jsx_hooks_index_useLayoutEffect",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_hooks_index",
+    "to": "ts_func_ts_mod_src_jsx_hooks_index_useInsertionEffect",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_hooks_index",
+    "to": "ts_func_ts_mod_src_jsx_hooks_index_useCallback",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_hooks_index",
+    "to": "ts_func_ts_mod_src_jsx_hooks_index_useRef",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_hooks_index",
+    "to": "ts_func_ts_mod_src_jsx_hooks_index_use",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_hooks_index",
+    "to": "ts_func_ts_mod_src_jsx_hooks_index_useMemo",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_hooks_index",
+    "to": "ts_func_ts_mod_src_jsx_hooks_index_useId",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_hooks_index",
+    "to": "ts_func_ts_mod_src_jsx_hooks_index_useDebugValue",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_hooks_index",
+    "to": "ts_func_ts_mod_src_jsx_hooks_index_createRef",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_hooks_index",
+    "to": "ts_func_ts_mod_src_jsx_hooks_index_forwardRef",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_hooks_index",
+    "to": "ts_func_ts_mod_src_jsx_hooks_index_useImperativeHandle",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_hooks_index",
+    "to": "ts_func_ts_mod_src_jsx_hooks_index_useSyncExternalStore",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_index",
+    "to": "ts_mod_src_jsx_base",
+    "type": "imports"
+  },
+  {
+    "from": "ts_mod_src_jsx_index",
+    "to": "ts_mod_src_jsx_children",
+    "type": "imports"
+  },
+  {
+    "from": "ts_mod_src_jsx_index",
+    "to": "ts_mod_src_jsx_components",
+    "type": "imports"
+  },
+  {
+    "from": "ts_mod_src_jsx_index",
+    "to": "ts_mod_src_jsx_context",
+    "type": "imports"
+  },
+  {
+    "from": "ts_mod_src_jsx_index",
+    "to": "ts_mod_src_jsx_dom_hooks_index",
+    "type": "imports"
+  },
+  {
+    "from": "ts_mod_src_jsx_index",
+    "to": "ts_mod_src_jsx_hooks_index",
+    "type": "imports"
+  },
+  {
+    "from": "ts_mod_src_jsx_intrinsic_element_common",
+    "to": "ts_func_ts_mod_src_jsx_intrinsic_element_common_deDupeKeyMap",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_intrinsic_element_common",
+    "to": "ts_func_ts_mod_src_jsx_intrinsic_element_common_domRenderers",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_intrinsic_element_common",
+    "to": "ts_func_ts_mod_src_jsx_intrinsic_element_common_dataPrecedenceAttr",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_intrinsic_element_common",
+    "to": "ts_func_ts_mod_src_jsx_intrinsic_element_common_isStylesheetLinkWithPrecedence",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_intrinsic_element_common",
+    "to": "ts_func_ts_mod_src_jsx_intrinsic_element_common_shouldDeDupeByKey",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_intrinsic_element_components",
+    "to": "ts_func_ts_mod_src_jsx_intrinsic_element_components_title",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_intrinsic_element_components",
+    "to": "ts_func_ts_mod_src_jsx_intrinsic_element_components_script",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_intrinsic_element_components",
+    "to": "ts_func_ts_mod_src_jsx_intrinsic_element_components_style",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_intrinsic_element_components",
+    "to": "ts_func_ts_mod_src_jsx_intrinsic_element_components_link",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_intrinsic_element_components",
+    "to": "ts_func_ts_mod_src_jsx_intrinsic_element_components_meta",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_intrinsic_element_components",
+    "to": "ts_func_ts_mod_src_jsx_intrinsic_element_components_form",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_intrinsic_element_components",
+    "to": "ts_func_ts_mod_src_jsx_intrinsic_element_components_input",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_intrinsic_element_components",
+    "to": "ts_func_ts_mod_src_jsx_intrinsic_element_components_button",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_intrinsic_element_components",
+    "to": "ts_mod_src_jsx_intrinsic_element_common",
+    "type": "imports"
+  },
+  {
+    "from": "ts_mod_src_jsx_intrinsic_elements",
+    "to": "ts_class_ts_mod_src_jsx_intrinsic_elements_IntrinsicElements",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_jsx_jsx_dev_runtime",
+    "to": "ts_func_ts_mod_src_jsx_jsx_dev_runtime_jsxDEV",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_jsx_dev_runtime",
+    "to": "ts_mod_src_jsx_base",
+    "type": "imports"
+  },
+  {
+    "from": "ts_mod_src_jsx_jsx_runtime",
+    "to": "ts_func_ts_mod_src_jsx_jsx_runtime_jsxAttr",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_jsx_runtime",
+    "to": "ts_func_ts_mod_src_jsx_jsx_runtime_jsxEscape",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_jsx_runtime",
+    "to": "ts_mod_src_jsx_jsx_dev_runtime",
+    "type": "imports"
+  },
+  {
+    "from": "ts_mod_src_jsx_streaming",
+    "to": "ts_func_ts_mod_src_jsx_streaming_StreamingContext",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_streaming",
+    "to": "ts_func_ts_mod_src_jsx_streaming_Suspense",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_streaming",
+    "to": "ts_func_ts_mod_src_jsx_streaming_renderToReadableStream",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_streaming",
+    "to": "ts_mod_src_jsx_base",
+    "type": "imports"
+  },
+  {
+    "from": "ts_mod_src_jsx_streaming",
+    "to": "ts_mod_src_jsx_components",
+    "type": "imports"
+  },
+  {
+    "from": "ts_mod_src_jsx_streaming",
+    "to": "ts_mod_src_jsx_constants",
+    "type": "imports"
+  },
+  {
+    "from": "ts_mod_src_jsx_streaming",
+    "to": "ts_mod_src_jsx_context",
+    "type": "imports"
+  },
+  {
+    "from": "ts_mod_src_jsx_streaming",
+    "to": "ts_mod_src_jsx_dom_components",
+    "type": "imports"
+  },
+  {
+    "from": "ts_mod_src_jsx_streaming",
+    "to": "ts_mod_src_jsx_dom_render",
+    "type": "imports"
+  },
+  {
+    "from": "ts_mod_src_jsx_streaming",
+    "to": "ts_mod_src_jsx_index",
+    "type": "imports"
+  },
+  {
+    "from": "ts_mod_src_jsx_types",
+    "to": "ts_mod_src_jsx_base",
+    "type": "imports"
+  },
+  {
+    "from": "ts_mod_src_jsx_types",
+    "to": "ts_mod_src_jsx_intrinsic_elements",
+    "type": "imports"
+  },
+  {
+    "from": "ts_mod_src_jsx_types",
+    "to": "ts_mod_src_jsx_hooks_index",
+    "type": "imports"
+  },
+  {
+    "from": "ts_mod_src_jsx_types",
+    "to": "ts_mod_src_jsx_context",
+    "type": "imports"
+  },
+  {
+    "from": "ts_mod_src_jsx_utils",
+    "to": "ts_func_ts_mod_src_jsx_utils_normalizeIntrinsicElementKey",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_jsx_utils",
+    "to": "ts_func_ts_mod_src_jsx_utils_styleObjectForEach",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_middleware_basic_auth_index",
+    "to": "ts_func_ts_mod_src_middleware_basic_auth_index_basicAuth",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_middleware_bearer_auth_index",
+    "to": "ts_func_ts_mod_src_middleware_bearer_auth_index_bearerAuth",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_middleware_body_limit_index",
+    "to": "ts_class_ts_mod_src_middleware_body_limit_index_BodyLimitError",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_middleware_body_limit_index",
+    "to": "ts_func_ts_mod_src_middleware_body_limit_index_bodyLimit",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_middleware_cache_index",
+    "to": "ts_func_ts_mod_src_middleware_cache_index_cache",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_middleware_combine_index",
+    "to": "ts_func_ts_mod_src_middleware_combine_index_some",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_middleware_combine_index",
+    "to": "ts_func_ts_mod_src_middleware_combine_index_every",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_middleware_combine_index",
+    "to": "ts_func_ts_mod_src_middleware_combine_index_except",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_middleware_compress_index",
+    "to": "ts_class_ts_mod_src_middleware_compress_index_CompressionOptions",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_middleware_compress_index",
+    "to": "ts_func_ts_mod_src_middleware_compress_index_compress",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_middleware_context_storage_index",
+    "to": "ts_func_ts_mod_src_middleware_context_storage_index_contextStorage",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_middleware_context_storage_index",
+    "to": "ts_func_ts_mod_src_middleware_context_storage_index_tryGetContext",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_middleware_context_storage_index",
+    "to": "ts_func_ts_mod_src_middleware_context_storage_index_getContext",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_middleware_cors_index",
+    "to": "ts_func_ts_mod_src_middleware_cors_index_cors",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_middleware_csrf_index",
+    "to": "ts_class_ts_mod_src_middleware_csrf_index_CSRFOptions",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_middleware_csrf_index",
+    "to": "ts_func_ts_mod_src_middleware_csrf_index_csrf",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_middleware_etag_digest",
+    "to": "ts_func_ts_mod_src_middleware_etag_digest_generateDigest",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_middleware_etag_index",
+    "to": "ts_func_ts_mod_src_middleware_etag_index_RETAINED_304_HEADERS",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_middleware_etag_index",
+    "to": "ts_func_ts_mod_src_middleware_etag_index_etag",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_middleware_etag_index",
+    "to": "ts_mod_src_middleware_etag_digest",
+    "type": "imports"
+  },
+  {
+    "from": "ts_mod_src_middleware_ip_restriction_index",
+    "to": "ts_class_ts_mod_src_middleware_ip_restriction_index_IPRestrictionRules",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_middleware_ip_restriction_index",
+    "to": "ts_func_ts_mod_src_middleware_ip_restriction_index_ipRestriction",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_middleware_jsx_renderer_index",
+    "to": "ts_func_ts_mod_src_middleware_jsx_renderer_index_RequestContext",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_middleware_jsx_renderer_index",
+    "to": "ts_func_ts_mod_src_middleware_jsx_renderer_index_jsxRenderer",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_middleware_jsx_renderer_index",
+    "to": "ts_func_ts_mod_src_middleware_jsx_renderer_index_useRequestContext",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_middleware_jwk_jwk",
+    "to": "ts_func_ts_mod_src_middleware_jwk_jwk_jwk",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_middleware_jwt_jwt",
+    "to": "ts_func_ts_mod_src_middleware_jwt_jwt_jwt",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_middleware_jwt_jwt",
+    "to": "ts_func_ts_mod_src_middleware_jwt_jwt_verifyWithJwks",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_middleware_jwt_jwt",
+    "to": "ts_func_ts_mod_src_middleware_jwt_jwt_verify",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_middleware_jwt_jwt",
+    "to": "ts_func_ts_mod_src_middleware_jwt_jwt_decode",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_middleware_jwt_jwt",
+    "to": "ts_func_ts_mod_src_middleware_jwt_jwt_sign",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_middleware_language_language",
+    "to": "ts_class_ts_mod_src_middleware_language_language_DetectorOptions",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_middleware_language_language",
+    "to": "ts_class_ts_mod_src_middleware_language_language_LanguageVariables",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_middleware_language_language",
+    "to": "ts_func_ts_mod_src_middleware_language_language_DEFAULT_OPTIONS",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_middleware_language_language",
+    "to": "ts_func_ts_mod_src_middleware_language_language_parseAcceptLanguage",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_middleware_language_language",
+    "to": "ts_func_ts_mod_src_middleware_language_language_normalizeLanguage",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_middleware_language_language",
+    "to": "ts_func_ts_mod_src_middleware_language_language_detectFromQuery",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_middleware_language_language",
+    "to": "ts_func_ts_mod_src_middleware_language_language_detectFromCookie",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_middleware_language_language",
+    "to": "ts_func_ts_mod_src_middleware_language_language_detectFromHeader",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_middleware_language_language",
+    "to": "ts_func_ts_mod_src_middleware_language_language_detectFromPath",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_middleware_language_language",
+    "to": "ts_func_ts_mod_src_middleware_language_language_detectors",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_middleware_language_language",
+    "to": "ts_func_ts_mod_src_middleware_language_language_validateOptions",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_middleware_language_language",
+    "to": "ts_func_ts_mod_src_middleware_language_language_languageDetector",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_middleware_logger_index",
+    "to": "ts_func_ts_mod_src_middleware_logger_index_logger",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_middleware_method_override_index",
+    "to": "ts_func_ts_mod_src_middleware_method_override_index_methodOverride",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_middleware_powered_by_index",
+    "to": "ts_func_ts_mod_src_middleware_powered_by_index_poweredBy",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_middleware_pretty_json_index",
+    "to": "ts_class_ts_mod_src_middleware_pretty_json_index_PrettyOptions",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_middleware_pretty_json_index",
+    "to": "ts_func_ts_mod_src_middleware_pretty_json_index_prettyJSON",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_middleware_request_id_request_id",
+    "to": "ts_func_ts_mod_src_middleware_request_id_request_id_requestId",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_middleware_secure_headers_secure_headers",
+    "to": "ts_class_ts_mod_src_middleware_secure_headers_secure_headers_ContentSecurityPolicyOptions",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_middleware_secure_headers_secure_headers",
+    "to": "ts_class_ts_mod_src_middleware_secure_headers_secure_headers_ReportToOptions",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_middleware_secure_headers_secure_headers",
+    "to": "ts_class_ts_mod_src_middleware_secure_headers_secure_headers_ReportToEndpoint",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_middleware_secure_headers_secure_headers",
+    "to": "ts_class_ts_mod_src_middleware_secure_headers_secure_headers_ReportingEndpointOptions",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_middleware_secure_headers_secure_headers",
+    "to": "ts_class_ts_mod_src_middleware_secure_headers_secure_headers_SecureHeadersOptions",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_middleware_secure_headers_secure_headers",
+    "to": "ts_func_ts_mod_src_middleware_secure_headers_secure_headers_NONCE",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_middleware_secure_headers_secure_headers",
+    "to": "ts_func_ts_mod_src_middleware_secure_headers_secure_headers_secureHeaders",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_middleware_secure_headers_secure_headers",
+    "to": "ts_mod_src_middleware_secure_headers_permissions_policy",
+    "type": "imports"
+  },
+  {
+    "from": "ts_mod_src_middleware_serve_static_index",
+    "to": "ts_func_ts_mod_src_middleware_serve_static_index_serveStatic",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_middleware_serve_static_path",
+    "to": "ts_func_ts_mod_src_middleware_serve_static_path_defaultJoin",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_middleware_timeout_index",
+    "to": "ts_func_ts_mod_src_middleware_timeout_index_timeout",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_middleware_timing_timing",
+    "to": "ts_class_ts_mod_src_middleware_timing_timing_Timer",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_middleware_timing_timing",
+    "to": "ts_class_ts_mod_src_middleware_timing_timing_TimingOptions",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_middleware_timing_timing",
+    "to": "ts_class_ts_mod_src_middleware_timing_timing_SetMetric",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_middleware_timing_timing",
+    "to": "ts_func_ts_mod_src_middleware_timing_timing_timing",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_middleware_timing_timing",
+    "to": "ts_func_ts_mod_src_middleware_timing_timing_setMetric",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_middleware_timing_timing",
+    "to": "ts_func_ts_mod_src_middleware_timing_timing_startTime",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_middleware_timing_timing",
+    "to": "ts_func_ts_mod_src_middleware_timing_timing_endTime",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_middleware_timing_timing",
+    "to": "ts_func_ts_mod_src_middleware_timing_timing_wrapTime",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_middleware_trailing_slash_index",
+    "to": "ts_func_ts_mod_src_middleware_trailing_slash_index_trimTrailingSlash",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_middleware_trailing_slash_index",
+    "to": "ts_func_ts_mod_src_middleware_trailing_slash_index_appendTrailingSlash",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_preset_quick",
+    "to": "ts_class_ts_mod_src_preset_quick_Hono",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_preset_tiny",
+    "to": "ts_class_ts_mod_src_preset_tiny_Hono",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_request_constants",
+    "to": "ts_func_ts_mod_src_request_constants_GET_MATCH_RESULT",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_request",
+    "to": "ts_class_ts_mod_src_request_HonoRequest",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_request",
+    "to": "ts_func_ts_mod_src_request_cloneRawRequest",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_request",
+    "to": "ts_mod_src_http_exception",
+    "type": "imports"
+  },
+  {
+    "from": "ts_mod_src_request",
+    "to": "ts_mod_src_request_constants",
+    "type": "imports"
+  },
+  {
+    "from": "ts_mod_src_router_linear_router_router",
+    "to": "ts_class_ts_mod_src_router_linear_router_router_LinearRouter",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_router_pattern_router_router",
+    "to": "ts_class_ts_mod_src_router_pattern_router_router_PatternRouter",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_router_reg_exp_router_matcher",
+    "to": "ts_func_ts_mod_src_router_reg_exp_router_matcher_emptyParam",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_router_reg_exp_router_matcher",
+    "to": "ts_func_ts_mod_src_router_reg_exp_router_matcher_match",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_router_reg_exp_router_node",
+    "to": "ts_class_ts_mod_src_router_reg_exp_router_node_Context",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_router_reg_exp_router_node",
+    "to": "ts_class_ts_mod_src_router_reg_exp_router_node_Node",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_router_reg_exp_router_node",
+    "to": "ts_func_ts_mod_src_router_reg_exp_router_node_PATH_ERROR",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_router_reg_exp_router_prepared_router",
+    "to": "ts_class_ts_mod_src_router_reg_exp_router_prepared_router_PreparedRegExpRouter",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_router_reg_exp_router_prepared_router",
+    "to": "ts_func_ts_mod_src_router_reg_exp_router_prepared_router_buildInitParams",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_router_reg_exp_router_prepared_router",
+    "to": "ts_func_ts_mod_src_router_reg_exp_router_prepared_router_serializeInitParams",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_router_reg_exp_router_prepared_router",
+    "to": "ts_mod_src_router_reg_exp_router_matcher",
+    "type": "imports"
+  },
+  {
+    "from": "ts_mod_src_router_reg_exp_router_router",
+    "to": "ts_class_ts_mod_src_router_reg_exp_router_router_RegExpRouter",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_router_reg_exp_router_router",
+    "to": "ts_mod_src_router_reg_exp_router_matcher",
+    "type": "imports"
+  },
+  {
+    "from": "ts_mod_src_router_reg_exp_router_router",
+    "to": "ts_mod_src_router_reg_exp_router_node",
+    "type": "imports"
+  },
+  {
+    "from": "ts_mod_src_router_reg_exp_router_trie",
+    "to": "ts_class_ts_mod_src_router_reg_exp_router_trie_Trie",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_router_reg_exp_router_trie",
+    "to": "ts_mod_src_router_reg_exp_router_node",
+    "type": "imports"
+  },
+  {
+    "from": "ts_mod_src_router_smart_router_router",
+    "to": "ts_class_ts_mod_src_router_smart_router_router_SmartRouter",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_router_trie_router_node",
+    "to": "ts_class_ts_mod_src_router_trie_router_node_Node",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_router_trie_router_router",
+    "to": "ts_class_ts_mod_src_router_trie_router_router_TrieRouter",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_router_trie_router_router",
+    "to": "ts_mod_src_router_trie_router_node",
+    "type": "imports"
+  },
+  {
+    "from": "ts_mod_src_router",
+    "to": "ts_class_ts_mod_src_router_Router",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_router",
+    "to": "ts_class_ts_mod_src_router_UnsupportedPathError",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_router",
+    "to": "ts_func_ts_mod_src_router_METHOD_NAME_ALL",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_router",
+    "to": "ts_func_ts_mod_src_router_METHOD_NAME_ALL_LOWERCASE",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_router",
+    "to": "ts_func_ts_mod_src_router_METHODS",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_router",
+    "to": "ts_func_ts_mod_src_router_MESSAGE_MATCHER_IS_ALREADY_BUILT",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_types",
+    "to": "ts_class_ts_mod_src_types_RouterRoute",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_types",
+    "to": "ts_class_ts_mod_src_types_NotFoundResponse",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_types",
+    "to": "ts_class_ts_mod_src_types_HTTPResponseError",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_types",
+    "to": "ts_class_ts_mod_src_types_HandlerInterface",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_types",
+    "to": "ts_class_ts_mod_src_types_MiddlewareHandlerInterface",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_types",
+    "to": "ts_class_ts_mod_src_types_OnHandlerInterface",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_types",
+    "to": "ts_class_ts_mod_src_types_FetchEventLike",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_types",
+    "to": "ts_mod_src_context",
+    "type": "imports"
+  },
+  {
+    "from": "ts_mod_src_types",
+    "to": "ts_mod_src_hono_base",
+    "type": "imports"
+  },
+  {
+    "from": "ts_mod_src_utils_accept",
+    "to": "ts_class_ts_mod_src_utils_accept_Accept",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_utils_accept",
+    "to": "ts_func_ts_mod_src_utils_accept_parseAccept",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_utils_basic_auth",
+    "to": "ts_func_ts_mod_src_utils_basic_auth_auth",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_utils_body",
+    "to": "ts_class_ts_mod_src_utils_body_ParseBody",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_utils_body",
+    "to": "ts_func_ts_mod_src_utils_body_parseBody",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_utils_buffer",
+    "to": "ts_func_ts_mod_src_utils_buffer_equal",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_utils_buffer",
+    "to": "ts_func_ts_mod_src_utils_buffer_timingSafeEqual",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_utils_buffer",
+    "to": "ts_func_ts_mod_src_utils_buffer_bufferToString",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_utils_buffer",
+    "to": "ts_func_ts_mod_src_utils_buffer_bufferToFormData",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_utils_color",
+    "to": "ts_func_ts_mod_src_utils_color_getColorEnabled",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_utils_color",
+    "to": "ts_func_ts_mod_src_utils_color_getColorEnabledAsync",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_utils_compress",
+    "to": "ts_func_ts_mod_src_utils_compress_COMPRESSIBLE_CONTENT_TYPE_REGEX",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_utils_concurrent",
+    "to": "ts_class_ts_mod_src_utils_concurrent_Pool",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_utils_concurrent",
+    "to": "ts_func_ts_mod_src_utils_concurrent_createPool",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_utils_constants",
+    "to": "ts_func_ts_mod_src_utils_constants_COMPOSED_HANDLER",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_utils_cookie",
+    "to": "ts_func_ts_mod_src_utils_cookie_parse",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_utils_cookie",
+    "to": "ts_func_ts_mod_src_utils_cookie_parseSigned",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_utils_cookie",
+    "to": "ts_func_ts_mod_src_utils_cookie_serialize",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_utils_cookie",
+    "to": "ts_func_ts_mod_src_utils_cookie_serializeSigned",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_utils_crypto",
+    "to": "ts_func_ts_mod_src_utils_crypto_sha256",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_utils_crypto",
+    "to": "ts_func_ts_mod_src_utils_crypto_sha1",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_utils_crypto",
+    "to": "ts_func_ts_mod_src_utils_crypto_md5",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_utils_crypto",
+    "to": "ts_func_ts_mod_src_utils_crypto_createHash",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_utils_encode",
+    "to": "ts_func_ts_mod_src_utils_encode_decodeBase64Url",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_utils_encode",
+    "to": "ts_func_ts_mod_src_utils_encode_encodeBase64Url",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_utils_encode",
+    "to": "ts_func_ts_mod_src_utils_encode_encodeBase64",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_utils_encode",
+    "to": "ts_func_ts_mod_src_utils_encode_decodeBase64",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_utils_filepath",
+    "to": "ts_func_ts_mod_src_utils_filepath_getFilePath",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_utils_filepath",
+    "to": "ts_func_ts_mod_src_utils_filepath_getFilePathWithoutDefaultDocument",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_utils_handler",
+    "to": "ts_func_ts_mod_src_utils_handler_isMiddleware",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_utils_handler",
+    "to": "ts_func_ts_mod_src_utils_handler_findTargetHandler",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_utils_handler",
+    "to": "ts_mod_src_utils_constants",
+    "type": "imports"
+  },
+  {
+    "from": "ts_mod_src_utils_html",
+    "to": "ts_func_ts_mod_src_utils_html_HtmlEscapedCallbackPhase",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_utils_html",
+    "to": "ts_func_ts_mod_src_utils_html_raw",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_utils_html",
+    "to": "ts_func_ts_mod_src_utils_html_stringBufferToString",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_utils_html",
+    "to": "ts_func_ts_mod_src_utils_html_escapeToBuffer",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_utils_html",
+    "to": "ts_func_ts_mod_src_utils_html_resolveCallbackSync",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_utils_html",
+    "to": "ts_func_ts_mod_src_utils_html_resolveCallback",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_utils_ipaddr",
+    "to": "ts_func_ts_mod_src_utils_ipaddr_expandIPv6",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_utils_ipaddr",
+    "to": "ts_func_ts_mod_src_utils_ipaddr_distinctRemoteAddr",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_utils_ipaddr",
+    "to": "ts_func_ts_mod_src_utils_ipaddr_convertIPv4ToBinary",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_utils_ipaddr",
+    "to": "ts_func_ts_mod_src_utils_ipaddr_convertIPv6ToBinary",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_utils_ipaddr",
+    "to": "ts_func_ts_mod_src_utils_ipaddr_convertIPv4BinaryToString",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_utils_ipaddr",
+    "to": "ts_func_ts_mod_src_utils_ipaddr_isIPv4MappedIPv6",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_utils_ipaddr",
+    "to": "ts_func_ts_mod_src_utils_ipaddr_convertIPv4MappedIPv6ToIPv4",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_utils_ipaddr",
+    "to": "ts_func_ts_mod_src_utils_ipaddr_convertIPv6BinaryToString",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_utils_jwt_index",
+    "to": "ts_func_ts_mod_src_utils_jwt_index_Jwt",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_utils_jwt_jws",
+    "to": "ts_class_ts_mod_src_utils_jwt_jws_HonoJsonWebKey",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_utils_jwt_jws",
+    "to": "ts_func_ts_mod_src_utils_jwt_jws_signing",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_utils_jwt_jws",
+    "to": "ts_func_ts_mod_src_utils_jwt_jws_verifying",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_utils_jwt_jws",
+    "to": "ts_mod_src_utils_jwt_jwa",
+    "type": "imports"
+  },
+  {
+    "from": "ts_mod_src_utils_jwt_jwt",
+    "to": "ts_class_ts_mod_src_utils_jwt_jwt_TokenHeader",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_utils_jwt_jwt",
+    "to": "ts_func_ts_mod_src_utils_jwt_jwt_isTokenHeader",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_utils_jwt_jwt",
+    "to": "ts_func_ts_mod_src_utils_jwt_jwt_sign",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_utils_jwt_jwt",
+    "to": "ts_func_ts_mod_src_utils_jwt_jwt_verify",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_utils_jwt_jwt",
+    "to": "ts_func_ts_mod_src_utils_jwt_jwt_verifyWithJwks",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_utils_jwt_jwt",
+    "to": "ts_func_ts_mod_src_utils_jwt_jwt_decode",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_utils_jwt_jwt",
+    "to": "ts_func_ts_mod_src_utils_jwt_jwt_decodeHeader",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_utils_jwt_jwt",
+    "to": "ts_mod_src_utils_jwt_jwa",
+    "type": "imports"
+  },
+  {
+    "from": "ts_mod_src_utils_jwt_jwt",
+    "to": "ts_mod_src_utils_jwt_jws",
+    "type": "imports"
+  },
+  {
+    "from": "ts_mod_src_utils_jwt_types",
+    "to": "ts_class_ts_mod_src_utils_jwt_types_JwtAlgorithmNotImplemented",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_utils_jwt_types",
+    "to": "ts_class_ts_mod_src_utils_jwt_types_JwtAlgorithmRequired",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_utils_jwt_types",
+    "to": "ts_class_ts_mod_src_utils_jwt_types_JwtAlgorithmMismatch",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_utils_jwt_types",
+    "to": "ts_class_ts_mod_src_utils_jwt_types_JwtTokenInvalid",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_utils_jwt_types",
+    "to": "ts_class_ts_mod_src_utils_jwt_types_JwtTokenNotBefore",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_utils_jwt_types",
+    "to": "ts_class_ts_mod_src_utils_jwt_types_JwtTokenExpired",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_utils_jwt_types",
+    "to": "ts_class_ts_mod_src_utils_jwt_types_JwtTokenIssuedAt",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_utils_jwt_types",
+    "to": "ts_class_ts_mod_src_utils_jwt_types_JwtTokenIssuer",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_utils_jwt_types",
+    "to": "ts_class_ts_mod_src_utils_jwt_types_JwtHeaderInvalid",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_utils_jwt_types",
+    "to": "ts_class_ts_mod_src_utils_jwt_types_JwtHeaderRequiresKid",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_utils_jwt_types",
+    "to": "ts_class_ts_mod_src_utils_jwt_types_JwtSymmetricAlgorithmNotAllowed",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_utils_jwt_types",
+    "to": "ts_class_ts_mod_src_utils_jwt_types_JwtAlgorithmNotAllowed",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_utils_jwt_types",
+    "to": "ts_class_ts_mod_src_utils_jwt_types_JwtTokenSignatureMismatched",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_utils_jwt_types",
+    "to": "ts_class_ts_mod_src_utils_jwt_types_JwtPayloadRequiresAud",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_utils_jwt_types",
+    "to": "ts_class_ts_mod_src_utils_jwt_types_JwtTokenAudience",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_utils_jwt_types",
+    "to": "ts_mod_src_utils_jwt_jws",
+    "type": "imports"
+  },
+  {
+    "from": "ts_mod_src_utils_jwt_utf8",
+    "to": "ts_func_ts_mod_src_utils_jwt_utf8_utf8Encoder",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_utils_jwt_utf8",
+    "to": "ts_func_ts_mod_src_utils_jwt_utf8_utf8Decoder",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_utils_mime",
+    "to": "ts_func_ts_mod_src_utils_mime_getMimeType",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_utils_mime",
+    "to": "ts_func_ts_mod_src_utils_mime_getExtension",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_utils_stream",
+    "to": "ts_class_ts_mod_src_utils_stream_StreamingApi",
+    "type": "defines"
+  },
+  {
+    "from": "ts_mod_src_utils_url",
+    "to": "ts_func_ts_mod_src_utils_url_splitPath",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_utils_url",
+    "to": "ts_func_ts_mod_src_utils_url_splitRoutingPath",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_utils_url",
+    "to": "ts_func_ts_mod_src_utils_url_getPattern",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_utils_url",
+    "to": "ts_func_ts_mod_src_utils_url_tryDecode",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_utils_url",
+    "to": "ts_func_ts_mod_src_utils_url_tryDecodeURI",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_utils_url",
+    "to": "ts_func_ts_mod_src_utils_url_getPath",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_utils_url",
+    "to": "ts_func_ts_mod_src_utils_url_getQueryStrings",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_utils_url",
+    "to": "ts_func_ts_mod_src_utils_url_getPathNoStrict",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_utils_url",
+    "to": "ts_func_ts_mod_src_utils_url_mergePath",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_utils_url",
+    "to": "ts_func_ts_mod_src_utils_url_checkOptionalParameter",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_utils_url",
+    "to": "ts_func_ts_mod_src_utils_url_getQueryParam",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_utils_url",
+    "to": "ts_func_ts_mod_src_utils_url_getQueryParams",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_utils_url",
+    "to": "ts_func_ts_mod_src_utils_url_decodeURIComponent_",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_validator_validator",
+    "to": "ts_func_ts_mod_src_validator_validator_validator",
+    "type": "exports"
+  },
+  {
+    "from": "ts_mod_src_validator_validator",
+    "to": "ts_mod_src_validator_utils",
+    "type": "imports"
+  }
+]

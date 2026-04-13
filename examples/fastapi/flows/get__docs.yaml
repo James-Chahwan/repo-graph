@@ -1,0 +1,10 @@
+flow: get__docs
+paths:
+  - name: get__docs
+    steps:
+      - {id: route_GET_docs, type: route}
+      - {id: py_mod_docs_src_custom_docs_ui_tutorial001_py310, type: py_module, edge: handled_by}
+      - {id: py_func_py_mod_docs_src_custom_docs_ui_tutorial001_py310_custom_swagger_ui_html, type: py_function, edge: defines}
+      - {id: py_func_py_mod_docs_src_custom_docs_ui_tutorial001_py310_swagger_ui_redirect, type: py_function, edge: defines}
+      - {id: py_func_py_mod_docs_src_custom_docs_ui_tutorial001_py310_redoc_html, type: py_function, edge: defines}
+      - {id: py_func_py_mod_docs_src_custom_docs_ui_tutorial001_py310_read_user, type: py_function, edge: defines}

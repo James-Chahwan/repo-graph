@@ -1,0 +1,12 @@
+flow: put__item_id
+paths:
+  - name: put__item_id
+    steps:
+      - {id: route_PUT_{item_id}, type: route}
+      - {id: py_mod_docs_src_bigger_applications_app_an_py310_routers_items, type: py_module, edge: handled_by}
+      - {id: py_func_py_mod_docs_src_bigger_applications_app_an_py310_routers_items_read_items, type: py_function, edge: defines}
+      - {id: py_func_py_mod_docs_src_bigger_applications_app_an_py310_routers_items_read_item, type: py_function, edge: defines}
+      - {id: py_func_py_mod_docs_src_bigger_applications_app_an_py310_routers_items_update_item, type: py_function, edge: defines}
+      - {id: py_mod_docs_src_bigger_applications_app_an_py310_dependencies, type: py_module, edge: imports}
+      - {id: py_func_py_mod_docs_src_bigger_applications_app_an_py310_dependencies_get_token_header, type: py_function, edge: defines}
+      - {id: py_func_py_mod_docs_src_bigger_applications_app_an_py310_dependencies_get_query_token, type: py_function, edge: defines}

@@ -1,0 +1,12 @@
+flow: post__login
+paths:
+  - name: post__login
+    steps:
+      - {id: route_POST_login, type: route}
+      - {id: py_mod_fastapi_security_oauth2, type: py_module, edge: handled_by}
+      - {id: py_class_py_mod_fastapi_security_oauth2_OAuth2PasswordRequestForm, type: py_class, edge: defines}
+      - {id: py_class_py_mod_fastapi_security_oauth2_OAuth2PasswordRequestFormStrict, type: py_class, edge: defines}
+      - {id: py_class_py_mod_fastapi_security_oauth2_OAuth2, type: py_class, edge: defines}
+      - {id: py_class_py_mod_fastapi_security_oauth2_OAuth2PasswordBearer, type: py_class, edge: defines}
+      - {id: py_class_py_mod_fastapi_security_oauth2_OAuth2AuthorizationCodeBearer, type: py_class, edge: defines}
+      - {id: py_class_py_mod_fastapi_security_oauth2_SecurityScopes, type: py_class, edge: defines}

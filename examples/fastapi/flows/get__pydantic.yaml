@@ -1,0 +1,7 @@
+flow: get__pydantic
+paths:
+  - name: get__pydantic
+    steps:
+      - {id: route_GET_pydantic, type: route}
+      - {id: py_mod_docs_src_custom_response_tutorial006c_py310, type: py_module, edge: handled_by}
+      - {id: py_func_py_mod_docs_src_custom_response_tutorial006c_py310_redirect_pydantic, type: py_function, edge: defines}

@@ -1,0 +1,7 @@
+flow: post__items
+paths:
+  - name: post__items
+    steps:
+      - {id: route_POST_items, type: route}
+      - {id: py_mod_fastapi_applications, type: py_module, edge: handled_by}
+      - {id: py_class_py_mod_fastapi_applications_FastAPI, type: py_class, edge: defines}

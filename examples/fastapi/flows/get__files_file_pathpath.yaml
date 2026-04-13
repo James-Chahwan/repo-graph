@@ -1,0 +1,7 @@
+flow: get__files_file_pathpath
+paths:
+  - name: get__files_file_pathpath
+    steps:
+      - {id: route_GET_files_{file_path:path}, type: route}
+      - {id: py_mod_docs_src_path_params_tutorial004_py310, type: py_module, edge: handled_by}
+      - {id: py_func_py_mod_docs_src_path_params_tutorial004_py310_read_file, type: py_function, edge: defines}

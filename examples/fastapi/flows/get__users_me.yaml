@@ -1,0 +1,12 @@
+flow: get__users_me
+paths:
+  - name: get__users_me
+    steps:
+      - {id: route_GET_users_me, type: route}
+      - {id: py_mod_fastapi_security_http, type: py_module, edge: handled_by}
+      - {id: py_class_py_mod_fastapi_security_http_HTTPBasicCredentials, type: py_class, edge: defines}
+      - {id: py_class_py_mod_fastapi_security_http_HTTPAuthorizationCredentials, type: py_class, edge: defines}
+      - {id: py_class_py_mod_fastapi_security_http_HTTPBase, type: py_class, edge: defines}
+      - {id: py_class_py_mod_fastapi_security_http_HTTPBasic, type: py_class, edge: defines}
+      - {id: py_class_py_mod_fastapi_security_http_HTTPBearer, type: py_class, edge: defines}
+      - {id: py_class_py_mod_fastapi_security_http_HTTPDigest, type: py_class, edge: defines}

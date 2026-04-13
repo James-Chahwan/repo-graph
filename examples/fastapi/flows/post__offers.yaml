@@ -1,0 +1,10 @@
+flow: post__offers
+paths:
+  - name: post__offers
+    steps:
+      - {id: route_POST_offers, type: route}
+      - {id: py_mod_docs_src_body_nested_models_tutorial007_py310, type: py_module, edge: handled_by}
+      - {id: py_class_py_mod_docs_src_body_nested_models_tutorial007_py310_Image, type: py_class, edge: defines}
+      - {id: py_class_py_mod_docs_src_body_nested_models_tutorial007_py310_Item, type: py_class, edge: defines}
+      - {id: py_class_py_mod_docs_src_body_nested_models_tutorial007_py310_Offer, type: py_class, edge: defines}
+      - {id: py_func_py_mod_docs_src_body_nested_models_tutorial007_py310_create_offer, type: py_function, edge: defines}

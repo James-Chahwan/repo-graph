@@ -1,0 +1,7 @@
+flow: get__headers-and-object
+paths:
+  - name: get__headers-and-object
+    steps:
+      - {id: route_GET_headers-and-object, type: route}
+      - {id: py_mod_docs_src_response_headers_tutorial002_py310, type: py_module, edge: handled_by}
+      - {id: py_func_py_mod_docs_src_response_headers_tutorial002_py310_get_headers, type: py_function, edge: defines}

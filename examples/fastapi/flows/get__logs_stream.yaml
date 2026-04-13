@@ -1,0 +1,7 @@
+flow: get__logs_stream
+paths:
+  - name: get__logs_stream
+    steps:
+      - {id: route_GET_logs_stream, type: route}
+      - {id: py_mod_docs_src_server_sent_events_tutorial003_py310, type: py_module, edge: handled_by}
+      - {id: py_func_py_mod_docs_src_server_sent_events_tutorial003_py310_stream_logs, type: py_function, edge: defines}

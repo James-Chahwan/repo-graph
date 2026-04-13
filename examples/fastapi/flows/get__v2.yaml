@@ -1,0 +1,8 @@
+flow: get__v2
+paths:
+  - name: get__v2
+    steps:
+      - {id: route_GET_v2, type: route}
+      - {id: py_mod_docs_src_wsgi_tutorial001_py310, type: py_module, edge: handled_by}
+      - {id: py_func_py_mod_docs_src_wsgi_tutorial001_py310_flask_main, type: py_function, edge: defines}
+      - {id: py_func_py_mod_docs_src_wsgi_tutorial001_py310_read_main, type: py_function, edge: defines}

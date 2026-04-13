@@ -1,0 +1,7 @@
+flow: get
+paths:
+  - name: get
+    steps:
+      - {id: route_GET_, type: route}
+      - {id: py_mod_docs_src_advanced_middleware_tutorial001_py310, type: py_module, edge: handled_by}
+      - {id: py_func_py_mod_docs_src_advanced_middleware_tutorial001_py310_main, type: py_function, edge: defines}

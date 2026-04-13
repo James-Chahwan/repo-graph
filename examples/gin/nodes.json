@@ -1,0 +1,2516 @@
+[
+  {
+    "id": "go_mod_gin-test",
+    "type": "go_module",
+    "name": "github.com/gin-gonic/gin",
+    "file_path": "go.mod"
+  },
+  {
+    "id": "go_pkg_.",
+    "type": "go_package",
+    "name": "gin-test",
+    "file_path": "."
+  },
+  {
+    "id": "go_func_._search_credential",
+    "type": "go_function",
+    "name": "searchCredential",
+    "file_path": "auth.go"
+  },
+  {
+    "id": "go_func_._basic_auth_for_realm",
+    "type": "go_function",
+    "name": "BasicAuthForRealm",
+    "file_path": "auth.go"
+  },
+  {
+    "id": "go_func_._basic_auth",
+    "type": "go_function",
+    "name": "BasicAuth",
+    "file_path": "auth.go"
+  },
+  {
+    "id": "go_func_._process_accounts",
+    "type": "go_function",
+    "name": "processAccounts",
+    "file_path": "auth.go"
+  },
+  {
+    "id": "go_func_._authorization_header",
+    "type": "go_function",
+    "name": "authorizationHeader",
+    "file_path": "auth.go"
+  },
+  {
+    "id": "go_func_._basic_auth_for_proxy",
+    "type": "go_function",
+    "name": "BasicAuthForProxy",
+    "file_path": "auth.go"
+  },
+  {
+    "id": "go_pkg_binding",
+    "type": "go_package",
+    "name": "binding",
+    "file_path": "binding"
+  },
+  {
+    "id": "go_func_binding_default",
+    "type": "go_function",
+    "name": "Default",
+    "file_path": "binding/binding.go"
+  },
+  {
+    "id": "go_func_binding_validate",
+    "type": "go_function",
+    "name": "validate",
+    "file_path": "binding/binding.go"
+  },
+  {
+    "id": "go_func_binding_name",
+    "type": "go_function",
+    "name": "Name",
+    "file_path": "binding/bson.go"
+  },
+  {
+    "id": "go_func_binding_bind",
+    "type": "go_function",
+    "name": "Bind",
+    "file_path": "binding/bson.go"
+  },
+  {
+    "id": "go_func_binding_bind_body",
+    "type": "go_function",
+    "name": "BindBody",
+    "file_path": "binding/bson.go"
+  },
+  {
+    "id": "go_func_binding_error",
+    "type": "go_function",
+    "name": "Error",
+    "file_path": "binding/default_validator.go"
+  },
+  {
+    "id": "go_func_binding_validate_struct",
+    "type": "go_function",
+    "name": "ValidateStruct",
+    "file_path": "binding/default_validator.go"
+  },
+  {
+    "id": "go_func_binding_engine",
+    "type": "go_function",
+    "name": "Engine",
+    "file_path": "binding/default_validator.go"
+  },
+  {
+    "id": "go_func_binding_lazyinit",
+    "type": "go_function",
+    "name": "lazyinit",
+    "file_path": "binding/default_validator.go"
+  },
+  {
+    "id": "go_func_binding_map_uri",
+    "type": "go_function",
+    "name": "mapURI",
+    "file_path": "binding/form_mapping.go"
+  },
+  {
+    "id": "go_func_binding_map_form",
+    "type": "go_function",
+    "name": "mapForm",
+    "file_path": "binding/form_mapping.go"
+  },
+  {
+    "id": "go_func_binding_map_form_with_tag",
+    "type": "go_function",
+    "name": "MapFormWithTag",
+    "file_path": "binding/form_mapping.go"
+  },
+  {
+    "id": "go_func_binding_map_form_by_tag",
+    "type": "go_function",
+    "name": "mapFormByTag",
+    "file_path": "binding/form_mapping.go"
+  },
+  {
+    "id": "go_func_binding_try_set",
+    "type": "go_function",
+    "name": "TrySet",
+    "file_path": "binding/form_mapping.go"
+  },
+  {
+    "id": "go_func_binding_mapping_by_ptr",
+    "type": "go_function",
+    "name": "mappingByPtr",
+    "file_path": "binding/form_mapping.go"
+  },
+  {
+    "id": "go_func_binding_mapping",
+    "type": "go_function",
+    "name": "mapping",
+    "file_path": "binding/form_mapping.go"
+  },
+  {
+    "id": "go_func_binding_try_to_set_value",
+    "type": "go_function",
+    "name": "tryToSetValue",
+    "file_path": "binding/form_mapping.go"
+  },
+  {
+    "id": "go_func_binding_try_set_custom",
+    "type": "go_function",
+    "name": "trySetCustom",
+    "file_path": "binding/form_mapping.go"
+  },
+  {
+    "id": "go_func_binding_try_set_using_parser",
+    "type": "go_function",
+    "name": "trySetUsingParser",
+    "file_path": "binding/form_mapping.go"
+  },
+  {
+    "id": "go_func_binding_try_split",
+    "type": "go_function",
+    "name": "trySplit",
+    "file_path": "binding/form_mapping.go"
+  },
+  {
+    "id": "go_func_binding_set_by_form",
+    "type": "go_function",
+    "name": "setByForm",
+    "file_path": "binding/form_mapping.go"
+  },
+  {
+    "id": "go_func_binding_set_with_proper_type",
+    "type": "go_function",
+    "name": "setWithProperType",
+    "file_path": "binding/form_mapping.go"
+  },
+  {
+    "id": "go_func_binding_set_int_field",
+    "type": "go_function",
+    "name": "setIntField",
+    "file_path": "binding/form_mapping.go"
+  },
+  {
+    "id": "go_func_binding_set_uint_field",
+    "type": "go_function",
+    "name": "setUintField",
+    "file_path": "binding/form_mapping.go"
+  },
+  {
+    "id": "go_func_binding_set_bool_field",
+    "type": "go_function",
+    "name": "setBoolField",
+    "file_path": "binding/form_mapping.go"
+  },
+  {
+    "id": "go_func_binding_set_float_field",
+    "type": "go_function",
+    "name": "setFloatField",
+    "file_path": "binding/form_mapping.go"
+  },
+  {
+    "id": "go_func_binding_set_time_field",
+    "type": "go_function",
+    "name": "setTimeField",
+    "file_path": "binding/form_mapping.go"
+  },
+  {
+    "id": "go_func_binding_set_array",
+    "type": "go_function",
+    "name": "setArray",
+    "file_path": "binding/form_mapping.go"
+  },
+  {
+    "id": "go_func_binding_set_slice",
+    "type": "go_function",
+    "name": "setSlice",
+    "file_path": "binding/form_mapping.go"
+  },
+  {
+    "id": "go_func_binding_set_time_duration",
+    "type": "go_function",
+    "name": "setTimeDuration",
+    "file_path": "binding/form_mapping.go"
+  },
+  {
+    "id": "go_func_binding_head",
+    "type": "go_function",
+    "name": "head",
+    "file_path": "binding/form_mapping.go"
+  },
+  {
+    "id": "go_func_binding_set_form_map",
+    "type": "go_function",
+    "name": "setFormMap",
+    "file_path": "binding/form_mapping.go"
+  },
+  {
+    "id": "go_func_binding_map_header",
+    "type": "go_function",
+    "name": "mapHeader",
+    "file_path": "binding/header.go"
+  },
+  {
+    "id": "go_func_binding_decode_json",
+    "type": "go_function",
+    "name": "decodeJSON",
+    "file_path": "binding/json.go"
+  },
+  {
+    "id": "go_func_binding_decode_msg_pack",
+    "type": "go_function",
+    "name": "decodeMsgPack",
+    "file_path": "binding/msgpack.go"
+  },
+  {
+    "id": "go_func_binding_set_by_multipart_form_file",
+    "type": "go_function",
+    "name": "setByMultipartFormFile",
+    "file_path": "binding/multipart_form_mapping.go"
+  },
+  {
+    "id": "go_func_binding_set_array_of_multipart_form_files",
+    "type": "go_function",
+    "name": "setArrayOfMultipartFormFiles",
+    "file_path": "binding/multipart_form_mapping.go"
+  },
+  {
+    "id": "go_func_binding_decode_plain",
+    "type": "go_function",
+    "name": "decodePlain",
+    "file_path": "binding/plain.go"
+  },
+  {
+    "id": "go_func_binding_decode_toml",
+    "type": "go_function",
+    "name": "decodeToml",
+    "file_path": "binding/toml.go"
+  },
+  {
+    "id": "go_func_binding_bind_uri",
+    "type": "go_function",
+    "name": "BindUri",
+    "file_path": "binding/uri.go"
+  },
+  {
+    "id": "go_func_binding_decode_xml",
+    "type": "go_function",
+    "name": "decodeXML",
+    "file_path": "binding/xml.go"
+  },
+  {
+    "id": "go_func_binding_decode_yaml",
+    "type": "go_function",
+    "name": "decodeYAML",
+    "file_path": "binding/yaml.go"
+  },
+  {
+    "id": "go_pkg_codec_json",
+    "type": "go_package",
+    "name": "json",
+    "file_path": "codec/json"
+  },
+  {
+    "id": "go_func_codec_json_init",
+    "type": "go_function",
+    "name": "init",
+    "file_path": "codec/json/go_json.go"
+  },
+  {
+    "id": "go_func_codec_json_marshal",
+    "type": "go_function",
+    "name": "Marshal",
+    "file_path": "codec/json/go_json.go"
+  },
+  {
+    "id": "go_func_codec_json_unmarshal",
+    "type": "go_function",
+    "name": "Unmarshal",
+    "file_path": "codec/json/go_json.go"
+  },
+  {
+    "id": "go_func_codec_json_marshal_indent",
+    "type": "go_function",
+    "name": "MarshalIndent",
+    "file_path": "codec/json/go_json.go"
+  },
+  {
+    "id": "go_func_codec_json_new_encoder",
+    "type": "go_function",
+    "name": "NewEncoder",
+    "file_path": "codec/json/go_json.go"
+  },
+  {
+    "id": "go_func_codec_json_new_decoder",
+    "type": "go_function",
+    "name": "NewDecoder",
+    "file_path": "codec/json/go_json.go"
+  },
+  {
+    "id": "go_func_._reset",
+    "type": "go_function",
+    "name": "reset",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._copy",
+    "type": "go_function",
+    "name": "Copy",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._handler_name",
+    "type": "go_function",
+    "name": "HandlerName",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._handler_names",
+    "type": "go_function",
+    "name": "HandlerNames",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._handler",
+    "type": "go_function",
+    "name": "Handler",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._full_path",
+    "type": "go_function",
+    "name": "FullPath",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._next",
+    "type": "go_function",
+    "name": "Next",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._is_aborted",
+    "type": "go_function",
+    "name": "IsAborted",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._abort",
+    "type": "go_function",
+    "name": "Abort",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._abort_with_status",
+    "type": "go_function",
+    "name": "AbortWithStatus",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._abort_with_status_pure_json",
+    "type": "go_function",
+    "name": "AbortWithStatusPureJSON",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._abort_with_status_json",
+    "type": "go_function",
+    "name": "AbortWithStatusJSON",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._abort_with_error",
+    "type": "go_function",
+    "name": "AbortWithError",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._error",
+    "type": "go_function",
+    "name": "Error",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._set",
+    "type": "go_function",
+    "name": "Set",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._get",
+    "type": "go_function",
+    "name": "Get",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._must_get",
+    "type": "go_function",
+    "name": "MustGet",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._get_string",
+    "type": "go_function",
+    "name": "GetString",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._get_bool",
+    "type": "go_function",
+    "name": "GetBool",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._get_int",
+    "type": "go_function",
+    "name": "GetInt",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._get_int8",
+    "type": "go_function",
+    "name": "GetInt8",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._get_int16",
+    "type": "go_function",
+    "name": "GetInt16",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._get_int32",
+    "type": "go_function",
+    "name": "GetInt32",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._get_int64",
+    "type": "go_function",
+    "name": "GetInt64",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._get_uint",
+    "type": "go_function",
+    "name": "GetUint",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._get_uint8",
+    "type": "go_function",
+    "name": "GetUint8",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._get_uint16",
+    "type": "go_function",
+    "name": "GetUint16",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._get_uint32",
+    "type": "go_function",
+    "name": "GetUint32",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._get_uint64",
+    "type": "go_function",
+    "name": "GetUint64",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._get_float32",
+    "type": "go_function",
+    "name": "GetFloat32",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._get_float64",
+    "type": "go_function",
+    "name": "GetFloat64",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._get_time",
+    "type": "go_function",
+    "name": "GetTime",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._get_duration",
+    "type": "go_function",
+    "name": "GetDuration",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._get_error",
+    "type": "go_function",
+    "name": "GetError",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._get_int_slice",
+    "type": "go_function",
+    "name": "GetIntSlice",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._get_int8_slice",
+    "type": "go_function",
+    "name": "GetInt8Slice",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._get_int16_slice",
+    "type": "go_function",
+    "name": "GetInt16Slice",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._get_int32_slice",
+    "type": "go_function",
+    "name": "GetInt32Slice",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._get_int64_slice",
+    "type": "go_function",
+    "name": "GetInt64Slice",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._get_uint_slice",
+    "type": "go_function",
+    "name": "GetUintSlice",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._get_uint8_slice",
+    "type": "go_function",
+    "name": "GetUint8Slice",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._get_uint16_slice",
+    "type": "go_function",
+    "name": "GetUint16Slice",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._get_uint32_slice",
+    "type": "go_function",
+    "name": "GetUint32Slice",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._get_uint64_slice",
+    "type": "go_function",
+    "name": "GetUint64Slice",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._get_float32_slice",
+    "type": "go_function",
+    "name": "GetFloat32Slice",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._get_float64_slice",
+    "type": "go_function",
+    "name": "GetFloat64Slice",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._get_string_slice",
+    "type": "go_function",
+    "name": "GetStringSlice",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._get_error_slice",
+    "type": "go_function",
+    "name": "GetErrorSlice",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._get_string_map",
+    "type": "go_function",
+    "name": "GetStringMap",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._get_string_map_string",
+    "type": "go_function",
+    "name": "GetStringMapString",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._get_string_map_string_slice",
+    "type": "go_function",
+    "name": "GetStringMapStringSlice",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._delete",
+    "type": "go_function",
+    "name": "Delete",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._param",
+    "type": "go_function",
+    "name": "Param",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._add_param",
+    "type": "go_function",
+    "name": "AddParam",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._query",
+    "type": "go_function",
+    "name": "Query",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._default_query",
+    "type": "go_function",
+    "name": "DefaultQuery",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._get_query",
+    "type": "go_function",
+    "name": "GetQuery",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._query_array",
+    "type": "go_function",
+    "name": "QueryArray",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._init_query_cache",
+    "type": "go_function",
+    "name": "initQueryCache",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._get_query_array",
+    "type": "go_function",
+    "name": "GetQueryArray",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._query_map",
+    "type": "go_function",
+    "name": "QueryMap",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._get_query_map",
+    "type": "go_function",
+    "name": "GetQueryMap",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._post_form",
+    "type": "go_function",
+    "name": "PostForm",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._default_post_form",
+    "type": "go_function",
+    "name": "DefaultPostForm",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._get_post_form",
+    "type": "go_function",
+    "name": "GetPostForm",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._post_form_array",
+    "type": "go_function",
+    "name": "PostFormArray",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._init_form_cache",
+    "type": "go_function",
+    "name": "initFormCache",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._get_post_form_array",
+    "type": "go_function",
+    "name": "GetPostFormArray",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._post_form_map",
+    "type": "go_function",
+    "name": "PostFormMap",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._get_post_form_map",
+    "type": "go_function",
+    "name": "GetPostFormMap",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._get_map_from_form_data",
+    "type": "go_function",
+    "name": "getMapFromFormData",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._form_file",
+    "type": "go_function",
+    "name": "FormFile",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._multipart_form",
+    "type": "go_function",
+    "name": "MultipartForm",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._save_uploaded_file",
+    "type": "go_function",
+    "name": "SaveUploadedFile",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._bind",
+    "type": "go_function",
+    "name": "Bind",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._bind_json",
+    "type": "go_function",
+    "name": "BindJSON",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._bind_xml",
+    "type": "go_function",
+    "name": "BindXML",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._bind_query",
+    "type": "go_function",
+    "name": "BindQuery",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._bind_yaml",
+    "type": "go_function",
+    "name": "BindYAML",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._bind_toml",
+    "type": "go_function",
+    "name": "BindTOML",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._bind_plain",
+    "type": "go_function",
+    "name": "BindPlain",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._bind_header",
+    "type": "go_function",
+    "name": "BindHeader",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._bind_uri",
+    "type": "go_function",
+    "name": "BindUri",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._must_bind_with",
+    "type": "go_function",
+    "name": "MustBindWith",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._should_bind",
+    "type": "go_function",
+    "name": "ShouldBind",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._should_bind_json",
+    "type": "go_function",
+    "name": "ShouldBindJSON",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._should_bind_xml",
+    "type": "go_function",
+    "name": "ShouldBindXML",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._should_bind_query",
+    "type": "go_function",
+    "name": "ShouldBindQuery",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._should_bind_yaml",
+    "type": "go_function",
+    "name": "ShouldBindYAML",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._should_bind_toml",
+    "type": "go_function",
+    "name": "ShouldBindTOML",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._should_bind_plain",
+    "type": "go_function",
+    "name": "ShouldBindPlain",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._should_bind_header",
+    "type": "go_function",
+    "name": "ShouldBindHeader",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._should_bind_uri",
+    "type": "go_function",
+    "name": "ShouldBindUri",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._should_bind_with",
+    "type": "go_function",
+    "name": "ShouldBindWith",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._should_bind_body_with",
+    "type": "go_function",
+    "name": "ShouldBindBodyWith",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._should_bind_body_with_json",
+    "type": "go_function",
+    "name": "ShouldBindBodyWithJSON",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._should_bind_body_with_xml",
+    "type": "go_function",
+    "name": "ShouldBindBodyWithXML",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._should_bind_body_with_yaml",
+    "type": "go_function",
+    "name": "ShouldBindBodyWithYAML",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._should_bind_body_with_toml",
+    "type": "go_function",
+    "name": "ShouldBindBodyWithTOML",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._should_bind_body_with_plain",
+    "type": "go_function",
+    "name": "ShouldBindBodyWithPlain",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._client_ip",
+    "type": "go_function",
+    "name": "ClientIP",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._remote_ip",
+    "type": "go_function",
+    "name": "RemoteIP",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._content_type",
+    "type": "go_function",
+    "name": "ContentType",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._is_websocket",
+    "type": "go_function",
+    "name": "IsWebsocket",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._request_header",
+    "type": "go_function",
+    "name": "requestHeader",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._body_allowed_for_status",
+    "type": "go_function",
+    "name": "bodyAllowedForStatus",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._status",
+    "type": "go_function",
+    "name": "Status",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._header",
+    "type": "go_function",
+    "name": "Header",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._get_header",
+    "type": "go_function",
+    "name": "GetHeader",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._get_raw_data",
+    "type": "go_function",
+    "name": "GetRawData",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._set_same_site",
+    "type": "go_function",
+    "name": "SetSameSite",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._set_cookie",
+    "type": "go_function",
+    "name": "SetCookie",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._set_cookie_data",
+    "type": "go_function",
+    "name": "SetCookieData",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._cookie",
+    "type": "go_function",
+    "name": "Cookie",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._render",
+    "type": "go_function",
+    "name": "Render",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._html",
+    "type": "go_function",
+    "name": "HTML",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._indented_json",
+    "type": "go_function",
+    "name": "IndentedJSON",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._secure_json",
+    "type": "go_function",
+    "name": "SecureJSON",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._jsonp",
+    "type": "go_function",
+    "name": "JSONP",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._json",
+    "type": "go_function",
+    "name": "JSON",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._ascii_json",
+    "type": "go_function",
+    "name": "AsciiJSON",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._pure_json",
+    "type": "go_function",
+    "name": "PureJSON",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._xml",
+    "type": "go_function",
+    "name": "XML",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._pdf",
+    "type": "go_function",
+    "name": "PDF",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._yaml",
+    "type": "go_function",
+    "name": "YAML",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._toml",
+    "type": "go_function",
+    "name": "TOML",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._proto_buf",
+    "type": "go_function",
+    "name": "ProtoBuf",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._bson",
+    "type": "go_function",
+    "name": "BSON",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._string",
+    "type": "go_function",
+    "name": "String",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._redirect",
+    "type": "go_function",
+    "name": "Redirect",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._data",
+    "type": "go_function",
+    "name": "Data",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._data_from_reader",
+    "type": "go_function",
+    "name": "DataFromReader",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._file",
+    "type": "go_function",
+    "name": "File",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._file_from_fs",
+    "type": "go_function",
+    "name": "FileFromFS",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._escape_quotes",
+    "type": "go_function",
+    "name": "escapeQuotes",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._file_attachment",
+    "type": "go_function",
+    "name": "FileAttachment",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._ss_event",
+    "type": "go_function",
+    "name": "SSEvent",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._stream",
+    "type": "go_function",
+    "name": "Stream",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._negotiate",
+    "type": "go_function",
+    "name": "Negotiate",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._negotiate_format",
+    "type": "go_function",
+    "name": "NegotiateFormat",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._set_accepted",
+    "type": "go_function",
+    "name": "SetAccepted",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._has_request_context",
+    "type": "go_function",
+    "name": "hasRequestContext",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._deadline",
+    "type": "go_function",
+    "name": "Deadline",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._done",
+    "type": "go_function",
+    "name": "Done",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._err",
+    "type": "go_function",
+    "name": "Err",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._value",
+    "type": "go_function",
+    "name": "Value",
+    "file_path": "context.go"
+  },
+  {
+    "id": "route_GET_user__id",
+    "type": "route",
+    "name": "GET /user/:id",
+    "file_path": "context.go"
+  },
+  {
+    "id": "go_func_._init",
+    "type": "go_function",
+    "name": "init",
+    "file_path": "context_appengine.go"
+  },
+  {
+    "id": "go_func_._is_debugging",
+    "type": "go_function",
+    "name": "IsDebugging",
+    "file_path": "debug.go"
+  },
+  {
+    "id": "go_func_._debug_print_route",
+    "type": "go_function",
+    "name": "debugPrintRoute",
+    "file_path": "debug.go"
+  },
+  {
+    "id": "go_func_._debug_print_load_template",
+    "type": "go_function",
+    "name": "debugPrintLoadTemplate",
+    "file_path": "debug.go"
+  },
+  {
+    "id": "go_func_._debug_print",
+    "type": "go_function",
+    "name": "debugPrint",
+    "file_path": "debug.go"
+  },
+  {
+    "id": "go_func_._get_min_ver",
+    "type": "go_function",
+    "name": "getMinVer",
+    "file_path": "debug.go"
+  },
+  {
+    "id": "go_func_._debug_print_warning_default",
+    "type": "go_function",
+    "name": "debugPrintWARNINGDefault",
+    "file_path": "debug.go"
+  },
+  {
+    "id": "go_func_._debug_print_warning_new",
+    "type": "go_function",
+    "name": "debugPrintWARNINGNew",
+    "file_path": "debug.go"
+  },
+  {
+    "id": "go_func_._debug_print_warning_set_html_template",
+    "type": "go_function",
+    "name": "debugPrintWARNINGSetHTMLTemplate",
+    "file_path": "debug.go"
+  },
+  {
+    "id": "go_func_._debug_print_error",
+    "type": "go_function",
+    "name": "debugPrintError",
+    "file_path": "debug.go"
+  },
+  {
+    "id": "go_func_._bind_with",
+    "type": "go_function",
+    "name": "BindWith",
+    "file_path": "deprecated.go"
+  },
+  {
+    "id": "route_GET_ping",
+    "type": "route",
+    "name": "GET /ping",
+    "file_path": "doc.go"
+  },
+  {
+    "id": "go_func_._set_type",
+    "type": "go_function",
+    "name": "SetType",
+    "file_path": "errors.go"
+  },
+  {
+    "id": "go_func_._set_meta",
+    "type": "go_function",
+    "name": "SetMeta",
+    "file_path": "errors.go"
+  },
+  {
+    "id": "go_func_._marshal_json",
+    "type": "go_function",
+    "name": "MarshalJSON",
+    "file_path": "errors.go"
+  },
+  {
+    "id": "go_func_._is_type",
+    "type": "go_function",
+    "name": "IsType",
+    "file_path": "errors.go"
+  },
+  {
+    "id": "go_func_._unwrap",
+    "type": "go_function",
+    "name": "Unwrap",
+    "file_path": "errors.go"
+  },
+  {
+    "id": "go_func_._by_type",
+    "type": "go_function",
+    "name": "ByType",
+    "file_path": "errors.go"
+  },
+  {
+    "id": "go_func_._last",
+    "type": "go_function",
+    "name": "Last",
+    "file_path": "errors.go"
+  },
+  {
+    "id": "go_func_._errors",
+    "type": "go_function",
+    "name": "Errors",
+    "file_path": "errors.go"
+  },
+  {
+    "id": "go_func_._open",
+    "type": "go_function",
+    "name": "Open",
+    "file_path": "fs.go"
+  },
+  {
+    "id": "go_func_._readdir",
+    "type": "go_function",
+    "name": "Readdir",
+    "file_path": "fs.go"
+  },
+  {
+    "id": "go_func_._dir",
+    "type": "go_function",
+    "name": "Dir",
+    "file_path": "fs.go"
+  },
+  {
+    "id": "go_func_._new",
+    "type": "go_function",
+    "name": "New",
+    "file_path": "gin.go"
+  },
+  {
+    "id": "go_func_._default",
+    "type": "go_function",
+    "name": "Default",
+    "file_path": "gin.go"
+  },
+  {
+    "id": "go_func_._allocate_context",
+    "type": "go_function",
+    "name": "allocateContext",
+    "file_path": "gin.go"
+  },
+  {
+    "id": "go_func_._delims",
+    "type": "go_function",
+    "name": "Delims",
+    "file_path": "gin.go"
+  },
+  {
+    "id": "go_func_._secure_json_prefix",
+    "type": "go_function",
+    "name": "SecureJsonPrefix",
+    "file_path": "gin.go"
+  },
+  {
+    "id": "go_func_._load_html_glob",
+    "type": "go_function",
+    "name": "LoadHTMLGlob",
+    "file_path": "gin.go"
+  },
+  {
+    "id": "go_func_._load_html_files",
+    "type": "go_function",
+    "name": "LoadHTMLFiles",
+    "file_path": "gin.go"
+  },
+  {
+    "id": "go_func_._load_htmlfs",
+    "type": "go_function",
+    "name": "LoadHTMLFS",
+    "file_path": "gin.go"
+  },
+  {
+    "id": "go_func_._set_html_template",
+    "type": "go_function",
+    "name": "SetHTMLTemplate",
+    "file_path": "gin.go"
+  },
+  {
+    "id": "go_func_._set_func_map",
+    "type": "go_function",
+    "name": "SetFuncMap",
+    "file_path": "gin.go"
+  },
+  {
+    "id": "go_func_._no_route",
+    "type": "go_function",
+    "name": "NoRoute",
+    "file_path": "gin.go"
+  },
+  {
+    "id": "go_func_._no_method",
+    "type": "go_function",
+    "name": "NoMethod",
+    "file_path": "gin.go"
+  },
+  {
+    "id": "go_func_._use",
+    "type": "go_function",
+    "name": "Use",
+    "file_path": "gin.go"
+  },
+  {
+    "id": "go_func_._with",
+    "type": "go_function",
+    "name": "With",
+    "file_path": "gin.go"
+  },
+  {
+    "id": "go_func_._rebuild404_handlers",
+    "type": "go_function",
+    "name": "rebuild404Handlers",
+    "file_path": "gin.go"
+  },
+  {
+    "id": "go_func_._rebuild405_handlers",
+    "type": "go_function",
+    "name": "rebuild405Handlers",
+    "file_path": "gin.go"
+  },
+  {
+    "id": "go_func_._add_route",
+    "type": "go_function",
+    "name": "addRoute",
+    "file_path": "gin.go"
+  },
+  {
+    "id": "go_func_._routes",
+    "type": "go_function",
+    "name": "Routes",
+    "file_path": "gin.go"
+  },
+  {
+    "id": "go_func_._iterate",
+    "type": "go_function",
+    "name": "iterate",
+    "file_path": "gin.go"
+  },
+  {
+    "id": "go_func_._prepare_trusted_cid_rs",
+    "type": "go_function",
+    "name": "prepareTrustedCIDRs",
+    "file_path": "gin.go"
+  },
+  {
+    "id": "go_func_._set_trusted_proxies",
+    "type": "go_function",
+    "name": "SetTrustedProxies",
+    "file_path": "gin.go"
+  },
+  {
+    "id": "go_func_._is_unsafe_trusted_proxies",
+    "type": "go_function",
+    "name": "isUnsafeTrustedProxies",
+    "file_path": "gin.go"
+  },
+  {
+    "id": "go_func_._parse_trusted_proxies",
+    "type": "go_function",
+    "name": "parseTrustedProxies",
+    "file_path": "gin.go"
+  },
+  {
+    "id": "go_func_._is_trusted_proxy",
+    "type": "go_function",
+    "name": "isTrustedProxy",
+    "file_path": "gin.go"
+  },
+  {
+    "id": "go_func_._validate_header",
+    "type": "go_function",
+    "name": "validateHeader",
+    "file_path": "gin.go"
+  },
+  {
+    "id": "go_func_._update_route_tree",
+    "type": "go_function",
+    "name": "updateRouteTree",
+    "file_path": "gin.go"
+  },
+  {
+    "id": "go_func_._update_route_trees",
+    "type": "go_function",
+    "name": "updateRouteTrees",
+    "file_path": "gin.go"
+  },
+  {
+    "id": "go_func_._parse_ip",
+    "type": "go_function",
+    "name": "parseIP",
+    "file_path": "gin.go"
+  },
+  {
+    "id": "go_func_._run",
+    "type": "go_function",
+    "name": "Run",
+    "file_path": "gin.go"
+  },
+  {
+    "id": "go_func_._run_tls",
+    "type": "go_function",
+    "name": "RunTLS",
+    "file_path": "gin.go"
+  },
+  {
+    "id": "go_func_._run_unix",
+    "type": "go_function",
+    "name": "RunUnix",
+    "file_path": "gin.go"
+  },
+  {
+    "id": "go_func_._run_fd",
+    "type": "go_function",
+    "name": "RunFd",
+    "file_path": "gin.go"
+  },
+  {
+    "id": "go_func_._run_quic",
+    "type": "go_function",
+    "name": "RunQUIC",
+    "file_path": "gin.go"
+  },
+  {
+    "id": "go_func_._run_listener",
+    "type": "go_function",
+    "name": "RunListener",
+    "file_path": "gin.go"
+  },
+  {
+    "id": "go_func_._serve_http",
+    "type": "go_function",
+    "name": "ServeHTTP",
+    "file_path": "gin.go"
+  },
+  {
+    "id": "go_func_._handle_context",
+    "type": "go_function",
+    "name": "HandleContext",
+    "file_path": "gin.go"
+  },
+  {
+    "id": "go_func_._handle_http_request",
+    "type": "go_function",
+    "name": "handleHTTPRequest",
+    "file_path": "gin.go"
+  },
+  {
+    "id": "go_func_._serve_error",
+    "type": "go_function",
+    "name": "serveError",
+    "file_path": "gin.go"
+  },
+  {
+    "id": "go_func_._redirect_trailing_slash",
+    "type": "go_function",
+    "name": "redirectTrailingSlash",
+    "file_path": "gin.go"
+  },
+  {
+    "id": "go_func_._sanitize_path_chars",
+    "type": "go_function",
+    "name": "sanitizePathChars",
+    "file_path": "gin.go"
+  },
+  {
+    "id": "go_func_._redirect_fixed_path",
+    "type": "go_function",
+    "name": "redirectFixedPath",
+    "file_path": "gin.go"
+  },
+  {
+    "id": "go_func_._redirect_request",
+    "type": "go_function",
+    "name": "redirectRequest",
+    "file_path": "gin.go"
+  },
+  {
+    "id": "go_pkg_ginS",
+    "type": "go_package",
+    "name": "ginS",
+    "file_path": "ginS"
+  },
+  {
+    "id": "go_func_ginS_load_html_glob",
+    "type": "go_function",
+    "name": "LoadHTMLGlob",
+    "file_path": "ginS/gins.go"
+  },
+  {
+    "id": "go_func_ginS_load_html_files",
+    "type": "go_function",
+    "name": "LoadHTMLFiles",
+    "file_path": "ginS/gins.go"
+  },
+  {
+    "id": "go_func_ginS_load_htmlfs",
+    "type": "go_function",
+    "name": "LoadHTMLFS",
+    "file_path": "ginS/gins.go"
+  },
+  {
+    "id": "go_func_ginS_set_html_template",
+    "type": "go_function",
+    "name": "SetHTMLTemplate",
+    "file_path": "ginS/gins.go"
+  },
+  {
+    "id": "go_func_ginS_no_route",
+    "type": "go_function",
+    "name": "NoRoute",
+    "file_path": "ginS/gins.go"
+  },
+  {
+    "id": "go_func_ginS_no_method",
+    "type": "go_function",
+    "name": "NoMethod",
+    "file_path": "ginS/gins.go"
+  },
+  {
+    "id": "go_func_ginS_group",
+    "type": "go_function",
+    "name": "Group",
+    "file_path": "ginS/gins.go"
+  },
+  {
+    "id": "go_func_ginS_handle",
+    "type": "go_function",
+    "name": "Handle",
+    "file_path": "ginS/gins.go"
+  },
+  {
+    "id": "go_func_ginS_post",
+    "type": "go_function",
+    "name": "POST",
+    "file_path": "ginS/gins.go"
+  },
+  {
+    "id": "go_func_ginS_get",
+    "type": "go_function",
+    "name": "GET",
+    "file_path": "ginS/gins.go"
+  },
+  {
+    "id": "go_func_ginS_delete",
+    "type": "go_function",
+    "name": "DELETE",
+    "file_path": "ginS/gins.go"
+  },
+  {
+    "id": "go_func_ginS_patch",
+    "type": "go_function",
+    "name": "PATCH",
+    "file_path": "ginS/gins.go"
+  },
+  {
+    "id": "go_func_ginS_put",
+    "type": "go_function",
+    "name": "PUT",
+    "file_path": "ginS/gins.go"
+  },
+  {
+    "id": "go_func_ginS_options",
+    "type": "go_function",
+    "name": "OPTIONS",
+    "file_path": "ginS/gins.go"
+  },
+  {
+    "id": "go_func_ginS_head",
+    "type": "go_function",
+    "name": "HEAD",
+    "file_path": "ginS/gins.go"
+  },
+  {
+    "id": "go_func_ginS_any",
+    "type": "go_function",
+    "name": "Any",
+    "file_path": "ginS/gins.go"
+  },
+  {
+    "id": "go_func_ginS_static_file",
+    "type": "go_function",
+    "name": "StaticFile",
+    "file_path": "ginS/gins.go"
+  },
+  {
+    "id": "go_func_ginS_static",
+    "type": "go_function",
+    "name": "Static",
+    "file_path": "ginS/gins.go"
+  },
+  {
+    "id": "go_func_ginS_static_fs",
+    "type": "go_function",
+    "name": "StaticFS",
+    "file_path": "ginS/gins.go"
+  },
+  {
+    "id": "go_func_ginS_use",
+    "type": "go_function",
+    "name": "Use",
+    "file_path": "ginS/gins.go"
+  },
+  {
+    "id": "go_func_ginS_routes",
+    "type": "go_function",
+    "name": "Routes",
+    "file_path": "ginS/gins.go"
+  },
+  {
+    "id": "go_func_ginS_run",
+    "type": "go_function",
+    "name": "Run",
+    "file_path": "ginS/gins.go"
+  },
+  {
+    "id": "go_func_ginS_run_tls",
+    "type": "go_function",
+    "name": "RunTLS",
+    "file_path": "ginS/gins.go"
+  },
+  {
+    "id": "go_func_ginS_run_unix",
+    "type": "go_function",
+    "name": "RunUnix",
+    "file_path": "ginS/gins.go"
+  },
+  {
+    "id": "go_func_ginS_run_fd",
+    "type": "go_function",
+    "name": "RunFd",
+    "file_path": "ginS/gins.go"
+  },
+  {
+    "id": "go_pkg_internal_bytesconv",
+    "type": "go_package",
+    "name": "bytesconv",
+    "file_path": "internal/bytesconv"
+  },
+  {
+    "id": "go_func_internal_bytesconv_string_to_bytes",
+    "type": "go_function",
+    "name": "StringToBytes",
+    "file_path": "internal/bytesconv/bytesconv.go"
+  },
+  {
+    "id": "go_func_internal_bytesconv_bytes_to_string",
+    "type": "go_function",
+    "name": "BytesToString",
+    "file_path": "internal/bytesconv/bytesconv.go"
+  },
+  {
+    "id": "go_pkg_internal_fs",
+    "type": "go_package",
+    "name": "fs",
+    "file_path": "internal/fs"
+  },
+  {
+    "id": "go_func_internal_fs_open",
+    "type": "go_function",
+    "name": "Open",
+    "file_path": "internal/fs/fs.go"
+  },
+  {
+    "id": "go_func_._status_code_color",
+    "type": "go_function",
+    "name": "StatusCodeColor",
+    "file_path": "logger.go"
+  },
+  {
+    "id": "go_func_._latency_color",
+    "type": "go_function",
+    "name": "LatencyColor",
+    "file_path": "logger.go"
+  },
+  {
+    "id": "go_func_._method_color",
+    "type": "go_function",
+    "name": "MethodColor",
+    "file_path": "logger.go"
+  },
+  {
+    "id": "go_func_._reset_color",
+    "type": "go_function",
+    "name": "ResetColor",
+    "file_path": "logger.go"
+  },
+  {
+    "id": "go_func_._is_output_color",
+    "type": "go_function",
+    "name": "IsOutputColor",
+    "file_path": "logger.go"
+  },
+  {
+    "id": "go_func_._disable_console_color",
+    "type": "go_function",
+    "name": "DisableConsoleColor",
+    "file_path": "logger.go"
+  },
+  {
+    "id": "go_func_._force_console_color",
+    "type": "go_function",
+    "name": "ForceConsoleColor",
+    "file_path": "logger.go"
+  },
+  {
+    "id": "go_func_._error_logger",
+    "type": "go_function",
+    "name": "ErrorLogger",
+    "file_path": "logger.go"
+  },
+  {
+    "id": "go_func_._error_logger_t",
+    "type": "go_function",
+    "name": "ErrorLoggerT",
+    "file_path": "logger.go"
+  },
+  {
+    "id": "go_func_._logger",
+    "type": "go_function",
+    "name": "Logger",
+    "file_path": "logger.go"
+  },
+  {
+    "id": "go_func_._logger_with_formatter",
+    "type": "go_function",
+    "name": "LoggerWithFormatter",
+    "file_path": "logger.go"
+  },
+  {
+    "id": "go_func_._logger_with_writer",
+    "type": "go_function",
+    "name": "LoggerWithWriter",
+    "file_path": "logger.go"
+  },
+  {
+    "id": "go_func_._logger_with_config",
+    "type": "go_function",
+    "name": "LoggerWithConfig",
+    "file_path": "logger.go"
+  },
+  {
+    "id": "go_func_._set_mode",
+    "type": "go_function",
+    "name": "SetMode",
+    "file_path": "mode.go"
+  },
+  {
+    "id": "go_func_._disable_bind_validation",
+    "type": "go_function",
+    "name": "DisableBindValidation",
+    "file_path": "mode.go"
+  },
+  {
+    "id": "go_func_._enable_json_decoder_use_number",
+    "type": "go_function",
+    "name": "EnableJsonDecoderUseNumber",
+    "file_path": "mode.go"
+  },
+  {
+    "id": "go_func_._enable_json_decoder_disallow_unknown_fields",
+    "type": "go_function",
+    "name": "EnableJsonDecoderDisallowUnknownFields",
+    "file_path": "mode.go"
+  },
+  {
+    "id": "go_func_._mode",
+    "type": "go_function",
+    "name": "Mode",
+    "file_path": "mode.go"
+  },
+  {
+    "id": "go_func_._clean_path",
+    "type": "go_function",
+    "name": "cleanPath",
+    "file_path": "path.go"
+  },
+  {
+    "id": "go_func_._buf_app",
+    "type": "go_function",
+    "name": "bufApp",
+    "file_path": "path.go"
+  },
+  {
+    "id": "go_func_._remove_repeated_char",
+    "type": "go_function",
+    "name": "removeRepeatedChar",
+    "file_path": "path.go"
+  },
+  {
+    "id": "go_func_._recovery",
+    "type": "go_function",
+    "name": "Recovery",
+    "file_path": "recovery.go"
+  },
+  {
+    "id": "go_func_._custom_recovery",
+    "type": "go_function",
+    "name": "CustomRecovery",
+    "file_path": "recovery.go"
+  },
+  {
+    "id": "go_func_._recovery_with_writer",
+    "type": "go_function",
+    "name": "RecoveryWithWriter",
+    "file_path": "recovery.go"
+  },
+  {
+    "id": "go_func_._custom_recovery_with_writer",
+    "type": "go_function",
+    "name": "CustomRecoveryWithWriter",
+    "file_path": "recovery.go"
+  },
+  {
+    "id": "go_func_._secure_request_dump",
+    "type": "go_function",
+    "name": "secureRequestDump",
+    "file_path": "recovery.go"
+  },
+  {
+    "id": "go_func_._default_handle_recovery",
+    "type": "go_function",
+    "name": "defaultHandleRecovery",
+    "file_path": "recovery.go"
+  },
+  {
+    "id": "go_func_._stack",
+    "type": "go_function",
+    "name": "stack",
+    "file_path": "recovery.go"
+  },
+  {
+    "id": "go_func_._read_nth_line",
+    "type": "go_function",
+    "name": "readNthLine",
+    "file_path": "recovery.go"
+  },
+  {
+    "id": "go_func_._function",
+    "type": "go_function",
+    "name": "function",
+    "file_path": "recovery.go"
+  },
+  {
+    "id": "go_func_._time_format",
+    "type": "go_function",
+    "name": "timeFormat",
+    "file_path": "recovery.go"
+  },
+  {
+    "id": "go_pkg_render",
+    "type": "go_package",
+    "name": "render",
+    "file_path": "render"
+  },
+  {
+    "id": "go_func_render_render",
+    "type": "go_function",
+    "name": "Render",
+    "file_path": "render/bson.go"
+  },
+  {
+    "id": "go_func_render_write_content_type",
+    "type": "go_function",
+    "name": "WriteContentType",
+    "file_path": "render/bson.go"
+  },
+  {
+    "id": "go_func_render_instance",
+    "type": "go_function",
+    "name": "Instance",
+    "file_path": "render/html.go"
+  },
+  {
+    "id": "go_func_render_load_template",
+    "type": "go_function",
+    "name": "loadTemplate",
+    "file_path": "render/html.go"
+  },
+  {
+    "id": "go_func_render_write_json",
+    "type": "go_function",
+    "name": "WriteJSON",
+    "file_path": "render/json.go"
+  },
+  {
+    "id": "go_func_render_write_msg_pack",
+    "type": "go_function",
+    "name": "WriteMsgPack",
+    "file_path": "render/msgpack.go"
+  },
+  {
+    "id": "go_func_render_write_headers",
+    "type": "go_function",
+    "name": "writeHeaders",
+    "file_path": "render/reader.go"
+  },
+  {
+    "id": "go_func_render_write_string",
+    "type": "go_function",
+    "name": "WriteString",
+    "file_path": "render/text.go"
+  },
+  {
+    "id": "go_func_._write_header",
+    "type": "go_function",
+    "name": "WriteHeader",
+    "file_path": "response_writer.go"
+  },
+  {
+    "id": "go_func_._write_header_now",
+    "type": "go_function",
+    "name": "WriteHeaderNow",
+    "file_path": "response_writer.go"
+  },
+  {
+    "id": "go_func_._write",
+    "type": "go_function",
+    "name": "Write",
+    "file_path": "response_writer.go"
+  },
+  {
+    "id": "go_func_._write_string",
+    "type": "go_function",
+    "name": "WriteString",
+    "file_path": "response_writer.go"
+  },
+  {
+    "id": "go_func_._size",
+    "type": "go_function",
+    "name": "Size",
+    "file_path": "response_writer.go"
+  },
+  {
+    "id": "go_func_._written",
+    "type": "go_function",
+    "name": "Written",
+    "file_path": "response_writer.go"
+  },
+  {
+    "id": "go_func_._hijack",
+    "type": "go_function",
+    "name": "Hijack",
+    "file_path": "response_writer.go"
+  },
+  {
+    "id": "go_func_._close_notify",
+    "type": "go_function",
+    "name": "CloseNotify",
+    "file_path": "response_writer.go"
+  },
+  {
+    "id": "go_func_._flush",
+    "type": "go_function",
+    "name": "Flush",
+    "file_path": "response_writer.go"
+  },
+  {
+    "id": "go_func_._pusher",
+    "type": "go_function",
+    "name": "Pusher",
+    "file_path": "response_writer.go"
+  },
+  {
+    "id": "go_func_._group",
+    "type": "go_function",
+    "name": "Group",
+    "file_path": "routergroup.go"
+  },
+  {
+    "id": "go_func_._base_path",
+    "type": "go_function",
+    "name": "BasePath",
+    "file_path": "routergroup.go"
+  },
+  {
+    "id": "go_func_._handle",
+    "type": "go_function",
+    "name": "handle",
+    "file_path": "routergroup.go"
+  },
+  {
+    "id": "go_func_._post",
+    "type": "go_function",
+    "name": "POST",
+    "file_path": "routergroup.go"
+  },
+  {
+    "id": "go_func_._patch",
+    "type": "go_function",
+    "name": "PATCH",
+    "file_path": "routergroup.go"
+  },
+  {
+    "id": "go_func_._put",
+    "type": "go_function",
+    "name": "PUT",
+    "file_path": "routergroup.go"
+  },
+  {
+    "id": "go_func_._options",
+    "type": "go_function",
+    "name": "OPTIONS",
+    "file_path": "routergroup.go"
+  },
+  {
+    "id": "go_func_._head",
+    "type": "go_function",
+    "name": "HEAD",
+    "file_path": "routergroup.go"
+  },
+  {
+    "id": "go_func_._any",
+    "type": "go_function",
+    "name": "Any",
+    "file_path": "routergroup.go"
+  },
+  {
+    "id": "go_func_._match",
+    "type": "go_function",
+    "name": "Match",
+    "file_path": "routergroup.go"
+  },
+  {
+    "id": "go_func_._static_file",
+    "type": "go_function",
+    "name": "StaticFile",
+    "file_path": "routergroup.go"
+  },
+  {
+    "id": "go_func_._static_file_fs",
+    "type": "go_function",
+    "name": "StaticFileFS",
+    "file_path": "routergroup.go"
+  },
+  {
+    "id": "go_func_._static_file_handler",
+    "type": "go_function",
+    "name": "staticFileHandler",
+    "file_path": "routergroup.go"
+  },
+  {
+    "id": "go_func_._static",
+    "type": "go_function",
+    "name": "Static",
+    "file_path": "routergroup.go"
+  },
+  {
+    "id": "go_func_._static_fs",
+    "type": "go_function",
+    "name": "StaticFS",
+    "file_path": "routergroup.go"
+  },
+  {
+    "id": "go_func_._create_static_handler",
+    "type": "go_function",
+    "name": "createStaticHandler",
+    "file_path": "routergroup.go"
+  },
+  {
+    "id": "go_func_._combine_handlers",
+    "type": "go_function",
+    "name": "combineHandlers",
+    "file_path": "routergroup.go"
+  },
+  {
+    "id": "go_func_._calculate_absolute_path",
+    "type": "go_function",
+    "name": "calculateAbsolutePath",
+    "file_path": "routergroup.go"
+  },
+  {
+    "id": "go_func_._return_obj",
+    "type": "go_function",
+    "name": "returnObj",
+    "file_path": "routergroup.go"
+  },
+  {
+    "id": "go_func_._create_test_context",
+    "type": "go_function",
+    "name": "CreateTestContext",
+    "file_path": "test_helpers.go"
+  },
+  {
+    "id": "go_func_._create_test_context_only",
+    "type": "go_function",
+    "name": "CreateTestContextOnly",
+    "file_path": "test_helpers.go"
+  },
+  {
+    "id": "go_func_._wait_for_server_ready",
+    "type": "go_function",
+    "name": "waitForServerReady",
+    "file_path": "test_helpers.go"
+  },
+  {
+    "id": "go_pkg_testdata_protoexample",
+    "type": "go_package",
+    "name": "protoexample",
+    "file_path": "testdata/protoexample"
+  },
+  {
+    "id": "go_func_testdata_protoexample_enum",
+    "type": "go_function",
+    "name": "Enum",
+    "file_path": "testdata/protoexample/test.pb.go"
+  },
+  {
+    "id": "go_func_testdata_protoexample_string",
+    "type": "go_function",
+    "name": "String",
+    "file_path": "testdata/protoexample/test.pb.go"
+  },
+  {
+    "id": "go_func_testdata_protoexample_descriptor",
+    "type": "go_function",
+    "name": "Descriptor",
+    "file_path": "testdata/protoexample/test.pb.go"
+  },
+  {
+    "id": "go_func_testdata_protoexample_type",
+    "type": "go_function",
+    "name": "Type",
+    "file_path": "testdata/protoexample/test.pb.go"
+  },
+  {
+    "id": "go_func_testdata_protoexample_number",
+    "type": "go_function",
+    "name": "Number",
+    "file_path": "testdata/protoexample/test.pb.go"
+  },
+  {
+    "id": "go_func_testdata_protoexample_unmarshal_json",
+    "type": "go_function",
+    "name": "UnmarshalJSON",
+    "file_path": "testdata/protoexample/test.pb.go"
+  },
+  {
+    "id": "go_func_testdata_protoexample_enum_descriptor",
+    "type": "go_function",
+    "name": "EnumDescriptor",
+    "file_path": "testdata/protoexample/test.pb.go"
+  },
+  {
+    "id": "go_func_testdata_protoexample_reset",
+    "type": "go_function",
+    "name": "Reset",
+    "file_path": "testdata/protoexample/test.pb.go"
+  },
+  {
+    "id": "go_func_testdata_protoexample_proto_message",
+    "type": "go_function",
+    "name": "ProtoMessage",
+    "file_path": "testdata/protoexample/test.pb.go"
+  },
+  {
+    "id": "go_func_testdata_protoexample_proto_reflect",
+    "type": "go_function",
+    "name": "ProtoReflect",
+    "file_path": "testdata/protoexample/test.pb.go"
+  },
+  {
+    "id": "go_func_testdata_protoexample_get_label",
+    "type": "go_function",
+    "name": "GetLabel",
+    "file_path": "testdata/protoexample/test.pb.go"
+  },
+  {
+    "id": "go_func_testdata_protoexample_get_type",
+    "type": "go_function",
+    "name": "GetType",
+    "file_path": "testdata/protoexample/test.pb.go"
+  },
+  {
+    "id": "go_func_testdata_protoexample_get_reps",
+    "type": "go_function",
+    "name": "GetReps",
+    "file_path": "testdata/protoexample/test.pb.go"
+  },
+  {
+    "id": "go_func_testdata_protoexample_get_optionalgroup",
+    "type": "go_function",
+    "name": "GetOptionalgroup",
+    "file_path": "testdata/protoexample/test.pb.go"
+  },
+  {
+    "id": "go_func_testdata_protoexample_get_required_field",
+    "type": "go_function",
+    "name": "GetRequiredField",
+    "file_path": "testdata/protoexample/test.pb.go"
+  },
+  {
+    "id": "go_func_testdata_protoexample_file_test_proto_raw_desc_gzip",
+    "type": "go_function",
+    "name": "file_test_proto_rawDescGZIP",
+    "file_path": "testdata/protoexample/test.pb.go"
+  },
+  {
+    "id": "go_func_testdata_protoexample_init",
+    "type": "go_function",
+    "name": "init",
+    "file_path": "testdata/protoexample/test.pb.go"
+  },
+  {
+    "id": "go_func_testdata_protoexample_file_test_proto_init",
+    "type": "go_function",
+    "name": "file_test_proto_init",
+    "file_path": "testdata/protoexample/test.pb.go"
+  },
+  {
+    "id": "go_func_._by_name",
+    "type": "go_function",
+    "name": "ByName",
+    "file_path": "tree.go"
+  },
+  {
+    "id": "go_func_._longest_common_prefix",
+    "type": "go_function",
+    "name": "longestCommonPrefix",
+    "file_path": "tree.go"
+  },
+  {
+    "id": "go_func_._add_child",
+    "type": "go_function",
+    "name": "addChild",
+    "file_path": "tree.go"
+  },
+  {
+    "id": "go_func_._count_params",
+    "type": "go_function",
+    "name": "countParams",
+    "file_path": "tree.go"
+  },
+  {
+    "id": "go_func_._count_sections",
+    "type": "go_function",
+    "name": "countSections",
+    "file_path": "tree.go"
+  },
+  {
+    "id": "go_func_._increment_child_prio",
+    "type": "go_function",
+    "name": "incrementChildPrio",
+    "file_path": "tree.go"
+  },
+  {
+    "id": "go_func_._find_wildcard",
+    "type": "go_function",
+    "name": "findWildcard",
+    "file_path": "tree.go"
+  },
+  {
+    "id": "go_func_._insert_child",
+    "type": "go_function",
+    "name": "insertChild",
+    "file_path": "tree.go"
+  },
+  {
+    "id": "go_func_._get_value",
+    "type": "go_function",
+    "name": "getValue",
+    "file_path": "tree.go"
+  },
+  {
+    "id": "go_func_._find_case_insensitive_path",
+    "type": "go_function",
+    "name": "findCaseInsensitivePath",
+    "file_path": "tree.go"
+  },
+  {
+    "id": "go_func_._shift_n_rune_bytes",
+    "type": "go_function",
+    "name": "shiftNRuneBytes",
+    "file_path": "tree.go"
+  },
+  {
+    "id": "go_func_._find_case_insensitive_path_rec",
+    "type": "go_function",
+    "name": "findCaseInsensitivePathRec",
+    "file_path": "tree.go"
+  },
+  {
+    "id": "go_func_._wrap_f",
+    "type": "go_function",
+    "name": "WrapF",
+    "file_path": "utils.go"
+  },
+  {
+    "id": "go_func_._wrap_h",
+    "type": "go_function",
+    "name": "WrapH",
+    "file_path": "utils.go"
+  },
+  {
+    "id": "go_func_._marshal_xml",
+    "type": "go_function",
+    "name": "MarshalXML",
+    "file_path": "utils.go"
+  },
+  {
+    "id": "go_func_._assert1",
+    "type": "go_function",
+    "name": "assert1",
+    "file_path": "utils.go"
+  },
+  {
+    "id": "go_func_._filter_flags",
+    "type": "go_function",
+    "name": "filterFlags",
+    "file_path": "utils.go"
+  },
+  {
+    "id": "go_func_._choose_data",
+    "type": "go_function",
+    "name": "chooseData",
+    "file_path": "utils.go"
+  },
+  {
+    "id": "go_func_._parse_accept",
+    "type": "go_function",
+    "name": "parseAccept",
+    "file_path": "utils.go"
+  },
+  {
+    "id": "go_func_._last_char",
+    "type": "go_function",
+    "name": "lastChar",
+    "file_path": "utils.go"
+  },
+  {
+    "id": "go_func_._name_of_function",
+    "type": "go_function",
+    "name": "nameOfFunction",
+    "file_path": "utils.go"
+  },
+  {
+    "id": "go_func_._join_paths",
+    "type": "go_function",
+    "name": "joinPaths",
+    "file_path": "utils.go"
+  },
+  {
+    "id": "go_func_._resolve_address",
+    "type": "go_function",
+    "name": "resolveAddress",
+    "file_path": "utils.go"
+  },
+  {
+    "id": "go_func_._is_ascii",
+    "type": "go_function",
+    "name": "isASCII",
+    "file_path": "utils.go"
+  },
+  {
+    "id": "go_func_._safe_int8",
+    "type": "go_function",
+    "name": "safeInt8",
+    "file_path": "utils.go"
+  },
+  {
+    "id": "go_func_._safe_uint16",
+    "type": "go_function",
+    "name": "safeUint16",
+    "file_path": "utils.go"
+  },
+  {
+    "id": "cpp_proj_gin_test",
+    "type": "cpp_project",
+    "name": "gin-test",
+    "file_path": "Makefile"
+  }
+]

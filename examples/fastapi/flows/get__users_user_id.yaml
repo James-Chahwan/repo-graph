@@ -1,0 +1,8 @@
+flow: get__users_user_id
+paths:
+  - name: get__users_user_id
+    steps:
+      - {id: route_GET_users_{user_id}, type: route}
+      - {id: py_mod_docs_src_path_params_tutorial003_py310, type: py_module, edge: handled_by}
+      - {id: py_func_py_mod_docs_src_path_params_tutorial003_py310_read_user_me, type: py_function, edge: defines}
+      - {id: py_func_py_mod_docs_src_path_params_tutorial003_py310_read_user, type: py_function, edge: defines}

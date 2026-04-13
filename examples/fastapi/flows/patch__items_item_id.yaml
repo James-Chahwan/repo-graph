@@ -1,0 +1,9 @@
+flow: patch__items_item_id
+paths:
+  - name: patch__items_item_id
+    steps:
+      - {id: route_PATCH_items_{item_id}, type: route}
+      - {id: py_mod_docs_src_body_updates_tutorial002_py310, type: py_module, edge: handled_by}
+      - {id: py_class_py_mod_docs_src_body_updates_tutorial002_py310_Item, type: py_class, edge: defines}
+      - {id: py_func_py_mod_docs_src_body_updates_tutorial002_py310_read_item, type: py_function, edge: defines}
+      - {id: py_func_py_mod_docs_src_body_updates_tutorial002_py310_update_item, type: py_function, edge: defines}

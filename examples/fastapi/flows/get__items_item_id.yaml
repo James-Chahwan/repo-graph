@@ -1,0 +1,17 @@
+flow: get__items_item_id
+paths:
+  - name: get__items_item_id
+    steps:
+      - {id: route_GET_items_{item_id}, type: route}
+      - {id: py_mod_fastapi_exceptions, type: py_module, edge: handled_by}
+      - {id: py_class_py_mod_fastapi_exceptions_EndpointContext, type: py_class, edge: defines}
+      - {id: py_class_py_mod_fastapi_exceptions_HTTPException, type: py_class, edge: defines}
+      - {id: py_class_py_mod_fastapi_exceptions_WebSocketException, type: py_class, edge: defines}
+      - {id: py_class_py_mod_fastapi_exceptions_FastAPIError, type: py_class, edge: defines}
+      - {id: py_class_py_mod_fastapi_exceptions_DependencyScopeError, type: py_class, edge: defines}
+      - {id: py_class_py_mod_fastapi_exceptions_ValidationException, type: py_class, edge: defines}
+      - {id: py_class_py_mod_fastapi_exceptions_RequestValidationError, type: py_class, edge: defines}
+      - {id: py_class_py_mod_fastapi_exceptions_WebSocketRequestValidationError, type: py_class, edge: defines}
+      - {id: py_class_py_mod_fastapi_exceptions_ResponseValidationError, type: py_class, edge: defines}
+      - {id: py_class_py_mod_fastapi_exceptions_PydanticV1NotSupportedError, type: py_class, edge: defines}
+      - {id: py_class_py_mod_fastapi_exceptions_FastAPIDeprecationWarning, type: py_class, edge: defines}

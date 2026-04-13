@@ -1,0 +1,7 @@
+flow: get__keyword-weights
+paths:
+  - name: get__keyword-weights
+    steps:
+      - {id: route_GET_keyword-weights, type: route}
+      - {id: py_mod_docs_src_extra_models_tutorial005_py310, type: py_module, edge: handled_by}
+      - {id: py_func_py_mod_docs_src_extra_models_tutorial005_py310_read_keyword_weights, type: py_function, edge: defines}

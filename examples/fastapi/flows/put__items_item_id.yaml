@@ -1,0 +1,7 @@
+flow: put__items_item_id
+paths:
+  - name: put__items_item_id
+    steps:
+      - {id: route_PUT_items_{item_id}, type: route}
+      - {id: py_mod_fastapi_applications, type: py_module, edge: handled_by}
+      - {id: py_class_py_mod_fastapi_applications_FastAPI, type: py_class, edge: defines}

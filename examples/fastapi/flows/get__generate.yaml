@@ -1,0 +1,11 @@
+flow: get__generate
+paths:
+  - name: get__generate
+    steps:
+      - {id: route_GET_generate, type: route}
+      - {id: py_mod_docs_src_dependencies_tutorial013_an_py310, type: py_module, edge: handled_by}
+      - {id: py_class_py_mod_docs_src_dependencies_tutorial013_an_py310_User, type: py_class, edge: defines}
+      - {id: py_func_py_mod_docs_src_dependencies_tutorial013_an_py310_get_session, type: py_function, edge: defines}
+      - {id: py_func_py_mod_docs_src_dependencies_tutorial013_an_py310_get_user, type: py_function, edge: defines}
+      - {id: py_func_py_mod_docs_src_dependencies_tutorial013_an_py310_generate_stream, type: py_function, edge: defines}
+      - {id: py_func_py_mod_docs_src_dependencies_tutorial013_an_py310_generate, type: py_function, edge: defines}

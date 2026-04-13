@@ -1,0 +1,13 @@
+flow: get__image_stream-no-async-yield-from
+paths:
+  - name: get__image_stream-no-async-yield-from
+    steps:
+      - {id: route_GET_image_stream-no-async-yield-from, type: route}
+      - {id: py_mod_docs_src_stream_data_tutorial002_py310, type: py_module, edge: handled_by}
+      - {id: py_class_py_mod_docs_src_stream_data_tutorial002_py310_PNGStreamingResponse, type: py_class, edge: defines}
+      - {id: py_func_py_mod_docs_src_stream_data_tutorial002_py310_read_image, type: py_function, edge: defines}
+      - {id: py_func_py_mod_docs_src_stream_data_tutorial002_py310_stream_image, type: py_function, edge: defines}
+      - {id: py_func_py_mod_docs_src_stream_data_tutorial002_py310_stream_image_no_async, type: py_function, edge: defines}
+      - {id: py_func_py_mod_docs_src_stream_data_tutorial002_py310_stream_image_no_async_yield_from, type: py_function, edge: defines}
+      - {id: py_func_py_mod_docs_src_stream_data_tutorial002_py310_stream_image_no_annotation, type: py_function, edge: defines}
+      - {id: py_func_py_mod_docs_src_stream_data_tutorial002_py310_stream_image_no_async_no_annotation, type: py_function, edge: defines}

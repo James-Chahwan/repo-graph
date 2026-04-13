@@ -1,0 +1,8 @@
+flow: get__items_next
+paths:
+  - name: get__items_next
+    steps:
+      - {id: route_GET_items_next, type: route}
+      - {id: py_mod_docs_src_dataclasses__tutorial002_py310, type: py_module, edge: handled_by}
+      - {id: py_class_py_mod_docs_src_dataclasses__tutorial002_py310_Item, type: py_class, edge: defines}
+      - {id: py_func_py_mod_docs_src_dataclasses__tutorial002_py310_read_next_item, type: py_function, edge: defines}

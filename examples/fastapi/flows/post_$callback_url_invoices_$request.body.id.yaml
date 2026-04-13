@@ -1,0 +1,11 @@
+flow: post_$callback_url_invoices_$request.body.id
+paths:
+  - name: post_$callback_url_invoices_$request.body.id
+    steps:
+      - {id: route_POST_{$callback_url}_invoices_{$request.body.id}, type: route}
+      - {id: py_mod_docs_src_openapi_callbacks_tutorial001_py310, type: py_module, edge: handled_by}
+      - {id: py_class_py_mod_docs_src_openapi_callbacks_tutorial001_py310_Invoice, type: py_class, edge: defines}
+      - {id: py_class_py_mod_docs_src_openapi_callbacks_tutorial001_py310_InvoiceEvent, type: py_class, edge: defines}
+      - {id: py_class_py_mod_docs_src_openapi_callbacks_tutorial001_py310_InvoiceEventReceived, type: py_class, edge: defines}
+      - {id: py_func_py_mod_docs_src_openapi_callbacks_tutorial001_py310_invoice_notification, type: py_function, edge: defines}
+      - {id: py_func_py_mod_docs_src_openapi_callbacks_tutorial001_py310_create_invoice, type: py_function, edge: defines}

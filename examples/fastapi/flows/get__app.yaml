@@ -1,0 +1,7 @@
+flow: get__app
+paths:
+  - name: get__app
+    steps:
+      - {id: route_GET_app, type: route}
+      - {id: py_mod_docs_src_behind_a_proxy_tutorial001_py310, type: py_module, edge: handled_by}
+      - {id: py_func_py_mod_docs_src_behind_a_proxy_tutorial001_py310_read_main, type: py_function, edge: defines}

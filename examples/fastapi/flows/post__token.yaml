@@ -1,0 +1,15 @@
+flow: post__token
+paths:
+  - name: post__token
+    steps:
+      - {id: route_POST_token, type: route}
+      - {id: py_mod_docs_src_security_tutorial003_an_py310, type: py_module, edge: handled_by}
+      - {id: py_class_py_mod_docs_src_security_tutorial003_an_py310_User, type: py_class, edge: defines}
+      - {id: py_class_py_mod_docs_src_security_tutorial003_an_py310_UserInDB, type: py_class, edge: defines}
+      - {id: py_func_py_mod_docs_src_security_tutorial003_an_py310_fake_hash_password, type: py_function, edge: defines}
+      - {id: py_func_py_mod_docs_src_security_tutorial003_an_py310_get_user, type: py_function, edge: defines}
+      - {id: py_func_py_mod_docs_src_security_tutorial003_an_py310_fake_decode_token, type: py_function, edge: defines}
+      - {id: py_func_py_mod_docs_src_security_tutorial003_an_py310_get_current_user, type: py_function, edge: defines}
+      - {id: py_func_py_mod_docs_src_security_tutorial003_an_py310_get_current_active_user, type: py_function, edge: defines}
+      - {id: py_func_py_mod_docs_src_security_tutorial003_an_py310_login, type: py_function, edge: defines}
+      - {id: py_func_py_mod_docs_src_security_tutorial003_an_py310_read_users_me, type: py_function, edge: defines}

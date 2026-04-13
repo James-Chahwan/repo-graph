@@ -1,0 +1,14 @@
+flow: get__story_stream-no-async
+paths:
+  - name: get__story_stream-no-async
+    steps:
+      - {id: route_GET_story_stream-no-async, type: route}
+      - {id: py_mod_docs_src_stream_data_tutorial001_py310, type: py_module, edge: handled_by}
+      - {id: py_func_py_mod_docs_src_stream_data_tutorial001_py310_stream_story, type: py_function, edge: defines}
+      - {id: py_func_py_mod_docs_src_stream_data_tutorial001_py310_stream_story_no_async, type: py_function, edge: defines}
+      - {id: py_func_py_mod_docs_src_stream_data_tutorial001_py310_stream_story_no_annotation, type: py_function, edge: defines}
+      - {id: py_func_py_mod_docs_src_stream_data_tutorial001_py310_stream_story_no_async_no_annotation, type: py_function, edge: defines}
+      - {id: py_func_py_mod_docs_src_stream_data_tutorial001_py310_stream_story_bytes, type: py_function, edge: defines}
+      - {id: py_func_py_mod_docs_src_stream_data_tutorial001_py310_stream_story_no_async_bytes, type: py_function, edge: defines}
+      - {id: py_func_py_mod_docs_src_stream_data_tutorial001_py310_stream_story_no_annotation_bytes, type: py_function, edge: defines}
+      - {id: py_func_py_mod_docs_src_stream_data_tutorial001_py310_stream_story_no_async_no_annotation_bytes, type: py_function, edge: defines}

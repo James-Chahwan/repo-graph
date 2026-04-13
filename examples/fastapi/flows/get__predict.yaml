@@ -1,0 +1,9 @@
+flow: get__predict
+paths:
+  - name: get__predict
+    steps:
+      - {id: route_GET_predict, type: route}
+      - {id: py_mod_docs_src_events_tutorial003_py310, type: py_module, edge: handled_by}
+      - {id: py_func_py_mod_docs_src_events_tutorial003_py310_fake_answer_to_everything_ml_model, type: py_function, edge: defines}
+      - {id: py_func_py_mod_docs_src_events_tutorial003_py310_lifespan, type: py_function, edge: defines}
+      - {id: py_func_py_mod_docs_src_events_tutorial003_py310_predict, type: py_function, edge: defines}

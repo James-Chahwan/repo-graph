@@ -1,0 +1,9 @@
+flow: post__sum
+paths:
+  - name: post__sum
+    steps:
+      - {id: route_POST_sum, type: route}
+      - {id: py_mod_docs_src_custom_request_and_route_tutorial001_an_py310, type: py_module, edge: handled_by}
+      - {id: py_class_py_mod_docs_src_custom_request_and_route_tutorial001_an_py310_GzipRequest, type: py_class, edge: defines}
+      - {id: py_class_py_mod_docs_src_custom_request_and_route_tutorial001_an_py310_GzipRoute, type: py_class, edge: defines}
+      - {id: py_func_py_mod_docs_src_custom_request_and_route_tutorial001_an_py310_sum_numbers, type: py_function, edge: defines}

@@ -6,6 +6,17 @@ repo-graph gives LLMs a map of your codebase — entities, relationships, and fl
 
 Instead of flooding an LLM's context window with your entire codebase (or hoping it guesses right), repo-graph builds a lightweight graph of what exists, how things connect, and where the entry points are. The LLM queries the graph, finds the minimal set of files it needs, and reads only those.
 
+## Demo
+
+<!-- TODO: Replace with actual video URL after recording -->
+<!-- <p align="center">
+  <a href="https://www.youtube.com/watch?v=VIDEO_ID">
+    <img src="https://img.youtube.com/vi/VIDEO_ID/maxresdefault.jpg" alt="repo-graph demo" width="600">
+  </a>
+</p> -->
+
+> **See it in action:** browse [pre-generated examples](examples/) for [FastAPI](examples/fastapi/), [Gin](examples/gin/), [Hono](examples/hono/), and [NestJS](examples/nestjs/) — real graph output you can inspect without installing anything.
+
 ## The problem
 
 LLMs working on code waste most of their context on orientation:

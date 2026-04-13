@@ -1,0 +1,15 @@
+flow: get__users_me_items
+paths:
+  - name: get__users_me_items
+    steps:
+      - {id: route_GET_users_me_items, type: route}
+      - {id: py_mod_fastapi_param_functions, type: py_module, edge: handled_by}
+      - {id: py_func_py_mod_fastapi_param_functions_Path, type: py_function, edge: defines}
+      - {id: py_func_py_mod_fastapi_param_functions_Query, type: py_function, edge: defines}
+      - {id: py_func_py_mod_fastapi_param_functions_Header, type: py_function, edge: defines}
+      - {id: py_func_py_mod_fastapi_param_functions_Cookie, type: py_function, edge: defines}
+      - {id: py_func_py_mod_fastapi_param_functions_Body, type: py_function, edge: defines}
+      - {id: py_func_py_mod_fastapi_param_functions_Form, type: py_function, edge: defines}
+      - {id: py_func_py_mod_fastapi_param_functions_File, type: py_function, edge: defines}
+      - {id: py_func_py_mod_fastapi_param_functions_Depends, type: py_function, edge: defines}
+      - {id: py_func_py_mod_fastapi_param_functions_Security, type: py_function, edge: defines}

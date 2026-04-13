@@ -1,0 +1,8 @@
+flow: get__query-checker
+paths:
+  - name: get__query-checker
+    steps:
+      - {id: route_GET_query-checker, type: route}
+      - {id: py_mod_docs_src_dependencies_tutorial011_an_py310, type: py_module, edge: handled_by}
+      - {id: py_class_py_mod_docs_src_dependencies_tutorial011_an_py310_FixedContentQueryChecker, type: py_class, edge: defines}
+      - {id: py_func_py_mod_docs_src_dependencies_tutorial011_an_py310_read_query_check, type: py_function, edge: defines}

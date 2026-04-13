@@ -1,0 +1,7 @@
+flow: post__send-notification_email
+paths:
+  - name: post__send-notification_email
+    steps:
+      - {id: route_POST_send-notification_{email}, type: route}
+      - {id: py_mod_fastapi_background, type: py_module, edge: handled_by}
+      - {id: py_class_py_mod_fastapi_background_BackgroundTasks, type: py_class, edge: defines}

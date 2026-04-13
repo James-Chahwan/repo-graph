@@ -1,0 +1,7 @@
+flow: get__portal
+paths:
+  - name: get__portal
+    steps:
+      - {id: route_GET_portal, type: route}
+      - {id: py_mod_docs_src_response_model_tutorial003_02_py310, type: py_module, edge: handled_by}
+      - {id: py_func_py_mod_docs_src_response_model_tutorial003_02_py310_get_portal, type: py_function, edge: defines}

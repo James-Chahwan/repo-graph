@@ -1,0 +1,9 @@
+flow: post__files
+paths:
+  - name: post__files
+    steps:
+      - {id: route_POST_files, type: route}
+      - {id: py_mod_fastapi_datastructures, type: py_module, edge: handled_by}
+      - {id: py_class_py_mod_fastapi_datastructures_UploadFile, type: py_class, edge: defines}
+      - {id: py_class_py_mod_fastapi_datastructures_DefaultPlaceholder, type: py_class, edge: defines}
+      - {id: py_func_py_mod_fastapi_datastructures_Default, type: py_function, edge: defines}

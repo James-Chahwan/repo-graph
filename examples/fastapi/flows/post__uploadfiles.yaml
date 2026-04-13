@@ -1,0 +1,9 @@
+flow: post__uploadfiles
+paths:
+  - name: post__uploadfiles
+    steps:
+      - {id: route_POST_uploadfiles, type: route}
+      - {id: py_mod_docs_src_request_files_tutorial002_an_py310, type: py_module, edge: handled_by}
+      - {id: py_func_py_mod_docs_src_request_files_tutorial002_an_py310_create_files, type: py_function, edge: defines}
+      - {id: py_func_py_mod_docs_src_request_files_tutorial002_an_py310_create_upload_files, type: py_function, edge: defines}
+      - {id: py_func_py_mod_docs_src_request_files_tutorial002_an_py310_main, type: py_function, edge: defines}

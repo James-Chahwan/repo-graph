@@ -1,0 +1,12 @@
+flow: post__user
+paths:
+  - name: post__user
+    steps:
+      - {id: route_POST_user, type: route}
+      - {id: py_mod_docs_src_extra_models_tutorial001_py310, type: py_module, edge: handled_by}
+      - {id: py_class_py_mod_docs_src_extra_models_tutorial001_py310_UserIn, type: py_class, edge: defines}
+      - {id: py_class_py_mod_docs_src_extra_models_tutorial001_py310_UserOut, type: py_class, edge: defines}
+      - {id: py_class_py_mod_docs_src_extra_models_tutorial001_py310_UserInDB, type: py_class, edge: defines}
+      - {id: py_func_py_mod_docs_src_extra_models_tutorial001_py310_fake_password_hasher, type: py_function, edge: defines}
+      - {id: py_func_py_mod_docs_src_extra_models_tutorial001_py310_fake_save_user, type: py_function, edge: defines}
+      - {id: py_func_py_mod_docs_src_extra_models_tutorial001_py310_create_user, type: py_function, edge: defines}
