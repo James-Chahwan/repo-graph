@@ -8,9 +8,9 @@ Instead of flooding an LLM's context window with your entire codebase (or hoping
 
 ## Demo
 
-https://github.com/James-Chahwan/repo-graph/releases/download/v0.1.2/repographbefore.mp4
+https://github.com/user-attachments/assets/a1e4171b-b225-40d4-9210-39453e14b76a
 
-https://github.com/James-Chahwan/repo-graph/releases/download/v0.1.2/repographafter.mp4
+https://github.com/user-attachments/assets/fc3191e5-fc35-4bd7-8372-72af55995883
 
 Same bug, same model, same prompt — the only difference is whether repo-graph is installed.
 
