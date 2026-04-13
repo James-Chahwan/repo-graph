@@ -1,5 +1,7 @@
 # repo-graph
 
+[![repo-graph MCP server](https://glama.ai/mcp/servers/James-Chahwan/repo-graph/badges/card.svg)](https://glama.ai/mcp/servers/James-Chahwan/repo-graph)
+
 **Structural graph memory for AI coding assistants.** Map your codebase. Navigate by structure. Read only what matters.
 
 repo-graph gives LLMs a map of your codebase — entities, relationships, and flows — so they can navigate to the right files without reading everything first.

@@ -42,6 +42,7 @@ EOF
 
     # 4. Back up global settings and strip plugins
     [ -f "$HOME/.claude/settings.json" ] && cp "$HOME/.claude/settings.json" "$BACKUP_DIR/global-settings.json"
+    # Preserve statusline, strip everything else
     cat > "$HOME/.claude/settings.json" << 'EOF'
 {
   "permissions": {
@@ -49,6 +50,10 @@ EOF
   },
   "model": "opus",
   "hooks": {},
+  "statusLine": {
+    "type": "command",
+    "command": "bash /home/ivy/.claude/statusline-command.sh"
+  },
   "enabledPlugins": {},
   "effortLevel": "high"
 }

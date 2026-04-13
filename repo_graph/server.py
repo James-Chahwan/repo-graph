@@ -9,6 +9,9 @@ Usage:
 """
 
 import os
+from typing import Annotated
+
+from pydantic import Field
 from pathlib import Path
 
 from mcp.server.fastmcp import FastMCP
@@ -46,8 +49,10 @@ def get_graph() -> RepoGraph:
 
 
 @mcp.tool()
-def generate(repo_path: str = "") -> str:
-    """Scan the codebase and (re)build the structural graph. Auto-detects languages and frameworks. Call on first use, after major refactors, or when graph data feels stale."""
+def generate(
+    repo_path: Annotated[str, Field(description="Absolute path to the repository to scan. Defaults to the repo the server was started with.", default="")] = "",
+) -> str:
+    """Writes to .ai/repo-graph/. Scan the codebase and (re)build the structural graph. Auto-detects languages and frameworks. Creates nodes.json, edges.json, flows/*.yaml, and state.md. Call on first use, after major refactors, or when graph data feels stale. Returns a summary of detected node types, edge counts, and available flows."""
     from .generator import generate as run_generate
 
     target = repo_path or REPO_PATH
@@ -89,7 +94,7 @@ def generate(repo_path: str = "") -> str:
 
 @mcp.tool()
 def status() -> str:
-    """Repo overview: git state, feature coverage, available flows. Cheap orientation."""
+    """Read-only. Repo overview showing detected languages, node/edge counts, available feature flows, and a visual graph summary. Call this first to orient before using other tools. Returns state.md content plus an ASCII overview of the graph structure. No parameters needed."""
     g = get_graph()
     state_path = g.graph_dir / "state.md"
     parts = []
@@ -106,8 +111,10 @@ def status() -> str:
 
 
 @mcp.tool()
-def flow(feature: str) -> str:
-    """End-to-end flow for a feature: entry point through service layer to data, rendered as layered tiers (ENTRY -> SERVICE -> HANDLER -> DATA)."""
+def flow(
+    feature: Annotated[str, Field(description="Feature name or keyword to match against available flows. Case-insensitive, supports partial matching. Example: 'login', 'users', 'checkout'.")],
+) -> str:
+    """Read-only. End-to-end flow for a feature: entry point through service layer to data store, rendered as layered tiers (ENTRY -> SERVICE -> HANDLER -> DATA). Call after `status` to drill into a specific feature. Returns an ASCII tier diagram with file paths and line counts. Lists available flows if no match found."""
     g = get_graph()
     feature_lower = feature.lower().strip()
 
@@ -135,8 +142,11 @@ def flow(feature: str) -> str:
 
 
 @mcp.tool()
-def trace(from_node: str, to_node: str) -> str:
-    """Shortest path between two nodes. Accepts exact IDs or fuzzy name matches. Shows tier transitions along the path."""
+def trace(
+    from_node: Annotated[str, Field(description="Starting node ID or name. Accepts exact IDs (e.g. 'pkg_auth') or fuzzy name matches (e.g. 'auth').")],
+    to_node: Annotated[str, Field(description="Target node ID or name. Accepts exact IDs or fuzzy name matches.")],
+) -> str:
+    """Read-only. Shortest path between two nodes in the graph, showing each hop with tier transitions (ENTRY -> SERVICE -> HANDLER -> DATA). Call when you need to understand how two components are connected. Returns the path as an ASCII diagram with file paths and line counts per node."""
     g = get_graph()
 
     from_resolved = g.find_node(from_node)
@@ -176,8 +186,12 @@ def trace(from_node: str, to_node: str) -> str:
 
 
 @mcp.tool()
-def impact(node: str, direction: str = "downstream", depth: int = 3) -> str:
-    """Blast radius: fan out from a node to see what it affects (downstream) or depends on (upstream). Groups results by architectural tier."""
+def impact(
+    node: Annotated[str, Field(description="Node ID or name to analyze. Accepts exact IDs (e.g. 'func_handleLogin') or fuzzy name matches (e.g. 'handleLogin').")],
+    direction: Annotated[str, Field(description="'downstream' to see what this node affects, 'upstream' to see what it depends on.", default="downstream")] = "downstream",
+    depth: Annotated[int, Field(description="How many hops to traverse. Higher values find more distant dependencies. Default 3.", default=3, ge=1, le=10)] = 3,
+) -> str:
+    """Read-only. Blast radius analysis: fan out from a node to see everything it affects (downstream) or depends on (upstream), grouped by architectural tier. Call before modifying a component to understand the change's reach. Returns affected node count, file count, and a tier-grouped list of impacted components."""
     g = get_graph()
     resolved = g.find_node(node)
     if not resolved:
@@ -230,8 +244,10 @@ def impact(node: str, direction: str = "downstream", depth: int = 3) -> str:
 
 
 @mcp.tool()
-def neighbours(node: str) -> str:
-    """All direct connections to and from a node — one hop in each direction, with edge types."""
+def neighbours(
+    node: Annotated[str, Field(description="Node ID or name to inspect. Accepts exact IDs or fuzzy name matches.")],
+) -> str:
+    """Read-only. All direct connections to and from a node, one hop in each direction, showing edge types (imports, calls, defines, etc.). Call to understand a single component's immediate dependencies and dependents. Returns outbound and inbound connections as an ASCII tree."""
     g = get_graph()
     resolved = g.find_node(node)
     if not resolved:
@@ -276,8 +292,10 @@ def neighbours(node: str) -> str:
 
 
 @mcp.tool()
-def cost(feature: str) -> str:
-    """Total context cost (lines) for a feature's flow. Shows per-file line counts. Use before starting work to know if the feature fits in context."""
+def cost(
+    feature: Annotated[str, Field(description="Feature name or keyword matching a flow. Case-insensitive, supports partial matching. Example: 'auth', 'payments'.")],
+) -> str:
+    """Read-only. Total context cost in lines for a feature's flow, with per-file breakdown. Call before starting work to know if the feature fits in context. Returns total line count, file count, and a bar chart of per-file sizes sorted largest first."""
     g = get_graph()
     nodes = g.nodes_for_feature(feature)
 
@@ -299,8 +317,10 @@ def cost(feature: str) -> str:
 
 
 @mcp.tool()
-def hotspots(threshold: int = 300) -> str:
-    """Files ranked by size x connection count — the biggest maintenance risks. High-coupling large files are the worst context hogs."""
+def hotspots(
+    threshold: Annotated[int, Field(description="Minimum file size in lines to include. Files below this are ignored. Default 300.", default=300, ge=50)] = 300,
+) -> str:
+    """Read-only. Files ranked by size multiplied by connection count, identifying the biggest maintenance risks. High-coupling large files waste the most context. Call to find which files need splitting or refactoring first. Returns files sorted by risk score with severity labels (CRITICAL/WARNING)."""
     g = get_graph()
 
     by_file: dict[str, dict] = {}
@@ -350,8 +370,11 @@ def hotspots(threshold: int = 300) -> str:
 
 
 @mcp.tool()
-def minimal_read(feature: str, sub_task: str = "") -> str:
-    """Smallest file set needed for a task. Filters by sub_task keywords if given, otherwise returns the full feature file set ranked by relevance."""
+def minimal_read(
+    feature: Annotated[str, Field(description="Feature name or keyword matching a flow. Case-insensitive, supports partial matching. Example: 'auth', 'checkout'.")],
+    sub_task: Annotated[str, Field(description="Optional keywords to filter the file set further. Space-separated. Example: 'validation middleware'. Omit to get all files for the feature.", default="")] = "",
+) -> str:
+    """Read-only. Smallest set of files needed for a task, ranked by relevance. Filters by sub_task keywords if given, otherwise returns the full feature file set. Call before reading code to know exactly which files to open. Returns file paths with line counts, sorted largest first."""
     g = get_graph()
     nodes = g.nodes_for_feature(feature)
 
@@ -388,8 +411,10 @@ def minimal_read(feature: str, sub_task: str = "") -> str:
 
 
 @mcp.tool()
-def bloat_report(file_path: str) -> str:
-    """Internal structure of a file: functions/methods ranked by size, class counts, injected services. Use to understand what's inside before splitting."""
+def bloat_report(
+    file_path: Annotated[str, Field(description="Relative path to the file to analyze, from the repo root. Example: 'src/server.py', 'internal/handler.go'.")],
+) -> str:
+    """Read-only. Internal structure of a single file: functions/methods ranked by size, class counts, and injected services. Call on files flagged by `hotspots` to understand what's inside before splitting. Returns a structured breakdown of the file's contents with line counts per function."""
     g = get_graph()
     full_path = g.repo_path / file_path
 
@@ -412,8 +437,10 @@ def bloat_report(file_path: str) -> str:
 
 
 @mcp.tool()
-def split_plan(file_path: str) -> str:
-    """Concrete split suggestions for an oversized file, grouped by responsibility and cohesion. Works with any supported language."""
+def split_plan(
+    file_path: Annotated[str, Field(description="Relative path to the file to analyze, from the repo root. Example: 'src/server.py', 'internal/handler.go'.")],
+) -> str:
+    """Read-only. Concrete split suggestions for an oversized file, grouped by responsibility and cohesion. Works with any supported language. Call after `bloat_report` to get actionable refactoring guidance. Returns suggested new files with the functions/classes that belong in each."""
     g = get_graph()
     full_path = g.repo_path / file_path
 
@@ -440,8 +467,12 @@ def split_plan(file_path: str) -> str:
 
 
 @mcp.tool()
-def graph_view(feature: str = "", node: str = "", depth: int = 2) -> str:
-    """Visual ASCII graph map. With feature: layered flow diagram. With node: tree of children, connections, and flows. Without args: full graph overview with node/edge type counts."""
+def graph_view(
+    feature: Annotated[str, Field(description="Feature name to render as a layered flow diagram. Mutually exclusive with 'node'. Example: 'auth', 'checkout'.", default="")] = "",
+    node: Annotated[str, Field(description="Node ID or name to render as a tree with children, connections, and flows. Mutually exclusive with 'feature'. Example: 'pkg_auth'.", default="")] = "",
+    depth: Annotated[int, Field(description="Tree depth for node view. Higher values show more nested children. Default 2.", default=2, ge=1, le=5)] = 2,
+) -> str:
+    """Read-only. Visual ASCII graph map with three modes. With feature: layered flow diagram (ENTRY -> SERVICE -> HANDLER -> DATA). With node: tree of children, connections, and flows. Without args: full graph overview with node/edge type counts. Call to visualize structure before diving into code."""
     g = get_graph()
 
     if feature:
@@ -490,17 +521,17 @@ def _render_feature_tree(g: RepoGraph, feature: str, depth: int) -> str:
     # Check if there's a flow for this feature (try exact, then substring)
     flow_content = None
     feature_key = feature_lower
-    # Exact match first
+    # Exact match first, then shortest substring match
     if feature_lower in g.flows:
         flow_content = g.flows[feature_lower]
         feature_key = feature_lower
     else:
-        # Substring match
+        candidates = []
         for key, content in g.flows.items():
             if feature_lower in key or key in feature_lower:
-                flow_content = content
-                feature_key = key
-                break
+                candidates.append((key, content))
+        if candidates:
+            feature_key, flow_content = min(candidates, key=lambda x: len(x[0]))
 
     if flow_content:
         return _render_flow_layered(feature_key, flow_content, g)
@@ -803,7 +834,7 @@ def _type_icon(node_type: str) -> str:
 
 @mcp.tool()
 def reload() -> str:
-    """Reload graph data from disk after a regeneration."""
+    """Read-only. Reload graph data from disk into memory. Call after running `generate` or after external changes to .ai/repo-graph/ files. No parameters needed. Returns updated node, edge, and flow counts."""
     global _graph
     _graph = None
     g = get_graph()
