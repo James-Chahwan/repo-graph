@@ -21,10 +21,12 @@ REPO_PATH = os.environ.get("REPO_GRAPH_REPO", os.getcwd())
 mcp = FastMCP(
     "repo-graph",
     instructions=(
-        "Codebase structural navigation, context budgeting, and health analysis. "
-        "Use for: finding feature flows, impact analysis, context cost estimation, "
-        "file hotspots, and split planning. Works with any language/framework. "
-        "Complements semantic search tools."
+        "Structural map of this codebase — entities, relationships, and feature flows. "
+        "BEFORE grepping or reading files, call `status` to orient, then `flow` or `impact` "
+        "to find exactly which files matter. This avoids wasting context on exploration. "
+        "Use for: finding feature flows, tracing paths between components, impact analysis, "
+        "context cost estimation, file hotspots, and split planning. "
+        "Works with any language/framework."
     ),
 )
 
@@ -109,17 +111,21 @@ def flow(feature: str) -> str:
     g = get_graph()
     feature_lower = feature.lower().strip()
 
-    # Find the matching flow
+    # Find the matching flow — prefer exact match, then shortest containing key
     flow_yaml = None
     flow_key = feature_lower
     if feature_lower in g.flows:
         flow_yaml = g.flows[feature_lower]
     else:
+        candidates = []
         for key, content in g.flows.items():
             if feature_lower in key or key in feature_lower:
-                flow_yaml = content
-                flow_key = key
-                break
+                candidates.append((key, content))
+        if candidates:
+            # Prefer the shortest key (most specific match)
+            best_key, best_content = min(candidates, key=lambda x: len(x[0]))
+            flow_yaml = best_content
+            flow_key = best_key
 
     if flow_yaml is None:
         available = ", ".join(sorted(g.flows.keys()))
@@ -217,6 +223,9 @@ def impact(node: str, direction: str = "downstream", depth: int = 3) -> str:
 
     lines.append("")
     lines.append(f"  -- {len(results)} nodes affected across {len(total_files)} files")
+    if total_files:
+        lines.append("")
+        lines.append("  These files cover the blast radius — read them before searching further.")
     return "\n".join(lines)
 
 
@@ -564,6 +573,9 @@ def _render_flow_layered(name: str, flow_yaml: str, g: RepoGraph) -> str:
 
     lines.append("")
     lines.append(f"  -- {len(steps)} nodes, {len(unique_files)} files, ~{total_lines} lines")
+    if unique_files:
+        lines.append("")
+        lines.append("  Start with these files — they cover this feature's flow.")
     return "\n".join(lines)
 
 

@@ -8,14 +8,39 @@ Instead of flooding an LLM's context window with your entire codebase (or hoping
 
 ## Demo
 
-<!-- TODO: Replace with actual video URL after recording -->
+<!-- TODO: Replace with actual video URLs after upload -->
 <!-- <p align="center">
   <a href="https://www.youtube.com/watch?v=VIDEO_ID">
     <img src="https://img.youtube.com/vi/VIDEO_ID/maxresdefault.jpg" alt="repo-graph demo" width="600">
   </a>
 </p> -->
 
-> **See it in action:** browse [pre-generated examples](examples/) for [FastAPI](examples/fastapi/), [Gin](examples/gin/), [Hono](examples/hono/), and [NestJS](examples/nestjs/) — real graph output you can inspect without installing anything.
+Same bug, same model, same prompt — the only difference is whether repo-graph is installed.
+
+**The task:** fix a reversed comparison operator in a Go + Angular monorepo (566 nodes, 620 edges).
+
+| | Without repo-graph | With repo-graph |
+|---|---|---|
+| **Tokens used** | 85,986 | 29,838 |
+| **Time to fix** | 4m 36s | ~30s |
+| **Files explored** | ~15 (grep, read, grep, read...) | 2 (flow lookup + handler file) |
+| **Outcome** | Found and fixed the bug | Found and fixed the bug |
+
+**2.9x fewer tokens. ~9x faster. Same correct fix.**
+
+### How the test was run
+
+Both runs used identical conditions to keep the comparison fair:
+
+- **Same model**: Claude Opus, 100% (no Haiku routing)
+- **Same prompt**: *"Groups that were created recently are showing as closed, and old groups show as open. This is backwards — new groups should be open for members to join. Find and fix the bug."*
+- **Fresh context**: each run started from `/clear` with no prior conversation
+- **No other tools**: CLAUDE.md, plugins, hooks, and all other MCP servers were removed for both runs — the only variable was whether repo-graph was installed
+- **No hints**: the prompt describes the symptom, not the location — Claude has to find `group_controller.go:57` on its own
+
+Without repo-graph, Claude greps for keywords, reads files, greps again, reads more files, and eventually narrows down to the bug. With repo-graph, Claude calls `flow("groups")`, gets back the exact handler function and file, reads it, and fixes it.
+
+> Browse [pre-generated examples](examples/) for [FastAPI](examples/fastapi/), [Gin](examples/gin/), [Hono](examples/hono/), and [NestJS](examples/nestjs/) — real graph output you can inspect without installing anything.
 
 ## The problem
 

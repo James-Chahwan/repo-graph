@@ -127,6 +127,85 @@ def write_state_md(
 
 
 # ---------------------------------------------------------------------------
+# Cross-stack endpoint linking
+# ---------------------------------------------------------------------------
+
+
+def _normalize_path(path: str) -> str:
+    """Normalize a URL path for matching: strip prefix, params, lowercase."""
+    # Remove common prefixes
+    for prefix in ("protected/", "api/protected/", "api/"):
+        if path.startswith(prefix):
+            path = path[len(prefix):]
+            break
+    # Collapse path params: :id, {id} → *
+    import re
+    path = re.sub(r":[^/]+|\{[^}]+\}", "*", path)
+    return path.strip("/").lower()
+
+
+def _link_endpoints_to_routes(
+    nodes: list[dict], edges: list[dict]
+) -> list[dict]:
+    """
+    Match dangling endpoint_* edge targets to existing route_* nodes.
+
+    Frontend analyzers create 'calls' edges to endpoint_ANY_<path> IDs.
+    Backend analyzers create route nodes with route_METHOD_<path> IDs.
+    This function rewires the dangling edges to the actual route nodes.
+    """
+    node_ids = {n["id"] for n in nodes}
+
+    # Build route lookup: normalized_path → [route_node_id, ...]
+    route_lookup: dict[str, list[str]] = {}
+    for n in nodes:
+        if n["type"] != "route":
+            continue
+        # Route name is like "GET /groups" or "POST /group"
+        name = n.get("name", "")
+        parts = name.split(" ", 1)
+        if len(parts) == 2:
+            path = _normalize_path(parts[1])
+        else:
+            path = _normalize_path(name)
+        route_lookup.setdefault(path, []).append(n["id"])
+
+    # Find dangling edges and try to match
+    linked = 0
+    new_edges = []
+    for edge in edges:
+        if edge["to"] in node_ids:
+            new_edges.append(edge)
+            continue
+
+        # Dangling edge — try to resolve endpoint_ANY_<path>
+        target = edge["to"]
+        if not target.startswith("endpoint_"):
+            new_edges.append(edge)
+            continue
+
+        # Extract path from endpoint ID: endpoint_ANY_protected_groups → protected/groups
+        path_part = target.split("_", 2)[-1] if target.count("_") >= 2 else ""
+        path_normalized = _normalize_path(path_part.replace("_", "/"))
+
+        matches = route_lookup.get(path_normalized, [])
+        if matches:
+            for route_id in matches:
+                new_edges.append(
+                    {"from": edge["from"], "to": route_id, "type": edge["type"]}
+                )
+                linked += 1
+        else:
+            # Keep the original dangling edge
+            new_edges.append(edge)
+
+    if linked:
+        print(f"  Linked {linked} cross-stack endpoint→route edges")
+
+    return new_edges
+
+
+# ---------------------------------------------------------------------------
 # Auto-flow generation
 # ---------------------------------------------------------------------------
 
@@ -253,9 +332,11 @@ def generate(repo_root: Path) -> tuple[list[dict], list[dict], dict[str, str]]:
             seen_edges.add(key)
             deduped_edges.append(edge)
 
-    # Auto-generate flows from route nodes if analyzers didn't provide any
-    if not all_flows:
-        all_flows = _auto_flows(deduped_nodes, deduped_edges)
+    # Link cross-stack endpoints to backend routes
+    deduped_edges = _link_endpoints_to_routes(deduped_nodes, deduped_edges)
+
+    # Rebuild flows with cross-stack edges included
+    all_flows = _auto_flows(deduped_nodes, deduped_edges)
 
     write_graph_outputs(graph_dir, deduped_nodes, deduped_edges, all_flows)
     write_state_md(graph_dir, repo_root, all_state_sections, all_flows)

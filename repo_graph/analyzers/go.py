@@ -23,11 +23,14 @@ from .base import (
 
 
 # HTTP route patterns for common Go frameworks
+# Group 1: method (or path for HandleFunc), Group 2: path, Group 3: handler name (optional)
 _ROUTE_PATTERNS = [
-    # gin/echo/chi: r.GET("/path", handler)
-    re.compile(r'\.(GET|POST|PUT|DELETE|PATCH|OPTIONS)\(\s*"([^"]+)"'),
+    # gin/echo/chi: r.GET("/path", handler) or r.GET("/path", pkg.Handler)
+    re.compile(r'\.(GET|POST|PUT|DELETE|PATCH|OPTIONS)\(\s*"([^"]+)"\s*,\s*(\w+(?:\.\w+)?)'),
+    # gin/echo/chi without named handler (inline func): r.GET("/path", func(...
+    re.compile(r'\.(GET|POST|PUT|DELETE|PATCH|OPTIONS)\(\s*"([^"]+)"\s*,\s*func\b'),
     # stdlib/gorilla/mux: http.HandleFunc("/path", handler)
-    re.compile(r'HandleFunc\(\s*"([^"]+)"'),
+    re.compile(r'HandleFunc\(\s*"([^"]+)"\s*,\s*(\w+(?:\.\w+)?)'),
 ]
 
 # Function definition
@@ -90,6 +93,9 @@ class GoAnalyzer(LanguageAnalyzer):
         edges: list[Edge],
         seen_ids: set[str],
     ) -> None:
+        # Two-pass: first collect all functions, then resolve route→handler links
+        pending_routes: list[tuple[str, str, str | None, str]] = []  # (route_id, pkg_id, handler_name, pkg_rel)
+
         for go_file in sorted(mod_root.rglob("*.go")):
             if go_file.name.endswith("_test.go"):
                 continue
@@ -127,14 +133,22 @@ class GoAnalyzer(LanguageAnalyzer):
                     ))
                     edges.append(Edge(from_id=pkg_id, to_id=func_id, type="defines"))
 
-            # Extract HTTP routes
+            # Extract HTTP routes (defer handler linking to second pass)
             for pattern in _ROUTE_PATTERNS:
                 for match in pattern.finditer(content):
                     groups = match.groups()
-                    if len(groups) == 2:
-                        method, path = groups
+                    handler_name = None
+                    if len(groups) == 3:
+                        method, path, handler_name = groups
+                    elif len(groups) == 2:
+                        if 'HandleFunc' in pattern.pattern:
+                            path, handler_name = groups
+                            method = "ANY"
+                        else:
+                            method, path = groups
                     else:
                         method, path = "ANY", groups[0]
+
                     route_id = f"route_{method}_{path_to_slug(path)}"
                     if route_id not in seen_ids:
                         seen_ids.add(route_id)
@@ -144,19 +158,36 @@ class GoAnalyzer(LanguageAnalyzer):
                             name=f"{method} {path}",
                             file_path=file_rel,
                         ))
-                        edges.append(Edge(from_id=route_id, to_id=pkg_id, type="handled_by"))
+                        pending_routes.append((route_id, pkg_id, handler_name, pkg_rel))
 
             # Extract imports for edge building
             for imp_block in _IMPORT_PATTERN.finditer(content):
                 for imp_line in _IMPORT_LINE.finditer(imp_block.group(1)):
                     imp_path = imp_line.group(1)
-                    # Only track internal imports (same module)
                     mod_name = self._read_module_name(mod_root)
                     if mod_name and imp_path.startswith(mod_name):
                         rel_imp = imp_path[len(mod_name):].lstrip("/")
                         target_id = f"go_pkg_{mod_root.name}_{rel_imp.replace('/', '_').replace('-', '_')}"
                         if target_id in seen_ids:
                             edges.append(Edge(from_id=pkg_id, to_id=target_id, type="imports"))
+
+        # Second pass: resolve route → specific handler function
+        for route_id, pkg_id, handler_name, pkg_rel in pending_routes:
+            handler_target = pkg_id  # fallback to package
+            if handler_name:
+                bare_name = handler_name.split(".")[-1]
+                # Try same package first
+                func_id = f"go_func_{pkg_rel.replace('/', '_')}_{camel_to_snake(bare_name)}"
+                if func_id in seen_ids:
+                    handler_target = func_id
+                else:
+                    # Search all known function IDs (cross-package handler)
+                    suffix = f"_{camel_to_snake(bare_name)}"
+                    for sid in seen_ids:
+                        if sid.startswith("go_func_") and sid.endswith(suffix):
+                            handler_target = sid
+                            break
+            edges.append(Edge(from_id=route_id, to_id=handler_target, type="handled_by"))
 
     def _state_section(self, mod_roots: list[Path]) -> dict[str, str]:
         if not mod_roots:

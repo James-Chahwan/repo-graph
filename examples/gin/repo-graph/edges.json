@@ -1015,11 +1015,6 @@
     "type": "defines"
   },
   {
-    "from": "route_GET_user__id",
-    "to": "go_pkg_.",
-    "type": "handled_by"
-  },
-  {
     "from": "go_pkg_.",
     "to": "go_func_._init",
     "type": "defines"
@@ -1073,11 +1068,6 @@
     "from": "go_pkg_.",
     "to": "go_func_._bind_with",
     "type": "defines"
-  },
-  {
-    "from": "route_GET_ping",
-    "to": "go_pkg_.",
-    "type": "handled_by"
   },
   {
     "from": "go_pkg_.",
@@ -2083,5 +2073,15 @@
     "from": "go_pkg_.",
     "to": "go_func_._safe_uint16",
     "type": "defines"
+  },
+  {
+    "from": "route_GET_user__id",
+    "to": "go_pkg_.",
+    "type": "handled_by"
+  },
+  {
+    "from": "route_GET_ping",
+    "to": "go_pkg_.",
+    "type": "handled_by"
   }
 ]
