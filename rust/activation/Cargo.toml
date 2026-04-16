@@ -1,0 +1,8 @@
+[package]
+name = "repo-graph-activation"
+version = "0.4.6"
+edition = "2024"
+publish = false
+
+[dependencies]
+repo-graph-core = { path = "../core" }

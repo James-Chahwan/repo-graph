@@ -10,4 +10,5 @@ members = [
     "graph",
     "store",
     "projection-text",
+    "activation",
 ]

@@ -18,3 +18,5 @@ twox-hash = { version = "2", default-features = false, features = ["xxhash64"] }
 [dev-dependencies]
 tempfile = "3"
 repo-graph-parser-go = { path = "../parsers/code/go" }
+repo-graph-parser-typescript = { path = "../parsers/code/typescript" }
+repo-graph-projection-text = { path = "../projection-text" }

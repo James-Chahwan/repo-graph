@@ -10,4 +10,5 @@ repo-graph-parser-python = { path = "../parsers/code/python" }
 repo-graph-parser-go = { path = "../parsers/code/go" }
 repo-graph-parser-typescript = { path = "../parsers/code/typescript" }
 repo-graph-code-domain = { path = "../code-domain" }
+repo-graph-activation = { path = "../activation" }
 thiserror = "2"

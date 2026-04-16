@@ -667,10 +667,8 @@ impl CrossGraphResolver for HttpStackResolver {
                 if raw_path == "<unresolved>" {
                     continue;
                 }
-                let key = (method, normalise_http_path(raw_path));
-                let Some(targets) = index.get(&key) else {
-                    continue;
-                };
+                let norm = normalise_http_path(raw_path);
+                let targets = lookup_route_with_prefix_strip(&index, &method, &norm);
                 for target in targets {
                     merged.cross_edges.push(Edge {
                         from: n.id,
@@ -788,6 +786,36 @@ fn normalise_segment(seg: &str) -> String {
     }
 }
 
+// Hardcoded for now — move to config.yaml if a real codebase needs a custom prefix.
+const API_PREFIXES: &[&str] = &["protected", "api", "public", "internal", "v1", "v2", "v3"];
+
+fn lookup_route_with_prefix_strip<'a>(
+    index: &'a HashMap<(String, String), Vec<RouteTarget>>,
+    method: &str,
+    norm_path: &str,
+) -> &'a [RouteTarget] {
+    let key = (method.to_string(), norm_path.to_string());
+    if let Some(targets) = index.get(&key) {
+        return targets;
+    }
+    let segments: Vec<&str> = norm_path
+        .trim_start_matches('/')
+        .split('/')
+        .filter(|s| !s.is_empty())
+        .collect();
+    for strip in 1..=2.min(segments.len().saturating_sub(1)) {
+        if !API_PREFIXES.contains(&segments[strip - 1]) {
+            break;
+        }
+        let stripped = format!("/{}", segments[strip..].join("/"));
+        let key = (method.to_string(), stripped);
+        if let Some(targets) = index.get(&key) {
+            return targets;
+        }
+    }
+    &[]
+}
+
 fn weakest(a: Confidence, b: Confidence) -> Confidence {
     fn rank(c: Confidence) -> u8 {
         match c {
@@ -860,6 +888,66 @@ impl RepoGraph {
             .values()
             .filter(|k| **k == kind)
             .count()
+    }
+
+    /// Spreading activation (PPR) over this repo's graph.
+    pub fn activate(
+        &self,
+        seeds: &[NodeId],
+        config: &repo_graph_activation::ActivationConfig,
+    ) -> repo_graph_activation::ActivationResult {
+        let node_ids: Vec<NodeId> = self.nodes.iter().map(|n| n.id).collect();
+        repo_graph_activation::activate(&node_ids, &self.edges, seeds, config)
+    }
+}
+
+impl MergedGraph {
+    /// Spreading activation over the full merged graph (all repos + cross edges).
+    pub fn activate(
+        &self,
+        seeds: &[NodeId],
+        config: &repo_graph_activation::ActivationConfig,
+    ) -> repo_graph_activation::ActivationResult {
+        let node_ids: Vec<NodeId> = self
+            .graphs
+            .iter()
+            .flat_map(|g| g.nodes.iter().map(|n| n.id))
+            .collect();
+        let edges: Vec<Edge> = self.all_edges().cloned().collect();
+        repo_graph_activation::activate(&node_ids, &edges, seeds, config)
+    }
+}
+
+// ============================================================================
+// Code-domain activation defaults
+// ============================================================================
+
+/// Default `ActivationConfig` for code graphs. Weights: `calls` and
+/// `http_calls` highest, `imports` medium, structural edges (`contains`,
+/// `defines`) lowest. Direction forward (impact analysis default).
+pub fn code_activation_defaults() -> repo_graph_activation::ActivationConfig {
+    use repo_graph_activation::{ActivationConfig, Direction, Specificity};
+
+    let mut weights = HashMap::new();
+    weights.insert(edge_category::CALLS, 5.0);
+    weights.insert(edge_category::HTTP_CALLS, 5.0);
+    weights.insert(edge_category::HANDLED_BY, 4.0);
+    weights.insert(edge_category::IMPORTS, 3.0);
+    weights.insert(edge_category::USES, 3.0);
+    weights.insert(edge_category::TESTS, 2.0);
+    weights.insert(edge_category::INJECTS, 2.0);
+    weights.insert(edge_category::DEFINES, 1.0);
+    weights.insert(edge_category::CONTAINS, 1.0);
+    weights.insert(edge_category::DOCUMENTS, 0.5);
+
+    ActivationConfig {
+        damping: 0.5,
+        direction: Direction::Forward,
+        edge_weights: weights,
+        node_specificity: Specificity::None,
+        top_k: 50,
+        max_iterations: 100,
+        epsilon: 1e-6,
     }
 }
 

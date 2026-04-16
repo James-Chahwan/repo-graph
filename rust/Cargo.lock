@@ -349,6 +349,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "repo-graph-activation"
+version = "0.4.6"
+dependencies = [
+ "repo-graph-core",
+]
+
+[[package]]
 name = "repo-graph-code-domain"
 version = "0.4.3"
 dependencies = [
@@ -373,6 +380,7 @@ dependencies = [
 name = "repo-graph-graph"
 version = "0.4.3"
 dependencies = [
+ "repo-graph-activation",
  "repo-graph-code-domain",
  "repo-graph-core",
  "repo-graph-parser-go",
@@ -439,6 +447,8 @@ dependencies = [
  "repo-graph-core",
  "repo-graph-graph",
  "repo-graph-parser-go",
+ "repo-graph-parser-typescript",
+ "repo-graph-projection-text",
  "rkyv",
  "serde",
  "serde_json",
