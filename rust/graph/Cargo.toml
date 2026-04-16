@@ -6,5 +6,8 @@ publish = false
 
 [dependencies]
 repo-graph-core = { path = "../core" }
-repo-graph-parser-python = { path = "../parser-python" }
+repo-graph-parser-python = { path = "../parsers/code/python" }
+repo-graph-parser-go = { path = "../parsers/code/go" }
+repo-graph-parser-typescript = { path = "../parsers/code/typescript" }
+repo-graph-code-domain = { path = "../code-domain" }
 thiserror = "2"

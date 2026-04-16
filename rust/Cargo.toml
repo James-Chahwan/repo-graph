@@ -1,3 +1,11 @@
 [workspace]
 resolver = "3"
-members = ["scratch", "core", "parser-python", "graph"]
+members = [
+    "scratch",
+    "core",
+    "code-domain",
+    "parsers/code/python",
+    "parsers/code/go",
+    "parsers/code/typescript",
+    "graph",
+]

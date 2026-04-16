@@ -1,0 +1,195 @@
+//! repo-graph-code-domain — shared code-domain types for every language parser.
+//!
+//! Extracted from `repo-graph-parser-python` at v0.4.3b so Go + TypeScript
+//! parsers can share the constants + structural types without a weird
+//! inter-parser dependency. All code-language parsers produce a `FileParse`,
+//! and `repo-graph-graph` consumes the uniform shape.
+//!
+//! Registry-locked u32 values live here as the single source of truth.
+//! See `memory/reference_code_domain_registries.md` for the semantic notes.
+
+use std::collections::HashMap;
+
+use repo_graph_core::{CellTypeId, Edge, EdgeCategoryId, Node, NodeId, NodeKindId};
+
+/// Graph-type tag for any code-language graph. First arg to `NodeId::from_parts`.
+pub const GRAPH_TYPE: &str = "code";
+
+// ============================================================================
+// Node kinds
+// ============================================================================
+
+pub mod node_kind {
+    use super::NodeKindId;
+
+    // v0.4.1 — universal entity kinds
+    pub const MODULE: NodeKindId = NodeKindId(1);
+    pub const CLASS: NodeKindId = NodeKindId(2);
+    pub const FUNCTION: NodeKindId = NodeKindId(3);
+    pub const METHOD: NodeKindId = NodeKindId(4);
+
+    // v0.4.3b — framework / type-system additions
+    pub const ROUTE: NodeKindId = NodeKindId(5);
+    pub const PACKAGE: NodeKindId = NodeKindId(6);
+    pub const INTERFACE: NodeKindId = NodeKindId(7);
+    pub const STRUCT: NodeKindId = NodeKindId(8);
+    pub const ENDPOINT: NodeKindId = NodeKindId(9);
+}
+
+// ============================================================================
+// Edge categories
+// ============================================================================
+
+pub mod edge_category {
+    use super::EdgeCategoryId;
+
+    // v0.4.1
+    pub const DEFINES: EdgeCategoryId = EdgeCategoryId(1);
+    pub const CONTAINS: EdgeCategoryId = EdgeCategoryId(2);
+    pub const IMPORTS: EdgeCategoryId = EdgeCategoryId(3);
+    pub const CALLS: EdgeCategoryId = EdgeCategoryId(4);
+    pub const USES: EdgeCategoryId = EdgeCategoryId(5);
+    pub const DOCUMENTS: EdgeCategoryId = EdgeCategoryId(6);
+    pub const TESTS: EdgeCategoryId = EdgeCategoryId(7);
+
+    // v0.4.3b
+    pub const INJECTS: EdgeCategoryId = EdgeCategoryId(8);
+}
+
+// ============================================================================
+// Cell types
+// ============================================================================
+
+pub mod cell_type {
+    use super::CellTypeId;
+    pub const CODE: CellTypeId = CellTypeId(1);
+    pub const DOC: CellTypeId = CellTypeId(2);
+    pub const POSITION: CellTypeId = CellTypeId(3);
+    pub const INTENT: CellTypeId = CellTypeId(4);
+}
+
+// ============================================================================
+// Errors
+// ============================================================================
+
+#[derive(Debug, thiserror::Error)]
+pub enum ParseError {
+    #[error("tree-sitter parse produced no tree")]
+    NoTree,
+    #[error("tree-sitter language init failed: {0}")]
+    LanguageInit(String),
+}
+
+// ============================================================================
+// Import records (language-agnostic shape)
+// ============================================================================
+
+/// An import statement as parsed from a source file. The resolver uses this
+/// to wire cross-file bindings regardless of the source language.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct ImportStmt {
+    /// qname of the module doing the importing (`myapp::auth`, `svc::users`).
+    pub from_module: String,
+    pub target: ImportTarget,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub enum ImportTarget {
+    /// Whole-module import — Python `import foo.bar`, Go `import "github.com/x/y"`,
+    /// TS `import * as f from "./foo"` or `import "./foo"`.
+    /// Alias is the bound name in the importing module (None = default name).
+    Module { path: String, alias: Option<String> },
+    /// Named symbol import — Python `from foo.bar import baz`, TS `import { baz } from "./foo"`.
+    /// Go doesn't have this form; Go imports are always Module.
+    /// `level` is Python-specific (relative-import dot count); non-Python parsers pass 0.
+    Symbol {
+        module: String,
+        name: String,
+        alias: Option<String>,
+        level: u32,
+    },
+}
+
+// ============================================================================
+// Call records
+// ============================================================================
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct CallSite {
+    pub from: NodeId,
+    pub qualifier: CallQualifier,
+}
+
+/// Classification of a call site by its syntactic shape. Resolution (which
+/// node id the call actually targets) happens in `repo-graph-graph` using the
+/// import table + symbol table, not in the parser.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub enum CallQualifier {
+    /// `foo()` — bare name. Resolves to a local def, an imported symbol, or
+    /// stays unresolved.
+    Bare(String),
+    /// Call on the enclosing method's receiver — Python `self.m()`, TS
+    /// `this.m()`, Go `u.m()` where `u` is the method receiver. Resolves
+    /// against the enclosing class's method set.
+    SelfMethod(String),
+    /// `base.name()` where `base` is a plain identifier. Could be an imported
+    /// module, an imported symbol, a struct instance, or a local variable.
+    /// Disambiguation lives in the cross-file resolver.
+    Attribute { base: String, name: String },
+    /// `<complex>.name()` — receiver is a chained expression, not a plain
+    /// identifier. Kept verbatim for diagnostics; not resolved at v0.4.3b.
+    ComplexReceiver { receiver: String, name: String },
+}
+
+// ============================================================================
+// FileParse + CodeNav
+// ============================================================================
+
+/// The per-file output every code-language parser produces. `repo-graph-graph`
+/// consumes a `Vec<FileParse>` to build a `RepoGraph`.
+#[derive(Debug, Default)]
+pub struct FileParse {
+    pub nodes: Vec<Node>,
+    pub edges: Vec<Edge>,
+    pub imports: Vec<ImportStmt>,
+    pub calls: Vec<CallSite>,
+    pub nav: CodeNav,
+}
+
+/// Code-domain navigation indices — what the strict `Node` shape pushed out of
+/// per-node fields. Merged across files by v0.4.3 into one per-repo index.
+#[derive(Debug, Default, Clone)]
+pub struct CodeNav {
+    /// Simple name (`"login"`), not the full qualified name.
+    pub name_by_id: HashMap<NodeId, String>,
+    /// Full qualified name (`"myapp::users::User::login"`). Used by the resolver
+    /// to map import targets onto node ids.
+    pub qname_by_id: HashMap<NodeId, String>,
+    pub kind_by_id: HashMap<NodeId, NodeKindId>,
+    /// Direct parent: method → class, class → module, function → module (or
+    /// enclosing function for nested defs).
+    pub parent_of: HashMap<NodeId, NodeId>,
+    /// Inverse of `parent_of`.
+    pub children_of: HashMap<NodeId, Vec<NodeId>>,
+}
+
+impl CodeNav {
+    /// Record a node's navigation metadata. Parsers call this right after
+    /// pushing the `Node` onto the FileParse.
+    pub fn record(
+        &mut self,
+        id: NodeId,
+        name: &str,
+        qname: &str,
+        kind: NodeKindId,
+        parent: Option<NodeId>,
+    ) {
+        self.name_by_id.insert(id, name.to_string());
+        self.qname_by_id.insert(id, qname.to_string());
+        self.kind_by_id.insert(id, kind);
+        if let Some(p) = parent {
+            self.parent_of.insert(id, p);
+            self.children_of.entry(p).or_default().push(id);
+        }
+    }
+}

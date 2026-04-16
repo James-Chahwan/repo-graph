@@ -11,9 +11,17 @@ use repo_graph_parser_python::{
 };
 
 fn fixture_root() -> PathBuf {
-    // cargo runs tests from the crate dir — walk up to the repo root.
+    // CARGO_MANIFEST_DIR = rust/parsers/code/python — walk up 4 levels to the repo root.
     let here = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    here.parent().unwrap().parent().unwrap().join("tests/fixtures/py_smoke")
+    here.parent()
+        .unwrap()
+        .parent()
+        .unwrap()
+        .parent()
+        .unwrap()
+        .parent()
+        .unwrap()
+        .join("tests/fixtures/py_smoke")
 }
 
 fn repo() -> RepoId {

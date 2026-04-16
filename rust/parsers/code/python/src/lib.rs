@@ -3,145 +3,22 @@
 //! Single-file scan: emit Module/Class/Function/Method nodes with Code/Doc/
 //! Position cells, intra-file `defines` and `calls` edges. Cross-file refs
 //! (imports, bare-name or attribute calls that bind to another module) are
-//! recorded as `ImportStmt` / `CallSite` for v0.4.3's multi-file resolver.
+//! recorded as `ImportStmt` / `CallSite` for the graph crate's cross-file
+//! resolver.
 //!
-//! Graph-type tag is `"code"`; node-kind / edge-category / cell-type ids are
-//! u32 registry slots, interpreted by the container header at v0.4.5.
+//! All code-domain primitives (constants, `FileParse`, `CodeNav`,
+//! `ImportStmt`, `CallSite`, `ParseError`) live in `repo-graph-code-domain`
+//! and are re-exported from this crate for convenience.
 
 use std::collections::HashMap;
 
-use repo_graph_core::{
-    Cell, CellPayload, CellTypeId, Confidence, Edge, EdgeCategoryId, Node, NodeId, NodeKindId,
-    RepoId,
-};
+use repo_graph_core::{Cell, CellPayload, Confidence, Edge, Node, NodeId, RepoId};
 use tree_sitter::{Node as TsNode, Parser};
 
-pub const GRAPH_TYPE: &str = "code";
-
-pub mod node_kind {
-    use super::NodeKindId;
-    pub const MODULE: NodeKindId = NodeKindId(1);
-    pub const CLASS: NodeKindId = NodeKindId(2);
-    pub const FUNCTION: NodeKindId = NodeKindId(3);
-    pub const METHOD: NodeKindId = NodeKindId(4);
-}
-
-pub mod edge_category {
-    use super::EdgeCategoryId;
-    pub const DEFINES: EdgeCategoryId = EdgeCategoryId(1);
-    pub const CONTAINS: EdgeCategoryId = EdgeCategoryId(2);
-    pub const IMPORTS: EdgeCategoryId = EdgeCategoryId(3);
-    pub const CALLS: EdgeCategoryId = EdgeCategoryId(4);
-    pub const USES: EdgeCategoryId = EdgeCategoryId(5);
-    pub const DOCUMENTS: EdgeCategoryId = EdgeCategoryId(6);
-    pub const TESTS: EdgeCategoryId = EdgeCategoryId(7);
-}
-
-pub mod cell_type {
-    use super::CellTypeId;
-    pub const CODE: CellTypeId = CellTypeId(1);
-    pub const DOC: CellTypeId = CellTypeId(2);
-    pub const POSITION: CellTypeId = CellTypeId(3);
-    pub const INTENT: CellTypeId = CellTypeId(4);
-}
-
-// ============================================================================
-// Error + cross-file reference records
-// ============================================================================
-
-#[derive(Debug, thiserror::Error)]
-pub enum ParseError {
-    #[error("tree-sitter parse produced no tree")]
-    NoTree,
-    #[error("tree-sitter language init failed: {0}")]
-    LanguageInit(String),
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-pub struct ImportStmt {
-    /// qname of the module doing the importing (`myapp::auth`).
-    pub from_module: String,
-    pub target: ImportTarget,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-pub enum ImportTarget {
-    /// `import foo.bar` → Module { path: "foo.bar", alias: None }
-    /// `import foo as f` → Module { path: "foo", alias: Some("f") }
-    Module { path: String, alias: Option<String> },
-    /// `from foo.bar import baz, qux` → two Symbol records.
-    /// `from . import helpers` → Symbol { module: "", name: "helpers", level: 1 }
-    /// `from .foo import bar` → Symbol { module: "foo", name: "bar", level: 1 }
-    Symbol {
-        module: String,
-        name: String,
-        alias: Option<String>,
-        level: u32,
-    },
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-pub struct CallSite {
-    pub from: NodeId,
-    pub qualifier: CallQualifier,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-pub enum CallQualifier {
-    /// `foo()` — local def or imported name.
-    Bare(String),
-    /// `self.m()` — resolves against enclosing class.
-    SelfMethod(String),
-    /// `base.name()` — base is an identifier. Could be an imported module,
-    /// an imported symbol, or a local variable. Disambiguation happens at
-    /// v0.4.3 (cross-file resolver) using the import table.
-    Attribute { base: String, name: String },
-    /// `<complex>.name()` — receiver is a chained expression, not a plain
-    /// identifier. Kept as the raw receiver text for diagnostics.
-    ComplexReceiver { receiver: String, name: String },
-}
-
-// ============================================================================
-// Output
-// ============================================================================
-
-#[derive(Debug, Default)]
-pub struct FileParse {
-    pub nodes: Vec<Node>,
-    pub edges: Vec<Edge>,
-    pub imports: Vec<ImportStmt>,
-    pub calls: Vec<CallSite>,
-    pub nav: CodeNav,
-}
-
-/// Code-domain navigation indices — what the strict Node shape pushed out of
-/// `Node` fields. Merged across files by v0.4.3 into one per-repo index.
-#[derive(Debug, Default, Clone)]
-pub struct CodeNav {
-    /// Simple name (`"login"`), not the full qualified name.
-    pub name_by_id: HashMap<NodeId, String>,
-    /// Full qualified name (`"myapp::users::User::login"`). Used by the v0.4.3
-    /// resolver to map import targets onto node ids.
-    pub qname_by_id: HashMap<NodeId, String>,
-    pub kind_by_id: HashMap<NodeId, NodeKindId>,
-    /// Direct parent: method → class, class → module, function → module (or
-    /// enclosing function for nested defs).
-    pub parent_of: HashMap<NodeId, NodeId>,
-    /// Inverse of `parent_of`.
-    pub children_of: HashMap<NodeId, Vec<NodeId>>,
-}
-
-impl CodeNav {
-    fn record(&mut self, id: NodeId, name: &str, qname: &str, kind: NodeKindId, parent: Option<NodeId>) {
-        self.name_by_id.insert(id, name.to_string());
-        self.qname_by_id.insert(id, qname.to_string());
-        self.kind_by_id.insert(id, kind);
-        if let Some(p) = parent {
-            self.parent_of.insert(id, p);
-            self.children_of.entry(p).or_default().push(id);
-        }
-    }
-}
+pub use repo_graph_code_domain::{
+    CallQualifier, CallSite, CodeNav, FileParse, GRAPH_TYPE, ImportStmt, ImportTarget, ParseError,
+    cell_type, edge_category, node_kind,
+};
 
 /// Parse one Python source file.
 ///
@@ -655,6 +532,7 @@ fn child_text<'a>(n: TsNode, field: &str, src: &'a [u8]) -> Option<&'a str> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use repo_graph_core::EdgeCategoryId;
 
     fn repo() -> RepoId {
         RepoId::from_canonical("test://py_smoke")

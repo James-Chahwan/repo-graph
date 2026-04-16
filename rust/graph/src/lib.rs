@@ -1,20 +1,21 @@
 //! repo-graph-graph — per-repo graph construction + resolver + traversal.
 //!
-//! Consumes `FileParse` outputs from the Python parser, merges them into a
+//! Consumes `FileParse` outputs from the language parsers, merges them into a
 //! single `RepoGraph` for the repo, resolves cross-file imports and calls
-//! using the symbol table, and exposes BFS / neighbours / parent-chain.
+//! using a symbol table, and exposes BFS / neighbours / parent-chain.
 //!
-//! v0.4.3 is Python-only. v0.4.3b adds Go + TypeScript which will push the
-//! language-specific resolution into its own per-parser resolver entry
-//! point; the graph infrastructure stays language-agnostic.
+//! One entry point per parser — `build_python`, `build_go`, `build_typescript`
+//! — because their import semantics differ (dotted qnames vs. stripped go.mod
+//! paths vs. relative/bare module sources). The symbol-table + traversal
+//! infrastructure is shared.
 
 use std::collections::{HashMap, HashSet, VecDeque};
 
-use repo_graph_core::{Confidence, Edge, EdgeCategoryId, Node, NodeId, NodeKindId, RepoId};
-use repo_graph_parser_python::{
+use repo_graph_code_domain::{
     CallQualifier, CallSite, CodeNav, FileParse, ImportStmt, ImportTarget, edge_category,
     node_kind,
 };
+use repo_graph_core::{Cell, Confidence, Edge, EdgeCategoryId, Node, NodeId, NodeKindId, RepoId};
 
 // ============================================================================
 // Output graph
@@ -64,6 +65,50 @@ pub enum GraphError {
 
 /// Build a per-repo Python graph from a set of file-parse outputs.
 pub fn build_python(repo: RepoId, parses: Vec<FileParse>) -> Result<RepoGraph, GraphError> {
+    let (mut g, all_imports, all_calls) = merge_parses(repo, parses);
+    build_symbol_table(&mut g);
+    resolve_imports_python(&mut g, &all_imports);
+    resolve_calls(&mut g, &all_calls, |_, _| None);
+    Ok(g)
+}
+
+/// Build a per-repo Go graph. Go packages span multiple files — modules with
+/// the same qname produce the same NodeId and their cells stack on one node.
+pub fn build_go(repo: RepoId, parses: Vec<FileParse>) -> Result<RepoGraph, GraphError> {
+    let (mut g, all_imports, all_calls) = merge_parses(repo, parses);
+    build_symbol_table(&mut g);
+    resolve_imports_go(&mut g, &all_imports);
+    resolve_calls(&mut g, &all_calls, |_, _| None);
+    Ok(g)
+}
+
+/// Build a per-repo TypeScript graph. TS import sources are raw strings
+/// (`./user`, `@angular/core`) that the caller resolves to module qnames via
+/// `resolve_source`. Returning `None` treats the import as external (no edge).
+pub fn build_typescript<R>(
+    repo: RepoId,
+    parses: Vec<FileParse>,
+    resolve_source: R,
+) -> Result<RepoGraph, GraphError>
+where
+    R: Fn(&str, &str) -> Option<String>,
+{
+    let (mut g, all_imports, all_calls) = merge_parses(repo, parses);
+    build_symbol_table(&mut g);
+    resolve_imports_ts(&mut g, &all_imports, &resolve_source);
+    resolve_calls(&mut g, &all_calls, |_, _| None);
+    Ok(g)
+}
+
+// ============================================================================
+// Shared merge: multi-file modules with the same NodeId collapse — their cells
+// stack on a single Module node (Go packages, TS re-exports, etc.).
+// ============================================================================
+
+fn merge_parses(
+    repo: RepoId,
+    parses: Vec<FileParse>,
+) -> (RepoGraph, Vec<ImportStmt>, Vec<CallSite>) {
     let mut g = RepoGraph {
         repo,
         nodes: Vec::new(),
@@ -73,27 +118,31 @@ pub fn build_python(repo: RepoId, parses: Vec<FileParse>) -> Result<RepoGraph, G
         unresolved_calls: Vec::new(),
     };
 
-    // Stage 1: merge per-file outputs into one pool.
     let mut all_imports: Vec<ImportStmt> = Vec::new();
     let mut all_calls: Vec<CallSite> = Vec::new();
+    let mut index: HashMap<NodeId, usize> = HashMap::new();
+
     for p in parses {
-        g.nodes.extend(p.nodes);
+        for n in p.nodes {
+            if let Some(&idx) = index.get(&n.id) {
+                // Duplicate NodeId — append cells onto the existing node.
+                append_cells(&mut g.nodes[idx].cells, n.cells);
+            } else {
+                index.insert(n.id, g.nodes.len());
+                g.nodes.push(n);
+            }
+        }
         g.edges.extend(p.edges);
         merge_nav(&mut g.nav, p.nav);
         all_imports.extend(p.imports);
         all_calls.extend(p.calls);
     }
 
-    // Stage 2: build symbol table from nav indices.
-    build_symbol_table(&mut g);
+    (g, all_imports, all_calls)
+}
 
-    // Stage 3: resolve imports — emit `imports` edges + populate bindings.
-    resolve_imports(&mut g, &all_imports);
-
-    // Stage 4: resolve cross-file calls — emit `calls` edges.
-    resolve_calls(&mut g, &all_calls);
-
-    Ok(g)
+fn append_cells(existing: &mut Vec<Cell>, incoming: Vec<Cell>) {
+    existing.extend(incoming);
 }
 
 // ============================================================================
@@ -132,7 +181,7 @@ fn build_symbol_table(g: &mut RepoGraph) {
                     entry.insert(name.clone(), *child);
                 }
             }
-        } else if parent_kind == Some(node_kind::CLASS) {
+        } else if parent_kind == Some(node_kind::CLASS) || parent_kind == Some(node_kind::STRUCT) {
             let entry = g.symbols.class_methods.entry(*parent).or_default();
             for child in children {
                 if let Some(name) = g.nav.name_by_id.get(child)
@@ -149,7 +198,7 @@ fn build_symbol_table(g: &mut RepoGraph) {
 // Import resolution
 // ============================================================================
 
-fn resolve_imports(g: &mut RepoGraph, imports: &[ImportStmt]) {
+fn resolve_imports_python(g: &mut RepoGraph, imports: &[ImportStmt]) {
     for stmt in imports {
         let Some(from_mod_id) = g
             .symbols
@@ -225,6 +274,111 @@ fn resolve_imports(g: &mut RepoGraph, imports: &[ImportStmt]) {
     }
 }
 
+/// Go imports: the parser has already stripped the go.mod prefix and produced
+/// `ImportTarget::Module { path }` with `path` = repo-local `::` qname for
+/// imports that resolve inside this module. External imports keep the raw
+/// `std::io`-style form and won't match anything.
+fn resolve_imports_go(g: &mut RepoGraph, imports: &[ImportStmt]) {
+    for stmt in imports {
+        let Some(from_mod_id) = g
+            .symbols
+            .module_by_qname
+            .get(&stmt.from_module)
+            .copied()
+        else {
+            continue;
+        };
+        let ImportTarget::Module { path, alias } = &stmt.target else {
+            continue;
+        };
+        let Some(target_id) = g.symbols.module_by_qname.get(path).copied() else {
+            continue;
+        };
+        push_edge(g, from_mod_id, target_id, edge_category::IMPORTS);
+        let bound = alias
+            .clone()
+            .unwrap_or_else(|| path.rsplit("::").next().unwrap_or(path).to_string());
+        g.symbols
+            .module_import_bindings
+            .entry(from_mod_id)
+            .or_default()
+            .insert(bound, target_id);
+    }
+}
+
+/// TypeScript imports: the parser keeps import sources as raw strings
+/// (`./user`, `@angular/core`). `resolve_source(from_qname, raw)` converts a
+/// raw source string to a module qname; `None` marks the import external.
+fn resolve_imports_ts<R: Fn(&str, &str) -> Option<String>>(
+    g: &mut RepoGraph,
+    imports: &[ImportStmt],
+    resolve_source: &R,
+) {
+    for stmt in imports {
+        let Some(from_mod_id) = g
+            .symbols
+            .module_by_qname
+            .get(&stmt.from_module)
+            .copied()
+        else {
+            continue;
+        };
+        match &stmt.target {
+            ImportTarget::Module { path, alias } => {
+                let Some(target_qname) = resolve_source(&stmt.from_module, path) else {
+                    continue;
+                };
+                let Some(target_id) = g.symbols.module_by_qname.get(&target_qname).copied() else {
+                    continue;
+                };
+                push_edge(g, from_mod_id, target_id, edge_category::IMPORTS);
+                // Namespace import alias is the binding; bare side-effect has none.
+                if let Some(a) = alias {
+                    g.symbols
+                        .module_import_bindings
+                        .entry(from_mod_id)
+                        .or_default()
+                        .insert(a.clone(), target_id);
+                }
+            }
+            ImportTarget::Symbol {
+                module,
+                name,
+                alias,
+                ..
+            } => {
+                let Some(target_qname) = resolve_source(&stmt.from_module, module) else {
+                    continue;
+                };
+                let Some(target_mod_id) = g.symbols.module_by_qname.get(&target_qname).copied()
+                else {
+                    continue;
+                };
+                push_edge(g, from_mod_id, target_mod_id, edge_category::IMPORTS);
+                let bound = alias.clone().unwrap_or_else(|| name.clone());
+                // Default import — bind to the module itself.
+                // Named import — bind to the specific symbol inside that module.
+                let target_id = if name == "default" {
+                    Some(target_mod_id)
+                } else {
+                    g.symbols
+                        .module_symbols
+                        .get(&target_mod_id)
+                        .and_then(|s| s.get(name))
+                        .copied()
+                };
+                if let Some(t) = target_id {
+                    g.symbols
+                        .module_import_bindings
+                        .entry(from_mod_id)
+                        .or_default()
+                        .insert(bound, t);
+                }
+            }
+        }
+    }
+}
+
 /// Convert a (possibly relative) `from X import Y` module reference into an
 /// absolute qname using `::` separators.
 fn resolve_module_reference(from_module: &str, module_ref: &str, level: u32) -> String {
@@ -251,7 +405,16 @@ fn resolve_module_reference(from_module: &str, module_ref: &str, level: u32) -> 
 // Call resolution
 // ============================================================================
 
-fn resolve_calls(g: &mut RepoGraph, calls: &[CallSite]) {
+/// Cross-file call resolution — same recipe for all languages.
+///
+/// `extra_hook` is an escape hatch for language-specific resolution shapes
+/// that the generic pass doesn't cover. Unused today (pass `|_, _| None`);
+/// it's the seam for future Go method-on-struct-via-package-alias lookups
+/// and similar language-specific call shapes.
+fn resolve_calls<H>(g: &mut RepoGraph, calls: &[CallSite], extra_hook: H)
+where
+    H: Fn(&RepoGraph, &CallSite) -> Option<NodeId>,
+{
     for site in calls {
         let Some(from_module) = enclosing_module(&g.nav, site.from) else {
             g.unresolved_calls.push(site.clone());
@@ -271,28 +434,38 @@ fn resolve_calls(g: &mut RepoGraph, calls: &[CallSite]) {
                             .and_then(|s| s.get(name).copied())
                     })
             }
-            CallQualifier::Attribute { base, name } => {
-                bindings
-                    .and_then(|b| b.get(base).copied())
-                    .and_then(|base_id| {
-                        let base_kind = g.nav.kind_by_id.get(&base_id).copied();
-                        if base_kind == Some(node_kind::MODULE) {
-                            g.symbols
-                                .module_symbols
-                                .get(&base_id)
-                                .and_then(|s| s.get(name).copied())
-                        } else if base_kind == Some(node_kind::CLASS) {
-                            g.symbols
-                                .class_methods
-                                .get(&base_id)
-                                .and_then(|m| m.get(name).copied())
-                        } else {
-                            None
-                        }
-                    })
+            CallQualifier::Attribute { base, name } => bindings
+                .and_then(|b| b.get(base).copied())
+                .and_then(|base_id| {
+                    let base_kind = g.nav.kind_by_id.get(&base_id).copied();
+                    if base_kind == Some(node_kind::MODULE) {
+                        g.symbols
+                            .module_symbols
+                            .get(&base_id)
+                            .and_then(|s| s.get(name).copied())
+                    } else if base_kind == Some(node_kind::CLASS)
+                        || base_kind == Some(node_kind::STRUCT)
+                    {
+                        g.symbols
+                            .class_methods
+                            .get(&base_id)
+                            .and_then(|m| m.get(name).copied())
+                    } else {
+                        None
+                    }
+                }),
+            CallQualifier::SelfMethod(name) => {
+                enclosing_class_or_struct(&g.nav, site.from).and_then(|parent_id| {
+                    g.symbols
+                        .class_methods
+                        .get(&parent_id)
+                        .and_then(|m| m.get(name).copied())
+                })
             }
-            CallQualifier::SelfMethod(_) | CallQualifier::ComplexReceiver { .. } => None,
+            CallQualifier::ComplexReceiver { .. } => None,
         };
+
+        let resolved = resolved.or_else(|| extra_hook(g, site));
 
         match resolved {
             Some(to) => push_edge(g, site.from, to, edge_category::CALLS),
@@ -309,6 +482,21 @@ fn enclosing_module(nav: &CodeNav, mut id: NodeId) -> Option<NodeId> {
             return Some(id);
         }
         id = *nav.parent_of.get(&id)?;
+    }
+}
+
+/// Walk parents to find the enclosing CLASS or STRUCT. Used to resolve
+/// self-method calls (Go `u.Save()`, TS `this.save()`, etc.) to a sibling
+/// method on the same type.
+fn enclosing_class_or_struct(nav: &CodeNav, start: NodeId) -> Option<NodeId> {
+    let mut cur = start;
+    loop {
+        let parent = *nav.parent_of.get(&cur)?;
+        let k = nav.kind_by_id.get(&parent).copied();
+        if k == Some(node_kind::CLASS) || k == Some(node_kind::STRUCT) {
+            return Some(parent);
+        }
+        cur = parent;
     }
 }
 
