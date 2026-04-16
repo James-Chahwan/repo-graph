@@ -104,6 +104,8 @@ pub enum ParseError {
 /// An import statement as parsed from a source file. The resolver uses this
 /// to wire cross-file bindings regardless of the source language.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)]
+#[rkyv(derive(Debug))]
 pub struct ImportStmt {
     /// qname of the module doing the importing (`myapp::auth`, `svc::users`).
     pub from_module: String,
@@ -111,6 +113,8 @@ pub struct ImportStmt {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)]
+#[rkyv(derive(Debug))]
 pub enum ImportTarget {
     /// Whole-module import — Python `import foo.bar`, Go `import "github.com/x/y"`,
     /// TS `import * as f from "./foo"` or `import "./foo"`.
@@ -132,6 +136,8 @@ pub enum ImportTarget {
 // ============================================================================
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)]
+#[rkyv(derive(Debug))]
 pub struct CallSite {
     pub from: NodeId,
     pub qualifier: CallQualifier,
@@ -154,6 +160,8 @@ pub struct CallSite {
 /// (package-agnostic) and have no unique enclosing module — the parser must
 /// tell the resolver which package's imports to use.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)]
+#[rkyv(derive(Debug))]
 pub struct UnresolvedRef {
     pub from: NodeId,
     pub from_module: NodeId,
@@ -165,6 +173,8 @@ pub struct UnresolvedRef {
 /// node id the call actually targets) happens in `repo-graph-graph` using the
 /// import table + symbol table, not in the parser.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)]
+#[rkyv(derive(Debug))]
 pub enum CallQualifier {
     /// `foo()` — bare name. Resolves to a local def, an imported symbol, or
     /// stays unresolved.

@@ -8,4 +8,6 @@ members = [
     "parsers/code/go",
     "parsers/code/typescript",
     "graph",
+    "store",
+    "projection-text",
 ]

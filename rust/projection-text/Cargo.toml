@@ -1,0 +1,13 @@
+[package]
+name = "repo-graph-projection-text"
+version = "0.4.5"
+edition = "2024"
+publish = false
+
+[dependencies]
+repo-graph-core = { path = "../core" }
+repo-graph-code-domain = { path = "../code-domain" }
+repo-graph-graph = { path = "../graph" }
+
+[dev-dependencies]
+repo-graph-parser-go = { path = "../parsers/code/go" }

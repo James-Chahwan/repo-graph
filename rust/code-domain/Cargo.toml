@@ -8,3 +8,4 @@ publish = false
 repo-graph-core = { path = "../core" }
 serde = { version = "1", features = ["derive"] }
 thiserror = "2"
+rkyv = { version = "0.8", features = ["bytecheck"] }
