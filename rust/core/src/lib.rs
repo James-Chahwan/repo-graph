@@ -206,6 +206,7 @@ impl NodeLike for ArchivedNode {
     fn cell_count(&self) -> usize { self.cells.len() }
 }
 
+#[allow(clippy::wrong_self_convention)]
 pub trait EdgeLike {
     fn from_id(&self) -> NodeId;
     fn to_id(&self) -> NodeId;
