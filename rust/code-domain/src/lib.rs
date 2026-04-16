@@ -74,15 +74,16 @@ pub mod cell_type {
     pub const DOC: CellTypeId = CellTypeId(2);
     pub const POSITION: CellTypeId = CellTypeId(3);
     pub const INTENT: CellTypeId = CellTypeId(4);
-
-    // v0.4.4 — Route method cell. JSON payload carries
-    // `{method, handler_ref?, line, col}`. Multiple cells stack on one Route
-    // node when several HTTP methods are registered on the same path.
     pub const ROUTE_METHOD: CellTypeId = CellTypeId(5);
-
-    // v0.4.4 — Endpoint hit cell. Stacked on an Endpoint node once per callsite.
-    // JSON payload carries `{method, path, file, line, col, confidence}`.
     pub const ENDPOINT_HIT: CellTypeId = CellTypeId(6);
+    pub const TEST: CellTypeId = CellTypeId(7);
+    pub const ATTN: CellTypeId = CellTypeId(8);
+    pub const FAIL: CellTypeId = CellTypeId(9);
+    pub const CONSTRAINT: CellTypeId = CellTypeId(10);
+    pub const DECISION: CellTypeId = CellTypeId(11);
+    pub const ENV: CellTypeId = CellTypeId(12);
+    pub const CONV: CellTypeId = CellTypeId(13);
+    pub const VECTOR: CellTypeId = CellTypeId(14);
 }
 
 // ============================================================================
