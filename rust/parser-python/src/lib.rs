@@ -111,6 +111,36 @@ pub struct FileParse {
     pub edges: Vec<Edge>,
     pub imports: Vec<ImportStmt>,
     pub calls: Vec<CallSite>,
+    pub nav: CodeNav,
+}
+
+/// Code-domain navigation indices — what the strict Node shape pushed out of
+/// `Node` fields. Merged across files by v0.4.3 into one per-repo index.
+#[derive(Debug, Default, Clone)]
+pub struct CodeNav {
+    /// Simple name (`"login"`), not the full qualified name.
+    pub name_by_id: HashMap<NodeId, String>,
+    /// Full qualified name (`"myapp::users::User::login"`). Used by the v0.4.3
+    /// resolver to map import targets onto node ids.
+    pub qname_by_id: HashMap<NodeId, String>,
+    pub kind_by_id: HashMap<NodeId, NodeKindId>,
+    /// Direct parent: method → class, class → module, function → module (or
+    /// enclosing function for nested defs).
+    pub parent_of: HashMap<NodeId, NodeId>,
+    /// Inverse of `parent_of`.
+    pub children_of: HashMap<NodeId, Vec<NodeId>>,
+}
+
+impl CodeNav {
+    fn record(&mut self, id: NodeId, name: &str, qname: &str, kind: NodeKindId, parent: Option<NodeId>) {
+        self.name_by_id.insert(id, name.to_string());
+        self.qname_by_id.insert(id, qname.to_string());
+        self.kind_by_id.insert(id, kind);
+        if let Some(p) = parent {
+            self.parent_of.insert(id, p);
+            self.children_of.entry(p).or_default().push(id);
+        }
+    }
 }
 
 /// Parse one Python source file.
@@ -141,6 +171,9 @@ pub fn parse_file(
         confidence: Confidence::Strong,
         cells: build_cells(&root, src, file_rel_path),
     });
+    let module_simple = module_qname.rsplit("::").next().unwrap_or(module_qname);
+    acc.nav
+        .record(module_id, module_simple, module_qname, node_kind::MODULE, None);
 
     let mut cursor = root.walk();
     for child in root.named_children(&mut cursor) {
@@ -180,6 +213,7 @@ struct Acc {
     module_functions: HashMap<String, NodeId>,
     /// class methods: (class id, method name) → method node id
     class_methods: HashMap<(NodeId, String), NodeId>,
+    nav: CodeNav,
 }
 
 struct UnresolvedCall {
@@ -218,6 +252,8 @@ fn visit_class(
         category: edge_category::DEFINES,
         confidence: Confidence::Strong,
     });
+    acc.nav
+        .record(class_id, name, &class_qname, node_kind::CLASS, Some(module_id));
 
     let Some(body) = n.child_by_field_name("body") else {
         return;
@@ -258,6 +294,8 @@ fn visit_method(
     });
     acc.class_methods
         .insert((class_id, name.to_string()), method_id);
+    acc.nav
+        .record(method_id, name, &method_qname, node_kind::METHOD, Some(class_id));
 
     if let Some(body) = n.child_by_field_name("body") {
         collect_calls_in(body, src, method_id, Some(class_id), acc);
@@ -299,6 +337,8 @@ fn visit_function(
         acc.module_functions
             .insert(name.to_string(), func_id);
     }
+    acc.nav
+        .record(func_id, name, &func_qname, node_kind::FUNCTION, Some(parent));
 
     if let Some(body) = n.child_by_field_name("body") {
         collect_calls_in(body, src, func_id, None, acc);
@@ -493,6 +533,7 @@ fn resolve_intra_file(mut acc: Acc, _repo: RepoId) -> Result<FileParse, ParseErr
         edges: std::mem::take(&mut acc.edges),
         imports: std::mem::take(&mut acc.imports),
         calls: Vec::new(),
+        nav: std::mem::take(&mut acc.nav),
     };
     for uc in acc.unresolved {
         let resolved: Option<NodeId> = match &uc.qualifier {

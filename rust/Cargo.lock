@@ -256,6 +256,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "repo-graph-graph"
+version = "0.4.3"
+dependencies = [
+ "repo-graph-core",
+ "repo-graph-parser-python",
+ "thiserror",
+]
+
+[[package]]
 name = "repo-graph-parser-python"
 version = "0.4.2"
 dependencies = [

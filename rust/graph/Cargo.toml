@@ -1,0 +1,10 @@
+[package]
+name = "repo-graph-graph"
+version = "0.4.3"
+edition = "2024"
+publish = false
+
+[dependencies]
+repo-graph-core = { path = "../core" }
+repo-graph-parser-python = { path = "../parser-python" }
+thiserror = "2"
