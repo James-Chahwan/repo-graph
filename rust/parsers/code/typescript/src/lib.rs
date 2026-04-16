@@ -42,7 +42,11 @@ pub fn parse_file(
     let tree = parser.parse(source, None).ok_or(ParseError::NoTree)?;
     let src = source.as_bytes();
 
-    let mut acc = Acc::default();
+    let mut acc = Acc {
+        file_rel: file_rel_path.to_string(),
+        repo: Some(repo),
+        ..Acc::default()
+    };
     let root = tree.root_node();
 
     let module_id = NodeId::from_parts(GRAPH_TYPE, repo, node_kind::MODULE, module_qname);
@@ -74,15 +78,36 @@ struct Acc {
     edges: Vec<Edge>,
     imports: Vec<ImportStmt>,
     unresolved: Vec<UnresolvedCall>,
+    endpoints: Vec<EndpointCandidate>,
     module_functions: HashMap<String, NodeId>,
     class_methods: HashMap<(NodeId, String), NodeId>,
     nav: CodeNav,
+    /// Stashed at parse_file entry so endpoint emission can stamp position
+    /// cells without threading `file_rel` through every call_collection helper.
+    file_rel: String,
+    repo: Option<RepoId>,
 }
 
 struct UnresolvedCall {
     from: NodeId,
     enclosing_class: Option<NodeId>,
     qualifier: CallQualifier,
+}
+
+/// An HTTP-call shape detected during the call walk. Resolved into an Endpoint
+/// node + CALLS edge in `resolve_intra_file` once the import-alias set is known.
+struct EndpointCandidate {
+    from: NodeId,
+    method: String,
+    path: String,
+    confidence: Confidence,
+    file_rel: String,
+    line: usize,
+    col: usize,
+    /// Some(name) means this candidate only emits if `name` is a module-level
+    /// import alias (shape 2: `axios.get(url)`). None = always emit (shape 1
+    /// `this.x.method()` and shape 3 `fetch()`).
+    requires_import_alias: Option<String>,
 }
 
 // ============================================================================
@@ -492,19 +517,301 @@ fn collect_calls_in(
         ) {
             continue;
         }
-        if kind == "call_expression"
-            && let Some(q) = extract_call_qualifier(node, src)
-        {
-            acc.unresolved.push(UnresolvedCall {
-                from,
-                enclosing_class,
-                qualifier: q,
-            });
+        if kind == "call_expression" {
+            if let Some(q) = extract_call_qualifier(node, src) {
+                acc.unresolved.push(UnresolvedCall {
+                    from,
+                    enclosing_class,
+                    qualifier: q,
+                });
+            }
+            try_detect_endpoint(node, src, from, acc);
         }
         let mut cursor = node.walk();
         for child in node.named_children(&mut cursor) {
             stack.push(child);
         }
+    }
+}
+
+// ============================================================================
+// Endpoint extraction (v0.4.4)
+// ============================================================================
+//
+// Three call shapes get classified as HTTP endpoint hits:
+//   1. `this.<x>.<method>(<first>, …)`  — Angular HttpClient via DI and any
+//      service-with-HTTP-client-field pattern. Always emit (no import check).
+//   2. `<x>.<method>(<first>, …)` where `<x>` is a module-level import alias
+//      — direct axios/got/ky calls.
+//   3. `fetch(<first>, <opts>?)` — built-in. Method defaults to GET unless
+//      `opts` carries `method: '...'`.
+//
+// Path is classified into a Confidence:
+//   - String literal                                        → Strong
+//   - Template with only static parts                       → Strong
+//   - Template with interpolations                          → Medium (path
+//     keeps literal prefix + `${…}` placeholders)
+//   - Call expression (URL-builder wrapper) — pluck inner   → Weak
+//     literal as hint
+//   - Anything else (identifier, conditional, …)            → Weak,
+//     path = `<unresolved>`
+//
+// Method/path normalisation (e.g. `:id` ↔ `{id}`) is HttpStackResolver's job;
+// the parser stores the raw text as written.
+
+const HTTP_METHOD_PROPS: &[&str] = &["get", "post", "put", "delete", "patch", "head", "options"];
+
+fn try_detect_endpoint(call: TsNode, src: &[u8], from: NodeId, acc: &mut Acc) {
+    let func = match call.child_by_field_name("function") {
+        Some(f) => f,
+        None => return,
+    };
+
+    // Shape 3 — `fetch(...)`.
+    if func.kind() == "identifier" && text(func, src) == "fetch" {
+        let args = match call.child_by_field_name("arguments") {
+            Some(a) => a,
+            None => return,
+        };
+        let first = match args.named_child(0) {
+            Some(n) => n,
+            None => return,
+        };
+        let (path, mut conf) = classify_path_arg(first, src);
+        let method = fetch_method_from_opts(args.named_child(1), src).unwrap_or_else(|| {
+            // Method override is opaque (variable, spread, conditional) — drop
+            // confidence one tier.
+            if args.named_child(1).is_some() {
+                conf = downgrade(conf);
+            }
+            "GET".to_string()
+        });
+        push_endpoint(call, from, method, path, conf, None, acc);
+        return;
+    }
+
+    // Shapes 1 & 2 — member call `<obj>.<method>(...)`.
+    if func.kind() != "member_expression" {
+        return;
+    }
+    let prop = match func.child_by_field_name("property") {
+        Some(p) => p,
+        None => return,
+    };
+    let method_lower = text(prop, src);
+    if !HTTP_METHOD_PROPS.contains(&method_lower) {
+        return;
+    }
+    let object = match func.child_by_field_name("object") {
+        Some(o) => o,
+        None => return,
+    };
+
+    // Shape 1: this.<x>.<method>(...) — object is itself a member_expression
+    // whose object is `this`.
+    let requires_alias = match object.kind() {
+        "member_expression" => {
+            let inner_obj = match object.child_by_field_name("object") {
+                Some(o) => o,
+                None => return,
+            };
+            if inner_obj.kind() != "this" {
+                return;
+            }
+            None
+        }
+        // Shape 2: <alias>.<method>(...) — object is a plain identifier that
+        // must be a module-level import alias. Validation happens in
+        // resolve_intra_file once all imports are known.
+        "identifier" => Some(text(object, src).to_string()),
+        _ => return,
+    };
+
+    let args = match call.child_by_field_name("arguments") {
+        Some(a) => a,
+        None => return,
+    };
+    let first = match args.named_child(0) {
+        Some(n) => n,
+        None => return,
+    };
+    let (path, conf) = classify_path_arg(first, src);
+    push_endpoint(
+        call,
+        from,
+        method_lower.to_uppercase(),
+        path,
+        conf,
+        requires_alias,
+        acc,
+    );
+}
+
+fn push_endpoint(
+    call: TsNode,
+    from: NodeId,
+    method: String,
+    path: String,
+    confidence: Confidence,
+    requires_import_alias: Option<String>,
+    acc: &mut Acc,
+) {
+    let start = call.start_position();
+    acc.endpoints.push(EndpointCandidate {
+        from,
+        method,
+        path,
+        confidence,
+        file_rel: acc.file_rel.clone(),
+        line: start.row + 1,
+        col: start.column + 1,
+        requires_import_alias,
+    });
+}
+
+fn classify_path_arg(arg: TsNode, src: &[u8]) -> (String, Confidence) {
+    match arg.kind() {
+        "string" => {
+            let raw = text(arg, src);
+            (strip_string_quotes(raw), Confidence::Strong)
+        }
+        "template_string" => classify_template(arg, src),
+        "call_expression" => {
+            // URL-builder wrapper like `this.api.buildUrl('auth/login')` —
+            // pluck the innermost string literal as a hint, weak confidence.
+            (
+                find_first_string_literal(arg, src)
+                    .map(|s| strip_string_quotes(&s))
+                    .unwrap_or_else(|| "<unresolved>".to_string()),
+                Confidence::Weak,
+            )
+        }
+        _ => ("<unresolved>".to_string(), Confidence::Weak),
+    }
+}
+
+fn classify_template(template: TsNode, src: &[u8]) -> (String, Confidence) {
+    let mut out = String::new();
+    let mut has_subst = false;
+    let mut cursor = template.walk();
+    for child in template.named_children(&mut cursor) {
+        match child.kind() {
+            "template_substitution" => {
+                has_subst = true;
+                out.push_str("${…}");
+            }
+            "string_fragment" => out.push_str(text(child, src)),
+            _ => {}
+        }
+    }
+    if !has_subst && out.is_empty() {
+        // Empty backticks `` `` `` — treat as Strong empty path.
+        return (String::new(), Confidence::Strong);
+    }
+    (
+        out,
+        if has_subst {
+            Confidence::Medium
+        } else {
+            Confidence::Strong
+        },
+    )
+}
+
+fn find_first_string_literal(n: TsNode, src: &[u8]) -> Option<String> {
+    let mut stack = vec![n];
+    while let Some(node) = stack.pop() {
+        if node.kind() == "string" {
+            return Some(text(node, src).to_string());
+        }
+        let mut cursor = node.walk();
+        for child in node.named_children(&mut cursor) {
+            stack.push(child);
+        }
+    }
+    None
+}
+
+/// `fetch(url, { method: 'POST', … })` — pluck a string-literal `method:` value
+/// from the second-arg object literal. Returns None if the second arg isn't a
+/// plain object or the method value isn't a string literal.
+fn fetch_method_from_opts(opts: Option<TsNode>, src: &[u8]) -> Option<String> {
+    let opts = opts?;
+    if opts.kind() != "object" {
+        return None;
+    }
+    let mut cursor = opts.walk();
+    for prop in opts.named_children(&mut cursor) {
+        if prop.kind() != "pair" {
+            continue;
+        }
+        let key = prop.child_by_field_name("key")?;
+        let key_text = match key.kind() {
+            "property_identifier" => text(key, src),
+            "string" => {
+                let raw = text(key, src);
+                if raw.len() >= 2 {
+                    &raw[1..raw.len() - 1]
+                } else {
+                    raw
+                }
+            }
+            _ => continue,
+        };
+        if key_text != "method" {
+            continue;
+        }
+        let value = prop.child_by_field_name("value")?;
+        if value.kind() != "string" {
+            return None;
+        }
+        return Some(strip_string_quotes(text(value, src)).to_uppercase());
+    }
+    None
+}
+
+fn downgrade(c: Confidence) -> Confidence {
+    match c {
+        Confidence::Strong => Confidence::Medium,
+        Confidence::Medium => Confidence::Weak,
+        Confidence::Weak => Confidence::Weak,
+    }
+}
+
+fn endpoint_hit_cell(
+    method: &str,
+    path: &str,
+    file_rel: &str,
+    line: usize,
+    col: usize,
+    confidence: Confidence,
+) -> Cell {
+    #[derive(serde::Serialize)]
+    struct Payload<'a> {
+        method: &'a str,
+        path: &'a str,
+        file: &'a str,
+        line: usize,
+        col: usize,
+        confidence: &'a str,
+    }
+    let conf_str = match confidence {
+        Confidence::Strong => "strong",
+        Confidence::Medium => "medium",
+        Confidence::Weak => "weak",
+    };
+    let json = serde_json::to_string(&Payload {
+        method,
+        path,
+        file: file_rel,
+        line,
+        col,
+        confidence: conf_str,
+    })
+    .unwrap_or_else(|_| String::from("{}"));
+    Cell {
+        kind: cell_type::ENDPOINT_HIT,
+        payload: CellPayload::Json(json),
     }
 }
 
@@ -542,6 +849,7 @@ fn resolve_intra_file(mut acc: Acc) -> Result<FileParse, ParseError> {
         edges: std::mem::take(&mut acc.edges),
         imports: std::mem::take(&mut acc.imports),
         calls: Vec::new(),
+        refs: Vec::new(),
         nav: std::mem::take(&mut acc.nav),
     };
     for uc in acc.unresolved {
@@ -565,7 +873,80 @@ fn resolve_intra_file(mut acc: Acc) -> Result<FileParse, ParseError> {
             }),
         }
     }
+
+    // Endpoint emission. Build the import-alias set from `out.imports` so
+    // shape-2 candidates (`axios.get(url)`) can be filtered to only those
+    // whose base is a real module-level binding.
+    let alias_set = build_alias_set(&out.imports);
+    let mut endpoint_nav_seen: std::collections::HashSet<NodeId> =
+        std::collections::HashSet::new();
+    let repo = acc.repo.expect("Acc.repo set in parse_file");
+    for cand in acc.endpoints {
+        if let Some(req) = cand.requires_import_alias.as_ref()
+            && !alias_set.contains(req.as_str())
+        {
+            continue;
+        }
+        let qname = format!("endpoint:{}:{}", cand.method, cand.path);
+        let endpoint_id = NodeId::from_parts(GRAPH_TYPE, repo, node_kind::ENDPOINT, &qname);
+        let cell = endpoint_hit_cell(
+            &cand.method,
+            &cand.path,
+            &cand.file_rel,
+            cand.line,
+            cand.col,
+            cand.confidence,
+        );
+        out.nodes.push(Node {
+            id: endpoint_id,
+            repo,
+            confidence: cand.confidence,
+            cells: vec![cell],
+        });
+        if endpoint_nav_seen.insert(endpoint_id) {
+            let display = format!("{} {}", cand.method, cand.path);
+            out.nav
+                .record(endpoint_id, &display, &qname, node_kind::ENDPOINT, None);
+        }
+        out.edges.push(Edge {
+            from: cand.from,
+            to: endpoint_id,
+            category: edge_category::CALLS,
+            confidence: cand.confidence,
+        });
+    }
+
     Ok(out)
+}
+
+fn build_alias_set(imports: &[ImportStmt]) -> std::collections::HashSet<&str> {
+    let mut set = std::collections::HashSet::new();
+    for imp in imports {
+        match &imp.target {
+            ImportTarget::Module {
+                alias: Some(a), ..
+            } => {
+                set.insert(a.as_str());
+            }
+            ImportTarget::Symbol {
+                name,
+                alias: Some(a),
+                ..
+            } => {
+                set.insert(a.as_str());
+                // For default imports (alias is the binding, name="default"),
+                // also keep `name` if useful — skipped to avoid false positives.
+                let _ = name;
+            }
+            ImportTarget::Symbol {
+                name, alias: None, ..
+            } => {
+                set.insert(name.as_str());
+            }
+            _ => {}
+        }
+    }
+    set
 }
 
 // ============================================================================
@@ -844,5 +1225,195 @@ export function doGreet(g: Greeter) {
         let parse = parse_file(src, "broken.ts", "broken", repo()).unwrap();
         let ok_id = NodeId::from_parts(GRAPH_TYPE, repo(), node_kind::FUNCTION, "broken::ok");
         assert!(parse.nodes.iter().any(|n| n.id == ok_id));
+    }
+
+    // ========================================================================
+    // Endpoint extraction (v0.4.4)
+    // ========================================================================
+
+    fn endpoint_id(repo: RepoId, method: &str, path: &str) -> NodeId {
+        NodeId::from_parts(
+            GRAPH_TYPE,
+            repo,
+            node_kind::ENDPOINT,
+            &format!("endpoint:{method}:{path}"),
+        )
+    }
+
+    fn endpoint_payloads(parse: &FileParse, ep: NodeId) -> Vec<serde_json::Value> {
+        parse
+            .nodes
+            .iter()
+            .filter(|n| n.id == ep)
+            .flat_map(|n| n.cells.iter())
+            .filter(|c| c.kind == cell_type::ENDPOINT_HIT)
+            .filter_map(|c| match &c.payload {
+                CellPayload::Json(s) => serde_json::from_str(s).ok(),
+                _ => None,
+            })
+            .collect()
+    }
+
+    #[test]
+    fn this_http_post_string_literal_emits_strong_endpoint() {
+        let src = "\
+export class AuthService {
+    constructor(private readonly http: any) {}
+    login(payload: any): void {
+        this.http.post('/api/auth/login', payload);
+    }
+}
+";
+        let parse = parse_file(src, "src/auth.service.ts", "src::auth::service", repo()).unwrap();
+
+        let ep = endpoint_id(repo(), "POST", "/api/auth/login");
+        let login_id = NodeId::from_parts(
+            GRAPH_TYPE,
+            repo(),
+            node_kind::METHOD,
+            "src::auth::service::AuthService::login",
+        );
+
+        assert!(
+            parse.nodes.iter().any(|n| n.id == ep),
+            "endpoint node missing"
+        );
+        assert!(
+            parse
+                .nodes
+                .iter()
+                .find(|n| n.id == ep)
+                .map(|n| n.confidence == Confidence::Strong)
+                .unwrap_or(false),
+            "string literal arg should emit Strong endpoint"
+        );
+        assert!(
+            has_edge(&parse, login_id, ep, edge_category::CALLS),
+            "expected CALLS edge from login method to endpoint"
+        );
+
+        let payloads = endpoint_payloads(&parse, ep);
+        assert_eq!(payloads.len(), 1);
+        assert_eq!(payloads[0]["method"], "POST");
+        assert_eq!(payloads[0]["path"], "/api/auth/login");
+        assert_eq!(payloads[0]["confidence"], "strong");
+    }
+
+    #[test]
+    fn fetch_defaults_to_get_unless_method_overridden() {
+        let src = "\
+function loadUsers(): void {
+    fetch('/api/users');
+    fetch('/api/users', { method: 'POST' });
+}
+";
+        let parse = parse_file(src, "src/loader.ts", "src::loader", repo()).unwrap();
+
+        let get_ep = endpoint_id(repo(), "GET", "/api/users");
+        let post_ep = endpoint_id(repo(), "POST", "/api/users");
+
+        assert!(parse.nodes.iter().any(|n| n.id == get_ep), "GET missing");
+        assert!(
+            parse.nodes.iter().any(|n| n.id == post_ep),
+            "POST override missing"
+        );
+    }
+
+    #[test]
+    fn axios_get_only_emits_when_axios_imported() {
+        // With import — emits.
+        let with_import = "\
+import axios from 'axios';
+export function loadHealth(): void {
+    axios.get('/health');
+}
+";
+        let parse = parse_file(with_import, "src/h.ts", "src::h", repo()).unwrap();
+        assert!(
+            parse
+                .nodes
+                .iter()
+                .any(|n| n.id == endpoint_id(repo(), "GET", "/health")),
+            "axios.get with import should emit endpoint"
+        );
+
+        // Without import — `axios` could be a local variable; skip.
+        let without_import = "\
+export function loadHealth(axios: any): void {
+    axios.get('/health');
+}
+";
+        let parse2 = parse_file(without_import, "src/h2.ts", "src::h2", repo()).unwrap();
+        assert!(
+            !parse2
+                .nodes
+                .iter()
+                .any(|n| n.id == endpoint_id(repo(), "GET", "/health")),
+            "axios.get without import should be skipped (could be a local)"
+        );
+    }
+
+    #[test]
+    fn template_with_interpolation_emits_medium_with_placeholder_path() {
+        let src = "\
+export class UserService {
+    constructor(private readonly http: any) {}
+    show(id: string): void {
+        this.http.get(`/api/users/${id}`);
+    }
+}
+";
+        let parse = parse_file(src, "src/user.service.ts", "src::user::service", repo()).unwrap();
+
+        let ep = endpoint_id(repo(), "GET", "/api/users/${…}");
+        assert!(
+            parse.nodes.iter().any(|n| n.id == ep),
+            "templated endpoint with placeholder missing"
+        );
+        let node = parse.nodes.iter().find(|n| n.id == ep).unwrap();
+        assert_eq!(node.confidence, Confidence::Medium);
+    }
+
+    #[test]
+    fn url_builder_wrapper_pluck_inner_literal_weak() {
+        let src = "\
+export class AuthService {
+    constructor(private readonly http: any, private readonly api: any) {}
+    login(payload: any): void {
+        this.http.post(this.api.buildApiUrl('auth/login'), payload);
+    }
+}
+";
+        let parse = parse_file(src, "src/auth.ts", "src::auth", repo()).unwrap();
+
+        // Inner literal 'auth/login' becomes the path hint, Weak confidence.
+        let ep = endpoint_id(repo(), "POST", "auth/login");
+        assert!(
+            parse.nodes.iter().any(|n| n.id == ep),
+            "URL-builder wrapped endpoint missing"
+        );
+        let node = parse.nodes.iter().find(|n| n.id == ep).unwrap();
+        assert_eq!(node.confidence, Confidence::Weak);
+    }
+
+    #[test]
+    fn multiple_callsites_same_method_path_collapse_with_stacked_cells() {
+        let src = "\
+export class HealthService {
+    constructor(private readonly http: any) {}
+    pollA(): void { this.http.get('/api/health'); }
+    pollB(): void { this.http.get('/api/health'); }
+}
+";
+        let parse =
+            parse_file(src, "src/health.service.ts", "src::health::service", repo()).unwrap();
+
+        let ep = endpoint_id(repo(), "GET", "/api/health");
+        // Parser emits two Node entries — graph-build merges them into one with
+        // two stacked cells.
+        let occurrences = parse.nodes.iter().filter(|n| n.id == ep).count();
+        assert_eq!(occurrences, 2, "expected 2 Node emissions for same endpoint");
+        let payloads = endpoint_payloads(&parse, ep);
+        assert_eq!(payloads.len(), 2, "expected 2 ENDPOINT_HIT cells");
     }
 }

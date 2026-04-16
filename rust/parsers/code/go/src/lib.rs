@@ -22,7 +22,7 @@ use tree_sitter::{Node as TsNode, Parser};
 
 pub use repo_graph_code_domain::{
     CallQualifier, CallSite, CodeNav, FileParse, GRAPH_TYPE, ImportStmt, ImportTarget, ParseError,
-    cell_type, edge_category, node_kind,
+    UnresolvedRef, cell_type, edge_category, node_kind,
 };
 
 // ============================================================================
@@ -133,6 +133,7 @@ pub fn parse_file(
         edges: acc.edges,
         imports: acc.imports,
         calls: acc.calls,
+        refs: acc.refs,
         nav: acc.nav,
     })
 }
@@ -147,7 +148,12 @@ struct Acc {
     edges: Vec<Edge>,
     imports: Vec<ImportStmt>,
     calls: Vec<CallSite>,
+    refs: Vec<UnresolvedRef>,
     nav: CodeNav,
+    /// Route NodeId → set of methods already recorded on that node within this
+    /// file. Prevents stacking duplicate ROUTE_METHOD cells when a body walks
+    /// past the same registration twice (shouldn't happen, defensive).
+    route_methods_seen: HashMap<NodeId, HashMap<String, ()>>,
 }
 
 // ============================================================================
@@ -243,6 +249,7 @@ fn visit_function(
 
     if let Some(body) = decl.child_by_field_name("body") {
         collect_calls_in(body, src, id, None, acc);
+        collect_routes_in(body, src, file_rel, module_id, repo, acc);
     }
 }
 
@@ -298,6 +305,7 @@ fn visit_method(
 
     if let Some(body) = decl.child_by_field_name("body") {
         collect_calls_in(body, src, id, receiver_var.as_deref(), acc);
+        collect_routes_in(body, src, file_rel, module_id, repo, acc);
     }
 }
 
@@ -475,6 +483,295 @@ fn classify_call(call: TsNode, src: &[u8], receiver_var: Option<&str>) -> Option
             }
         }
         _ => None,
+    }
+}
+
+// ============================================================================
+// Route extraction (gin-first, generic `.<METHOD>("/path", handler)` shape)
+// ============================================================================
+//
+// Walks the enclosing fn body once. For each statement of the form
+// `x := y.Group("/prefix")`, records `x` → concatenated prefix in `prefix_map`.
+// For each `<recv>.<METHOD>("/path", handler)` call, builds the full path by
+// prepending `prefix_map[recv]` and emits a Route node with one ROUTE_METHOD
+// cell plus an `UnresolvedRef` (category=HANDLED_BY) for the handler.
+//
+// Routes use path-only NodeIds so that registrations across files in a package
+// (or across methods on the same path) collapse at graph-build time and their
+// cells stack onto one multicellular Route node.
+
+const HTTP_METHODS: &[&str] = &["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"];
+
+fn collect_routes_in(
+    body: TsNode,
+    src: &[u8],
+    file_rel: &str,
+    module_id: NodeId,
+    repo: RepoId,
+    acc: &mut Acc,
+) {
+    let mut prefix_map: HashMap<String, String> = HashMap::new();
+    walk_routes(body, src, file_rel, module_id, repo, &mut prefix_map, acc);
+}
+
+fn walk_routes(
+    n: TsNode,
+    src: &[u8],
+    file_rel: &str,
+    module_id: NodeId,
+    repo: RepoId,
+    prefix_map: &mut HashMap<String, String>,
+    acc: &mut Acc,
+) {
+    // Closure bodies run as handlers at request time; anything registered inside
+    // them is unreachable from the surrounding group map. Skip.
+    if matches!(n.kind(), "func_literal") {
+        return;
+    }
+    if n.kind() == "short_var_declaration" {
+        record_group_assignment(n, src, prefix_map);
+    }
+    if n.kind() == "call_expression" {
+        try_emit_route(n, src, file_rel, module_id, repo, prefix_map, acc);
+    }
+    let mut cursor = n.walk();
+    for child in n.named_children(&mut cursor) {
+        walk_routes(child, src, file_rel, module_id, repo, prefix_map, acc);
+    }
+}
+
+fn record_group_assignment(
+    decl: TsNode,
+    src: &[u8],
+    prefix_map: &mut HashMap<String, String>,
+) {
+    let Some(left) = decl.child_by_field_name("left") else {
+        return;
+    };
+    let Some(right) = decl.child_by_field_name("right") else {
+        return;
+    };
+    if left.named_child_count() != 1 || right.named_child_count() != 1 {
+        return;
+    }
+    let Some(lhs) = left.named_child(0) else {
+        return;
+    };
+    if lhs.kind() != "identifier" {
+        return;
+    }
+    let Some(rhs) = right.named_child(0) else {
+        return;
+    };
+    if rhs.kind() != "call_expression" {
+        return;
+    }
+    let Some(func) = rhs.child_by_field_name("function") else {
+        return;
+    };
+    if func.kind() != "selector_expression" {
+        return;
+    }
+    let Some(field) = func.child_by_field_name("field") else {
+        return;
+    };
+    if text_of(field, src) != "Group" {
+        return;
+    }
+    let Some(operand) = func.child_by_field_name("operand") else {
+        return;
+    };
+    let parent_prefix = if operand.kind() == "identifier" {
+        prefix_map
+            .get(text_of(operand, src))
+            .cloned()
+            .unwrap_or_default()
+    } else {
+        String::new()
+    };
+    let Some(args) = rhs.child_by_field_name("arguments") else {
+        return;
+    };
+    let Some(first) = args.named_child(0) else {
+        return;
+    };
+    let Some(path_literal) = string_literal_text(first, src) else {
+        return;
+    };
+    let full_prefix = join_path(&parent_prefix, &path_literal);
+    prefix_map.insert(text_of(lhs, src).to_string(), full_prefix);
+}
+
+fn try_emit_route(
+    call: TsNode,
+    src: &[u8],
+    file_rel: &str,
+    module_id: NodeId,
+    repo: RepoId,
+    prefix_map: &HashMap<String, String>,
+    acc: &mut Acc,
+) {
+    let Some(func) = call.child_by_field_name("function") else {
+        return;
+    };
+    if func.kind() != "selector_expression" {
+        return;
+    }
+    let Some(field) = func.child_by_field_name("field") else {
+        return;
+    };
+    let method_name = text_of(field, src);
+    if !HTTP_METHODS.contains(&method_name) {
+        return;
+    }
+    let Some(operand) = func.child_by_field_name("operand") else {
+        return;
+    };
+    if operand.kind() != "identifier" {
+        return;
+    }
+    let receiver = text_of(operand, src);
+    let Some(args) = call.child_by_field_name("arguments") else {
+        return;
+    };
+    let Some(first) = args.named_child(0) else {
+        return;
+    };
+    let Some(path_literal) = string_literal_text(first, src) else {
+        return;
+    };
+
+    let prefix = prefix_map.get(receiver).cloned().unwrap_or_default();
+    let full_path = join_path(&prefix, &path_literal);
+
+    let qname = format!("route:{full_path}");
+    let route_id = NodeId::from_parts(GRAPH_TYPE, repo, node_kind::ROUTE, &qname);
+
+    // Second arg — handler. Identifier → Bare; selector `pkg.Name` → Attribute.
+    let handler_arg = args.named_child(1);
+    let (handler_display, handler_qualifier): (Option<String>, Option<CallQualifier>) =
+        match handler_arg {
+            Some(h) if h.kind() == "identifier" => {
+                let name = text_of(h, src).to_string();
+                (Some(name.clone()), Some(CallQualifier::Bare(name)))
+            }
+            Some(h) if h.kind() == "selector_expression" => {
+                match (
+                    h.child_by_field_name("operand"),
+                    h.child_by_field_name("field"),
+                ) {
+                    (Some(o), Some(f)) if o.kind() == "identifier" => {
+                        let base = text_of(o, src).to_string();
+                        let name = text_of(f, src).to_string();
+                        let display = format!("{base}.{name}");
+                        (Some(display), Some(CallQualifier::Attribute { base, name }))
+                    }
+                    _ => (None, None),
+                }
+            }
+            _ => (None, None),
+        };
+
+    let start = call.start_position();
+    let cell = route_method_cell(
+        method_name,
+        handler_display.as_deref(),
+        file_rel,
+        start.row + 1,
+        start.column + 1,
+    );
+
+    acc.nodes.push(Node {
+        id: route_id,
+        repo,
+        confidence: Confidence::Strong,
+        cells: vec![cell],
+    });
+
+    // Only record nav once per route id per file, else children_of would
+    // duplicate entries.
+    let seen = acc.route_methods_seen.entry(route_id).or_default();
+    if seen.is_empty() {
+        acc.nav
+            .record(route_id, &full_path, &qname, node_kind::ROUTE, None);
+    }
+    seen.insert(method_name.to_string(), ());
+
+    if let Some(q) = handler_qualifier {
+        acc.refs.push(UnresolvedRef {
+            from: route_id,
+            from_module: module_id,
+            qualifier: q,
+            category: edge_category::HANDLED_BY,
+        });
+    }
+}
+
+fn string_literal_text(n: TsNode, src: &[u8]) -> Option<String> {
+    match n.kind() {
+        "interpreted_string_literal" => {
+            let full = text_of(n, src);
+            if full.len() >= 2 && full.starts_with('"') && full.ends_with('"') {
+                Some(full[1..full.len() - 1].to_string())
+            } else {
+                None
+            }
+        }
+        "raw_string_literal" => {
+            let full = text_of(n, src);
+            if full.len() >= 2 && full.starts_with('`') && full.ends_with('`') {
+                Some(full[1..full.len() - 1].to_string())
+            } else {
+                None
+            }
+        }
+        _ => None,
+    }
+}
+
+/// Join a group prefix with a relative path. Empty prefix returns path as-is.
+/// A trailing `/` on the prefix and a leading `/` on the path don't double up.
+fn join_path(prefix: &str, path: &str) -> String {
+    if prefix.is_empty() {
+        return path.to_string();
+    }
+    if path == "/" {
+        return prefix.to_string();
+    }
+    let p = prefix.trim_end_matches('/');
+    if path.starts_with('/') {
+        format!("{p}{path}")
+    } else {
+        format!("{p}/{path}")
+    }
+}
+
+fn route_method_cell(
+    method: &str,
+    handler: Option<&str>,
+    file_rel: &str,
+    line: usize,
+    col: usize,
+) -> Cell {
+    #[derive(serde::Serialize)]
+    struct Payload<'a> {
+        method: &'a str,
+        handler: Option<&'a str>,
+        file: &'a str,
+        line: usize,
+        col: usize,
+    }
+    let json = serde_json::to_string(&Payload {
+        method,
+        handler,
+        file: file_rel,
+        line,
+        col,
+    })
+    .unwrap_or_else(|_| String::from("{}"));
+    Cell {
+        kind: cell_type::ROUTE_METHOD,
+        payload: CellPayload::Json(json),
     }
 }
 
@@ -702,5 +999,186 @@ func Login(ctx context.Context) error {
         // At minimum we got the module node.
         let mod_id = NodeId::from_parts(GRAPH_TYPE, repo(), node_kind::MODULE, "x");
         assert!(parse.nodes.iter().any(|n| n.id == mod_id));
+    }
+
+    // ========================================================================
+    // Route extraction (v0.4.4)
+    // ========================================================================
+
+    fn route_id(repo: RepoId, path: &str) -> NodeId {
+        NodeId::from_parts(
+            GRAPH_TYPE,
+            repo,
+            node_kind::ROUTE,
+            &format!("route:{path}"),
+        )
+    }
+
+    fn route_methods(parse: &FileParse, route: NodeId) -> Vec<String> {
+        parse
+            .nodes
+            .iter()
+            .filter(|n| n.id == route)
+            .flat_map(|n| n.cells.iter())
+            .filter(|c| c.kind == cell_type::ROUTE_METHOD)
+            .filter_map(|c| match &c.payload {
+                CellPayload::Json(s) => serde_json::from_str::<serde_json::Value>(s).ok(),
+                _ => None,
+            })
+            .filter_map(|v| v.get("method").and_then(|m| m.as_str()).map(String::from))
+            .collect()
+    }
+
+    const GIN_SIMPLE: &str = r#"package server
+
+func setupRoutes(r *gin.Engine) {
+    r.GET("/health", Health)
+    r.POST("/login", controllers.AuthHandler)
+}
+"#;
+
+    #[test]
+    fn emits_route_node_per_path_with_method_cells() {
+        let parse = parse_file(
+            GIN_SIMPLE,
+            "server/server.go",
+            "server",
+            "github.com/foo/bar",
+            repo(),
+        )
+        .unwrap();
+
+        let health = route_id(repo(), "/health");
+        let login = route_id(repo(), "/login");
+
+        // Route nodes exist, one per path.
+        assert!(parse.nodes.iter().any(|n| n.id == health));
+        assert!(parse.nodes.iter().any(|n| n.id == login));
+
+        // Each route has exactly one ROUTE_METHOD cell in this fixture.
+        assert_eq!(route_methods(&parse, health), vec!["GET".to_string()]);
+        assert_eq!(route_methods(&parse, login), vec!["POST".to_string()]);
+    }
+
+    #[test]
+    fn emits_handled_by_refs_for_identifier_and_selector_handlers() {
+        let parse = parse_file(
+            GIN_SIMPLE,
+            "server/server.go",
+            "server",
+            "github.com/foo/bar",
+            repo(),
+        )
+        .unwrap();
+
+        let health = route_id(repo(), "/health");
+        let login = route_id(repo(), "/login");
+        let module_id = NodeId::from_parts(GRAPH_TYPE, repo(), node_kind::MODULE, "server");
+
+        // Identifier handler → Bare
+        assert!(parse.refs.iter().any(|r| {
+            r.from == health
+                && r.from_module == module_id
+                && r.category == edge_category::HANDLED_BY
+                && matches!(&r.qualifier, CallQualifier::Bare(n) if n == "Health")
+        }));
+
+        // Selector handler → Attribute
+        assert!(parse.refs.iter().any(|r| {
+            r.from == login
+                && r.from_module == module_id
+                && r.category == edge_category::HANDLED_BY
+                && matches!(&r.qualifier, CallQualifier::Attribute { base, name }
+                    if base == "controllers" && name == "AuthHandler")
+        }));
+    }
+
+    const GIN_GROUP_CHAIN: &str = r#"package server
+
+func setupRoutes(r *gin.Engine) {
+    public := r.Group("/api")
+    public.GET("/health", Health)
+    protected := public.Group("/protected")
+    protected.POST("/login", Login)
+}
+"#;
+
+    #[test]
+    fn group_prefix_chain_propagates_through_nested_groups() {
+        let parse = parse_file(
+            GIN_GROUP_CHAIN,
+            "server/server.go",
+            "server",
+            "github.com/foo/bar",
+            repo(),
+        )
+        .unwrap();
+
+        let health = route_id(repo(), "/api/health");
+        let login = route_id(repo(), "/api/protected/login");
+
+        assert!(
+            parse.nodes.iter().any(|n| n.id == health),
+            "expected /api/health route from public group"
+        );
+        assert!(
+            parse.nodes.iter().any(|n| n.id == login),
+            "expected /api/protected/login from nested group chain"
+        );
+    }
+
+    const GIN_SAME_PATH_TWO_METHODS: &str = r#"package server
+
+func setupRoutes(r *gin.Engine) {
+    r.GET("/users", List)
+    r.POST("/users", Create)
+}
+"#;
+
+    #[test]
+    fn same_path_two_methods_stack_cells_on_one_route_node() {
+        let parse = parse_file(
+            GIN_SAME_PATH_TWO_METHODS,
+            "server/server.go",
+            "server",
+            "github.com/foo/bar",
+            repo(),
+        )
+        .unwrap();
+
+        let users = route_id(repo(), "/users");
+        let occurrences = parse.nodes.iter().filter(|n| n.id == users).count();
+
+        // Parser emits two Node structs with the same id (graph-build merges them).
+        // Both should carry exactly one ROUTE_METHOD cell, for GET and POST.
+        assert_eq!(occurrences, 2);
+        let methods = route_methods(&parse, users);
+        assert!(methods.contains(&"GET".to_string()));
+        assert!(methods.contains(&"POST".to_string()));
+        assert_eq!(methods.len(), 2);
+    }
+
+    const GIN_TEMPLATED_PATH: &str = r#"package server
+
+func setupRoutes(r *gin.Engine) {
+    r.GET("/users/:id", Show)
+}
+"#;
+
+    #[test]
+    fn templated_path_retained_verbatim() {
+        let parse = parse_file(
+            GIN_TEMPLATED_PATH,
+            "server/server.go",
+            "server",
+            "github.com/foo/bar",
+            repo(),
+        )
+        .unwrap();
+
+        // Normalisation happens in HttpStackResolver, not in the parser — the
+        // parser stores the literal as written.
+        let show = route_id(repo(), "/users/:id");
+        assert!(parse.nodes.iter().any(|n| n.id == show));
     }
 }

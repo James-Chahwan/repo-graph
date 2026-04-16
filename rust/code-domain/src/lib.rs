@@ -54,6 +54,14 @@ pub mod edge_category {
 
     // v0.4.3b
     pub const INJECTS: EdgeCategoryId = EdgeCategoryId(8);
+
+    // v0.4.4 — HTTP stack
+    /// Route → handler function. Emitted when gin/chi/net-http route
+    /// registration links a path to a handler identifier.
+    pub const HANDLED_BY: EdgeCategoryId = EdgeCategoryId(9);
+    /// Endpoint → Route cross-repo link. Emitted by `HttpStackResolver`
+    /// when a frontend HTTP call matches a backend route by (method, path).
+    pub const HTTP_CALLS: EdgeCategoryId = EdgeCategoryId(10);
 }
 
 // ============================================================================
@@ -66,6 +74,15 @@ pub mod cell_type {
     pub const DOC: CellTypeId = CellTypeId(2);
     pub const POSITION: CellTypeId = CellTypeId(3);
     pub const INTENT: CellTypeId = CellTypeId(4);
+
+    // v0.4.4 — Route method cell. JSON payload carries
+    // `{method, handler_ref?, line, col}`. Multiple cells stack on one Route
+    // node when several HTTP methods are registered on the same path.
+    pub const ROUTE_METHOD: CellTypeId = CellTypeId(5);
+
+    // v0.4.4 — Endpoint hit cell. Stacked on an Endpoint node once per callsite.
+    // JSON payload carries `{method, path, file, line, col, confidence}`.
+    pub const ENDPOINT_HIT: CellTypeId = CellTypeId(6);
 }
 
 // ============================================================================
@@ -120,6 +137,30 @@ pub struct CallSite {
     pub qualifier: CallQualifier,
 }
 
+/// An identifier reference that needs cross-file resolution into an edge of
+/// a specific category. Used at v0.4.4 for route handler references.
+///
+/// Shape: parser sees `r.POST("/login", controllers.AuthHandler)` inside
+/// `server.setupRoutes()`. It emits
+/// ```ignore
+/// UnresolvedRef {
+///     from: route_id,                     // edge source (the Route node)
+///     from_module: server_module_id,      // whose binding table resolves the qualifier
+///     qualifier: Attribute { base: "controllers", name: "AuthHandler" },
+///     category: HANDLED_BY,
+/// }
+/// ```
+/// `from_module` is separate from `from` because Route nodes are path-only
+/// (package-agnostic) and have no unique enclosing module — the parser must
+/// tell the resolver which package's imports to use.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct UnresolvedRef {
+    pub from: NodeId,
+    pub from_module: NodeId,
+    pub qualifier: CallQualifier,
+    pub category: EdgeCategoryId,
+}
+
 /// Classification of a call site by its syntactic shape. Resolution (which
 /// node id the call actually targets) happens in `repo-graph-graph` using the
 /// import table + symbol table, not in the parser.
@@ -153,6 +194,9 @@ pub struct FileParse {
     pub edges: Vec<Edge>,
     pub imports: Vec<ImportStmt>,
     pub calls: Vec<CallSite>,
+    /// Identifier refs that aren't call expressions but still need cross-file
+    /// resolution into an edge. v0.4.4 use case: route handler references.
+    pub refs: Vec<UnresolvedRef>,
     pub nav: CodeNav,
 }
 

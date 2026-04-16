@@ -12,8 +12,8 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 
 use repo_graph_code_domain::{
-    CallQualifier, CallSite, CodeNav, FileParse, ImportStmt, ImportTarget, edge_category,
-    node_kind,
+    CallQualifier, CallSite, CodeNav, FileParse, ImportStmt, ImportTarget, UnresolvedRef,
+    edge_category, node_kind,
 };
 use repo_graph_core::{Cell, Confidence, Edge, EdgeCategoryId, Node, NodeId, NodeKindId, RepoId};
 
@@ -31,6 +31,10 @@ pub struct RepoGraph {
     /// Call sites left unresolved after cross-file resolution. Kept as a
     /// diagnostic surface (at v0.4.5 they also feed the dense-text `?` sigil).
     pub unresolved_calls: Vec<CallSite>,
+    /// `UnresolvedRef`s the resolver couldn't bind. Same diagnostic role as
+    /// `unresolved_calls`. v0.4.4 use case: gin route handler refs that point
+    /// at packages the parser couldn't link to a known module.
+    pub unresolved_refs: Vec<UnresolvedRef>,
 }
 
 /// Symbol index built during resolution. Everything keyed by node id so
@@ -65,20 +69,22 @@ pub enum GraphError {
 
 /// Build a per-repo Python graph from a set of file-parse outputs.
 pub fn build_python(repo: RepoId, parses: Vec<FileParse>) -> Result<RepoGraph, GraphError> {
-    let (mut g, all_imports, all_calls) = merge_parses(repo, parses);
+    let (mut g, all_imports, all_calls, all_refs) = merge_parses(repo, parses);
     build_symbol_table(&mut g);
     resolve_imports_python(&mut g, &all_imports);
     resolve_calls(&mut g, &all_calls, |_, _| None);
+    resolve_refs(&mut g, &all_refs);
     Ok(g)
 }
 
 /// Build a per-repo Go graph. Go packages span multiple files — modules with
 /// the same qname produce the same NodeId and their cells stack on one node.
 pub fn build_go(repo: RepoId, parses: Vec<FileParse>) -> Result<RepoGraph, GraphError> {
-    let (mut g, all_imports, all_calls) = merge_parses(repo, parses);
+    let (mut g, all_imports, all_calls, all_refs) = merge_parses(repo, parses);
     build_symbol_table(&mut g);
     resolve_imports_go(&mut g, &all_imports);
     resolve_calls(&mut g, &all_calls, |_, _| None);
+    resolve_refs(&mut g, &all_refs);
     Ok(g)
 }
 
@@ -93,10 +99,11 @@ pub fn build_typescript<R>(
 where
     R: Fn(&str, &str) -> Option<String>,
 {
-    let (mut g, all_imports, all_calls) = merge_parses(repo, parses);
+    let (mut g, all_imports, all_calls, all_refs) = merge_parses(repo, parses);
     build_symbol_table(&mut g);
     resolve_imports_ts(&mut g, &all_imports, &resolve_source);
     resolve_calls(&mut g, &all_calls, |_, _| None);
+    resolve_refs(&mut g, &all_refs);
     Ok(g)
 }
 
@@ -108,7 +115,12 @@ where
 fn merge_parses(
     repo: RepoId,
     parses: Vec<FileParse>,
-) -> (RepoGraph, Vec<ImportStmt>, Vec<CallSite>) {
+) -> (
+    RepoGraph,
+    Vec<ImportStmt>,
+    Vec<CallSite>,
+    Vec<UnresolvedRef>,
+) {
     let mut g = RepoGraph {
         repo,
         nodes: Vec::new(),
@@ -116,10 +128,12 @@ fn merge_parses(
         nav: CodeNav::default(),
         symbols: SymbolTable::default(),
         unresolved_calls: Vec::new(),
+        unresolved_refs: Vec::new(),
     };
 
     let mut all_imports: Vec<ImportStmt> = Vec::new();
     let mut all_calls: Vec<CallSite> = Vec::new();
+    let mut all_refs: Vec<UnresolvedRef> = Vec::new();
     let mut index: HashMap<NodeId, usize> = HashMap::new();
 
     for p in parses {
@@ -136,9 +150,10 @@ fn merge_parses(
         merge_nav(&mut g.nav, p.nav);
         all_imports.extend(p.imports);
         all_calls.extend(p.calls);
+        all_refs.extend(p.refs);
     }
 
-    (g, all_imports, all_calls)
+    (g, all_imports, all_calls, all_refs)
 }
 
 fn append_cells(existing: &mut Vec<Cell>, incoming: Vec<Cell>) {
@@ -470,6 +485,59 @@ where
         match resolved {
             Some(to) => push_edge(g, site.from, to, edge_category::CALLS),
             None => g.unresolved_calls.push(site.clone()),
+        }
+    }
+}
+
+/// Resolve `UnresolvedRef`s the same way `resolve_calls` resolves `CallSite`s,
+/// but using the ref's `from_module` directly (refs come from sources like
+/// Route nodes that have no enclosing module to walk to) and emitting an edge
+/// of the ref's declared `category` instead of CALLS.
+///
+/// Today's only producer is parser-go's route extraction, where `category` is
+/// `HANDLED_BY` and the qualifier shape is either `Bare(name)` (handler is a
+/// same-package fn) or `Attribute { base, name }` (handler is `pkg.Name`).
+fn resolve_refs(g: &mut RepoGraph, refs: &[UnresolvedRef]) {
+    for r in refs {
+        let bindings = g.symbols.module_import_bindings.get(&r.from_module);
+        let resolved: Option<NodeId> = match &r.qualifier {
+            CallQualifier::Bare(name) => bindings
+                .and_then(|b| b.get(name).copied())
+                .or_else(|| {
+                    g.symbols
+                        .module_symbols
+                        .get(&r.from_module)
+                        .and_then(|s| s.get(name).copied())
+                }),
+            CallQualifier::Attribute { base, name } => bindings
+                .and_then(|b| b.get(base).copied())
+                .and_then(|base_id| {
+                    let base_kind = g.nav.kind_by_id.get(&base_id).copied();
+                    if base_kind == Some(node_kind::MODULE) {
+                        g.symbols
+                            .module_symbols
+                            .get(&base_id)
+                            .and_then(|s| s.get(name).copied())
+                    } else if base_kind == Some(node_kind::CLASS)
+                        || base_kind == Some(node_kind::STRUCT)
+                    {
+                        g.symbols
+                            .class_methods
+                            .get(&base_id)
+                            .and_then(|m| m.get(name).copied())
+                    } else {
+                        None
+                    }
+                }),
+            // SelfMethod and ComplexReceiver are non-sensical for refs at v0.4.4 —
+            // refs come from contexts (Route nodes) that have no `self`. Treat as
+            // unresolved for diagnostics.
+            CallQualifier::SelfMethod(_) | CallQualifier::ComplexReceiver { .. } => None,
+        };
+
+        match resolved {
+            Some(to) => push_edge(g, r.from, to, r.category),
+            None => g.unresolved_refs.push(r.clone()),
         }
     }
 }

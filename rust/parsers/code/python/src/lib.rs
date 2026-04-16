@@ -410,6 +410,7 @@ fn resolve_intra_file(mut acc: Acc, _repo: RepoId) -> Result<FileParse, ParseErr
         edges: std::mem::take(&mut acc.edges),
         imports: std::mem::take(&mut acc.imports),
         calls: Vec::new(),
+        refs: Vec::new(),
         nav: std::mem::take(&mut acc.nav),
     };
     for uc in acc.unresolved {
