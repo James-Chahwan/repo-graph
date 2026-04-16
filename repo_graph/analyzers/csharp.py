@@ -15,7 +15,6 @@ from .base import (
     Node,
     read_safe,
     rel_path,
-    scan_project_dirs,
 )
 
 _CLASS_PATTERN = re.compile(
@@ -42,26 +41,21 @@ _MINIMAL_API = re.compile(
 )
 
 
-def _find_dotnet_roots(repo_root: Path) -> list[Path]:
-    roots = []
-    for d in scan_project_dirs(repo_root):
-        if any(d.glob("*.csproj")) or any(d.glob("*.sln")) or any(d.glob("*.slnx")):
-            roots.append(d)
-    return roots
+_DOTNET_MARKERS = ["*.csproj", "*.sln", "*.slnx"]
 
 
 class CSharpAnalyzer(LanguageAnalyzer):
 
     @staticmethod
-    def detect(repo_root: Path) -> bool:
-        return bool(_find_dotnet_roots(repo_root))
+    def detect(index) -> bool:
+        return bool(index.roots_for("csharp", _DOTNET_MARKERS))
 
     def scan(self) -> AnalysisResult:
         nodes: list[Node] = []
         edges: list[Edge] = []
         seen: set[str] = set()
 
-        for project_root in _find_dotnet_roots(self.repo_root):
+        for project_root in self.index.roots_for("csharp", _DOTNET_MARKERS):
             proj_name = project_root.name
             proj_id = f"cs_proj_{proj_name.replace('-', '_').replace('.', '_')}"
             if proj_id not in seen:
@@ -70,7 +64,7 @@ class CSharpAnalyzer(LanguageAnalyzer):
                 fp = rel_path(self.repo_root, csproj) if csproj else rel_path(self.repo_root, project_root)
                 nodes.append(Node(id=proj_id, type="cs_project", name=proj_name, file_path=fp))
 
-            for cs_file in sorted(project_root.rglob("*.cs")):
+            for cs_file in self.index.files_with_ext(".cs", under=project_root):
                 file_rel = rel_path(self.repo_root, cs_file)
                 if "/obj/" in file_rel or "/bin/" in file_rel:
                     continue

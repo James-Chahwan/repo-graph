@@ -15,7 +15,6 @@ from .base import (
     Node,
     read_safe,
     rel_path,
-    scan_project_dirs,
 )
 
 _CLASS_PATTERN = re.compile(
@@ -36,28 +35,22 @@ _VAPOR_ROUTE = re.compile(
 )
 
 
-def _find_swift_roots(repo_root: Path) -> list[Path]:
-    roots = []
-    for d in scan_project_dirs(repo_root):
-        if (d / "Package.swift").exists():
-            roots.append(d)
-        elif any(d.glob("*.xcodeproj")) or any(d.glob("*.xcworkspace")):
-            roots.append(d)
-    return roots
+def _find_swift_roots(index) -> list[Path]:
+    return index.roots_for("swift", ["Package.swift", "*.xcodeproj", "*.xcworkspace"])
 
 
 class SwiftAnalyzer(LanguageAnalyzer):
 
     @staticmethod
-    def detect(repo_root: Path) -> bool:
-        return bool(_find_swift_roots(repo_root))
+    def detect(index) -> bool:
+        return bool(_find_swift_roots(index))
 
     def scan(self) -> AnalysisResult:
         nodes: list[Node] = []
         edges: list[Edge] = []
         seen: set[str] = set()
 
-        for project_root in _find_swift_roots(self.repo_root):
+        for project_root in _find_swift_roots(self.index):
             proj_name = project_root.name
             proj_id = f"swift_proj_{proj_name.replace('-', '_')}"
             if proj_id not in seen:
@@ -72,7 +65,7 @@ class SwiftAnalyzer(LanguageAnalyzer):
             for src_dir in src_dirs:
                 if not src_dir.exists():
                     continue
-                for swift_file in sorted(src_dir.rglob("*.swift")):
+                for swift_file in self.index.files_with_ext(".swift", under=src_dir):
                     file_rel = rel_path(self.repo_root, swift_file)
                     if "/Tests/" in file_rel or "/test/" in file_rel:
                         continue

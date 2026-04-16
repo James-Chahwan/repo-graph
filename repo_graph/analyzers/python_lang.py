@@ -16,7 +16,6 @@ from .base import (
     Node,
     read_safe,
     rel_path,
-    scan_project_dirs,
 )
 
 
@@ -47,11 +46,10 @@ class PythonAnalyzer(LanguageAnalyzer):
     _PY_MARKERS = {"pyproject.toml", "setup.py", "setup.cfg", "requirements.txt"}
 
     @staticmethod
-    def detect(repo_root: Path) -> bool:
-        return any(
-            (d / m).exists()
-            for d in scan_project_dirs(repo_root)
-            for m in PythonAnalyzer._PY_MARKERS
+    def detect(index) -> bool:
+        return bool(
+            index.dirs_with_any(PythonAnalyzer._PY_MARKERS)
+            or index.extra_roots("python")
         )
 
     def scan(self) -> AnalysisResult:
@@ -74,7 +72,7 @@ class PythonAnalyzer(LanguageAnalyzer):
                     file_path=rel_path(self.repo_root, pkg_root),
                 ))
 
-            for py_file in sorted(pkg_root.rglob("*.py")):
+            for py_file in self.index.files_with_ext(".py", under=pkg_root):
                 if self._should_skip(py_file):
                     continue
 
@@ -175,34 +173,34 @@ class PythonAnalyzer(LanguageAnalyzer):
     def _find_packages(self) -> list[Path]:
         """Find Python packages (directories with __init__.py)."""
         _skip = {"venv", "env", ".venv", "node_modules", "dist", "build", "__pycache__"}
-        packages = []
-        # Use scan_project_dirs to find all project subdirs (monorepo-aware)
-        search_dirs = list(scan_project_dirs(self.repo_root))
-        # Also check src/ and lib/ within each project dir
-        extra = []
-        for d in search_dirs:
-            for sub in ("src", "lib"):
-                sub_dir = d / sub
-                if sub_dir.is_dir():
-                    extra.append(sub_dir)
-        search_dirs.extend(extra)
-        for search_root in search_dirs:
-            for item in sorted(search_root.iterdir()):
-                if (
-                    item.is_dir()
-                    and not item.name.startswith(".")
-                    and not item.name.startswith("_")
-                    and item.name not in _skip
-                    and (item / "__init__.py").exists()
-                ):
-                    packages.append(item)
-        # Also check for single-file scripts at root with a pyproject.toml
+        packages: list[Path] = []
+        seen: set[Path] = set()
+        # Every directory with an __init__.py is a package candidate; keep only
+        # those whose parent is NOT itself a package (i.e., top-level packages).
+        pkg_dirs = set(self.index.dirs_with_file("__init__.py"))
+        for pkg_dir in sorted(pkg_dirs):
+            if pkg_dir.parent in pkg_dirs:
+                continue
+            if pkg_dir.name.startswith(".") or pkg_dir.name.startswith("_"):
+                continue
+            if pkg_dir.name in _skip:
+                continue
+            if pkg_dir in seen:
+                continue
+            seen.add(pkg_dir)
+            packages.append(pkg_dir)
+        # Config-supplied python roots — add any that weren't already captured.
+        for extra in self.index.extra_roots("python"):
+            if extra not in seen:
+                seen.add(extra)
+                packages.append(extra)
+        # Fallback: single-file scripts at root with a pyproject.toml
         if not packages:
-            py_files = [
-                f for f in self.repo_root.iterdir()
-                if f.suffix == ".py" and f.name != "setup.py"
+            root_py = [
+                f for f in self.index.files_with_ext(".py", under=self.repo_root)
+                if f.parent == self.repo_root and f.name != "setup.py"
             ]
-            if py_files:
+            if root_py:
                 packages.append(self.repo_root)
         return packages
 
@@ -251,12 +249,10 @@ class PythonAnalyzer(LanguageAnalyzer):
             return {}
         lines = []
         for pkg in packages:
-            py_files = [
-                f for f in pkg.rglob("*.py")
-                if not self._should_skip(f) and "__pycache__" not in str(f)
-            ]
+            all_py = self.index.files_with_ext(".py", under=pkg)
+            py_files = [f for f in all_py if not self._should_skip(f)]
             test_files = [
-                f for f in pkg.rglob("*.py")
+                f for f in all_py
                 if f.name.startswith("test_") or f.name.endswith("_test.py")
             ]
             lines.append(

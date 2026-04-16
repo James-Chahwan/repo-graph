@@ -17,12 +17,8 @@ _SELECTOR_PATTERN = re.compile(r"^([.&:@#\w][\w\-.*,\s&:()>+~]*)\s*\{")
 class ScssAnalyzer(LanguageAnalyzer):
 
     @staticmethod
-    def detect(repo_root: Path) -> bool:
-        # Quick check — look for .scss files without full tree walk
-        for d in [repo_root / "src", repo_root / "styles", repo_root]:
-            if d.exists() and any(d.rglob("*.scss")):
-                return True
-        return False
+    def detect(index) -> bool:
+        return bool(index.files_with_ext(".scss"))
 
     def scan(self) -> AnalysisResult:
         # SCSS analyzer contributes no graph nodes — just file analysis

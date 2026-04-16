@@ -202,10 +202,28 @@ Every commit keeps the graph current. The LLM always has a fresh map without was
 
 ## How it works
 
-1. **Detect** — `scan_project_dirs()` finds project roots (including monorepo layouts like `packages/*`, `apps/*`, `services/*`, `src/*`). Each analyzer checks for its marker files.
+1. **Detect** — a single shared `FileIndex` walks the repo once; each analyzer queries it for marker files (e.g. `go.mod`, `Cargo.toml`, `package.json`) to locate project roots, including nested monorepo layouts.
 2. **Scan** — matching analyzers extract entities and relationships using regex heuristics. No AST parsing, no external toolchains, no build step required.
 3. **Merge** — all analyzer results merge into a single graph. Nodes deduplicate by ID, edges by (from, to, type).
 4. **Serve** — the MCP server loads the graph into memory and exposes BFS-based traversal tools.
+
+## Config (optional escape hatch)
+
+If auto-detection misses a weird layout, drop `.ai/repo-graph/config.yaml` in the target repo:
+
+```yaml
+skip:
+  - legacy       # directory basenames excluded from the walk
+  - scratch
+
+roots:           # explicit roots heuristics miss — added on top of auto-detection
+  - path: apps/weird-layout
+    kind: python
+  - path: services/custom
+    kind: go
+```
+
+`kind` values match analyzer names: `go`, `rust`, `python`, `typescript`, `react`, `vue`, `angular`, `java`, `scala`, `clojure`, `csharp`, `ruby`, `php`, `swift`, `c_cpp`, `dart`, `elixir`, `solidity`, `terraform`. `config.json` works too if you prefer.
 
 ## Graph data format
 
@@ -223,17 +241,14 @@ Edge types: `imports`, `defines`, `contains`, `uses`, `calls`, `handles`, `handl
 Create `repo_graph/analyzers/<language>.py`:
 
 ```python
-from .base import AnalysisResult, Edge, LanguageAnalyzer, Node, scan_project_dirs, rel_path, read_safe
+from .base import AnalysisResult, Edge, LanguageAnalyzer, Node, rel_path, read_safe
 
 class MyLangAnalyzer(LanguageAnalyzer):
 
     @staticmethod
-    def detect(repo_root):
-        # Check for language marker files
-        return any(
-            (d / "my-marker").exists()
-            for d in scan_project_dirs(repo_root)
-        )
+    def detect(index):
+        # Check for language marker files anywhere in the repo
+        return bool(index.roots_for("mylang", "my-marker"))
 
     def scan(self):
         nodes, edges = [], []

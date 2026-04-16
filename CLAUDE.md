@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 An MCP server that provides structural navigation, context budgeting, health analysis, and visual graph maps for any codebase. It auto-detects project languages/frameworks, builds a graph of entities and relationships, and exposes tools for tracing feature flows, impact analysis, file hotspot detection, split planning, and ASCII visual maps.
 
-Supports Go, Rust, TypeScript, React, Angular, Python, Java/Kotlin, C#/.NET, Ruby, PHP, Swift, C/C++, and SCSS out of the box. New languages are added by creating a single analyzer file.
+Supports Go, Rust, TypeScript, React, Angular, Vue, Python, Java/Kotlin, Scala, Clojure, C#/.NET, Ruby, PHP, Swift, C/C++, Dart/Flutter, Elixir/Phoenix, Solidity, Terraform, and SCSS out of the box. New languages are added by creating a single analyzer file.
 
 ## Commands
 
@@ -43,14 +43,28 @@ repo_graph/
     typescript.py         TypeScript: modules, classes, exports, imports
     react.py              React: components, hooks, context, React Router, fetch/axios calls
     angular.py            Angular: components, services, guards, DI, HTTP calls
+    vue.py                Vue: SFCs, composables, Vue Router routes, fetch/axios calls
     python_lang.py        Python: modules, classes, functions, Flask/FastAPI/Django routes
     java.py               Java/Kotlin: packages, classes, Spring/JAX-RS routes
+    scala.py              Scala: packages, objects/classes/traits, Play/Akka HTTP/http4s routes
+    clojure.py            Clojure: namespaces, defn/defprotocol/defrecord, Compojure/Reitit routes
     csharp.py             C#/.NET: namespaces, classes, ASP.NET/Minimal API routes
     ruby.py               Ruby: files, classes, modules, Rails routes
     php.py                PHP: namespaces, classes, interfaces, Laravel/Symfony routes
     swift.py              Swift: files, types (class/struct/enum/protocol/actor), Vapor routes
     c_cpp.py              C/C++: sources, headers, classes, structs, enums, namespaces
+    dart.py               Dart/Flutter: modules, classes, widgets, go_router/shelf routes
+    elixir.py             Elixir: modules, functions, Phoenix router scopes + routes
+    solidity.py           Solidity: contracts, interfaces, libraries, events, inheritance
+    terraform.py          Terraform: modules, resources, variables, outputs, module sources
     scss.py               SCSS: file-level analysis only (bloat_report, no graph nodes)
+    data_sources.py       Cross-cutting: DB/cache/queue/blob/search/email client detection
+    cli.py                Cross-cutting: CLI entrypoints (Python click, JS commander/yargs, Go cobra, Rust clap)
+    grpc.py               Cross-cutting: gRPC service/method definitions from .proto files
+    queues.py             Cross-cutting: queue consumers (Celery, Dramatiq, BullMQ, Sidekiq, Oban, NATS)
+  test_edges.py            Post-pass: test_file nodes + `tests` edges (Py/JS/TS/Go/Ruby)
+  config.py                Loader for .ai/repo-graph/config.yaml (skip/roots escape hatch)
+  discovery.py             FileIndex — single shared repo walk with ext-indexed lookups
 ```
 
 ### Data flow
@@ -106,6 +120,10 @@ twine upload dist/* -u __token__ -p <PYPI_TOKEN>
 git add pyproject.toml server.json
 git commit -m "chore: bump to X.Y.Z"
 git push github main && git push gitlab main
+
+# 6. Cut GitHub release + push tag to GitLab
+gh release create vX.Y.Z --title "vX.Y.Z" --notes "release notes here"
+git fetch github --tags && git push gitlab --tags
 ```
 
 If `/tmp/mcp-publisher` is missing, re-download:
@@ -134,12 +152,19 @@ Web: https://pypistats.org/packages/mcp-repo-graph
 
 Always push to both: `git push github main && git push gitlab main`
 
+## 0.2.0 features
+
+- **Config escape hatch** — `.ai/repo-graph/config.yaml` with `skip:` and `roots:` keys. Additive only: config unions with heuristics, never replaces them.
+- **Flow kind field** — flows are tagged `http` / `page` / `cli` / `grpc` / `queue`. Rendered in `status`, `flow`, `graph_view` output.
+- **Confidence tiers** — nodes get `strong` / `medium` / `weak`. Routes with resolved handlers upgrade to strong; test/example/fixture paths downgrade to weak. Icons: ● / · / ⚠.
+- **Entrypoint types** — auto-flow generation now seeds from `route`, `cli_command`, `grpc_method`, `queue_consumer` uniformly.
+- **Test → code edges** — `test_file` nodes + `tests` edges from detected test files (Python, JS/TS, Go, Ruby). Use `impact --include-tests` to see test coverage for a node.
+- **Skills bundle** — `/repo-graph-init`, `/repo-graph-trace`, `/repo-graph-flow`, `/repo-graph-impact`, `/repo-graph-visualise` shipped in `skills/`.
+
 ## Roadmap
 
 Planned features (not yet implemented):
 
-- **Init/bootstrap system** — `repo-graph-init` command where the LLM helps discover project structure on first run, saves config to `.ai/repo-graph/config.yaml` for future generations
 - **Promotion** — share on Reddit (r/ChatGPTPro, r/ClaudeAI, r/MachineLearning), Hacker News, X/Twitter, MCP community channels, Claude Code Discord. Lead with the pitch: "stop wasting LLM context on orientation — give it a map instead"
-- **More analyzers** — Elixir, Dart/Flutter, Scala, Zig as community requests come in
+- **More analyzers** — Zig, Haskell, OCaml as community requests come in
 - **Smarter flows** — use call graph analysis to build more precise flows instead of BFS from routes
-- **Config file** — let users define custom entry points, skip patterns, and feature groupings

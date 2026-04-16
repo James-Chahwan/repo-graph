@@ -6,6 +6,10 @@ import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from ..discovery import FileIndex
 
 
 # ---------------------------------------------------------------------------
@@ -19,6 +23,7 @@ class Node:
     type: str
     name: str
     file_path: str  # relative to repo root
+    confidence: str = "medium"  # "strong" | "medium" | "weak"
 
 
 @dataclass
@@ -44,12 +49,13 @@ class AnalysisResult:
 class LanguageAnalyzer(ABC):
     """Base class for language/framework analyzers."""
 
-    def __init__(self, repo_root: Path):
+    def __init__(self, repo_root: Path, index: "FileIndex"):
         self.repo_root = repo_root
+        self.index = index
 
     @staticmethod
     @abstractmethod
-    def detect(repo_root: Path) -> bool:
+    def detect(index: "FileIndex") -> bool:
         """Return True if this analyzer applies to the given repo."""
         ...
 
@@ -108,36 +114,6 @@ def list_dirs(directory: Path) -> list[Path]:
     return sorted(p for p in directory.iterdir() if p.is_dir())
 
 
-# Common monorepo container directories
-_MONOREPO_DIRS = {"packages", "apps", "services", "modules", "libs", "projects", "workspace", "src", "crates"}
-_SKIP_DIRS = {"node_modules", ".git", "dist", "build", "__pycache__", "vendor", ".venv", "venv"}
-
-
-def scan_project_dirs(repo_root: Path) -> list[Path]:
-    """
-    Return candidate project directories to check for marker files.
-
-    Checks: repo root, immediate subdirs, and one level into common
-    monorepo container dirs (packages/*, apps/*, services/*, etc.).
-    Handles layouts like:
-      - root project
-      - root/backend, root/frontend
-      - packages/api, packages/web
-      - apps/server, apps/client
-    """
-    candidates: list[Path] = [repo_root]
-    for d in sorted(repo_root.iterdir()):
-        if not d.is_dir() or d.name.startswith(".") or d.name in _SKIP_DIRS:
-            continue
-        candidates.append(d)
-        # One level into monorepo containers
-        if d.name in _MONOREPO_DIRS:
-            for sub in sorted(d.iterdir()):
-                if sub.is_dir() and not sub.name.startswith(".") and sub.name not in _SKIP_DIRS:
-                    candidates.append(sub)
-    return candidates
-
-
 def camel_to_snake(name: str) -> str:
     """Convert CamelCase to snake_case."""
     s1 = re.sub(r"([A-Z]+)([A-Z][a-z])", r"\1_\2", name)
@@ -149,9 +125,21 @@ def path_to_slug(path: str) -> str:
     return re.sub(r"[^a-zA-Z0-9]", "_", path.lstrip("/")).strip("_")
 
 
-def render_flow_yaml(flow_name: str, paths: list[dict]) -> str:
-    """Render a flow as YAML text."""
-    lines = [f"flow: {flow_name}", "paths:"]
+def render_flow_yaml(
+    flow_name: str,
+    paths: list[dict],
+    kind: str = "http",
+    confidence: str = "medium",
+) -> str:
+    """Render a flow as YAML text. `kind` tags the entrypoint type
+    (http, cli, grpc, queue, page, ...); `confidence` tags trust in the trace
+    (strong/medium/weak)."""
+    lines = [
+        f"flow: {flow_name}",
+        f"kind: {kind}",
+        f"confidence: {confidence}",
+        "paths:",
+    ]
     for p in paths:
         lines.append(f"  - name: {p['name']}")
         lines.append("    steps:")

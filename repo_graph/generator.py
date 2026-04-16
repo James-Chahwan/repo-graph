@@ -20,6 +20,9 @@ from pathlib import Path
 
 from .analyzers import discover_analyzers
 from .analyzers.base import AnalysisResult
+from .config import load_config
+from .discovery import build_index
+from .test_edges import add_test_edges
 
 
 # ---------------------------------------------------------------------------
@@ -206,6 +209,189 @@ def _link_endpoints_to_routes(
 
 
 # ---------------------------------------------------------------------------
+# File-anchor edge resolution (data_source → module)
+# ---------------------------------------------------------------------------
+
+
+# Node types that represent "module-level" anchors — preferred targets for
+# file:: edges over fine-grained (class/function) nodes.
+_MODULE_NODE_TYPES = {
+    "py_module", "py_package",
+    "go_module", "go_package",
+    "rust_module", "rust_crate",
+    "ts_module", "typescript_module",
+    "react_module", "react_project",
+    "vue_module", "vue_project",
+    "angular_module", "angular_project",
+    "java_package", "java_project",
+    "scala_package", "scala_project",
+    "clj_namespace", "clj_project",
+    "csharp_namespace", "csharp_project",
+    "ruby_file", "ruby_project",
+    "php_namespace", "php_project",
+    "swift_file", "swift_project",
+    "cpp_source", "cpp_header",
+    "dart_module", "dart_project", "flutter_project",
+    "elixir_module", "elixir_project",
+    "sol_contract", "sol_interface", "sol_library", "sol_project",
+    "tf_module",
+}
+
+
+def _resolve_file_edges(
+    nodes: list[dict], edges: list[dict]
+) -> list[dict]:
+    """
+    Rewrite `file::<rel>` edge sources to the best matching graph node.
+
+    data_sources analyzer emits edges like `file::src/app/users.py` → data_source_*.
+    This finds the real module/package node for that path and rewrites the edge.
+    Edges with no matching node are dropped (file exists but no other analyzer
+    claimed it).
+    """
+    file_to_nodes: dict[str, list[dict]] = {}
+    # Build a second index: dir -> [module-level nodes in that dir]
+    dir_to_module_nodes: dict[str, list[dict]] = {}
+    for n in nodes:
+        fp = n.get("file_path", "")
+        if not fp:
+            continue
+        file_to_nodes.setdefault(fp, []).append(n)
+        if n["type"] in _MODULE_NODE_TYPES:
+            parent = fp.rsplit("/", 1)[0] if "/" in fp else ""
+            dir_to_module_nodes.setdefault(parent, []).append(n)
+
+    def _best_for(file_rel: str) -> dict | None:
+        # 1. Module-level node on the exact file
+        candidates = file_to_nodes.get(file_rel, [])
+        mods = [c for c in candidates if c["type"] in _MODULE_NODE_TYPES]
+        if mods:
+            return mods[0]
+        # 2. Walk up the directory tree looking for a module-level node
+        parent = file_rel.rsplit("/", 1)[0] if "/" in file_rel else ""
+        while parent:
+            dir_mods = dir_to_module_nodes.get(parent, [])
+            if dir_mods:
+                return dir_mods[0]
+            if "/" not in parent:
+                break
+            parent = parent.rsplit("/", 1)[0]
+        # 3. Root-level module node
+        root_mods = dir_to_module_nodes.get("", [])
+        if root_mods:
+            return root_mods[0]
+        # 4. Any node on the exact file (fine-grained fallback)
+        return candidates[0] if candidates else None
+
+    resolved = 0
+    dropped = 0
+    new_edges: list[dict] = []
+    for edge in edges:
+        src = edge["from"]
+        dst = edge["to"]
+        src_is_anchor = src.startswith("file::")
+        dst_is_anchor = dst.startswith("file::")
+        if not src_is_anchor and not dst_is_anchor:
+            new_edges.append(edge)
+            continue
+
+        new_src, new_dst = src, dst
+        if src_is_anchor:
+            pick = _best_for(src[len("file::"):])
+            if pick is None:
+                dropped += 1
+                continue
+            new_src = pick["id"]
+        if dst_is_anchor:
+            pick = _best_for(dst[len("file::"):])
+            if pick is None:
+                dropped += 1
+                continue
+            new_dst = pick["id"]
+
+        new_edges.append({"from": new_src, "to": new_dst, "type": edge["type"]})
+        resolved += 1
+
+    if resolved or dropped:
+        print(f"  Resolved {resolved} file-anchor edges ({dropped} dropped)")
+
+    return new_edges
+
+
+# ---------------------------------------------------------------------------
+# Confidence scoring
+# ---------------------------------------------------------------------------
+
+
+_WEAK_PATH_MARKERS = (
+    "/test/", "/tests/", "/spec/", "/specs/",
+    "/example/", "/examples/", "/sample/", "/samples/",
+    "/demo/", "/demos/", "/fixture/", "/fixtures/",
+    "/__tests__/", "/__mocks__/",
+)
+_WEAK_FILENAME_MARKERS = (
+    "_test.", ".test.", "_spec.", ".spec.", "test_", "_tests.",
+)
+
+_CONFIDENCE_ORDER = {"weak": 0, "medium": 1, "strong": 2}
+
+
+def _path_is_weak(file_path: str) -> bool:
+    rel = "/" + file_path.replace("\\", "/").lstrip("/")
+    if any(marker in rel for marker in _WEAK_PATH_MARKERS):
+        return True
+    basename = rel.rsplit("/", 1)[-1].lower()
+    return any(marker in basename for marker in _WEAK_FILENAME_MARKERS)
+
+
+def _score_confidence(nodes: list[dict], edges: list[dict]) -> None:
+    """In-place: set node['confidence'] based on file path + handler resolution.
+
+    Rules:
+      - file_path under test/example/spec/demo → weak
+      - route with a handled_by edge to a real handler node → strong
+      - otherwise medium
+    """
+    node_map = {n["id"]: n for n in nodes}
+
+    # Pass 1 — downgrade test/example paths
+    for n in nodes:
+        fp = n.get("file_path") or ""
+        if fp and _path_is_weak(fp):
+            n["confidence"] = "weak"
+
+    # Pass 2 — upgrade routes whose handler resolves to a real node
+    for e in edges:
+        if e["type"] != "handled_by":
+            continue
+        route = node_map.get(e["from"])
+        handler = node_map.get(e["to"])
+        if route is None or handler is None:
+            continue
+        if route["type"] != "route":
+            continue
+        if route.get("confidence") == "weak":
+            continue  # don't override weak
+        # Handler must be a concrete code node, not another route
+        if handler["type"] == "route":
+            continue
+        route["confidence"] = "strong"
+
+
+def _flow_confidence(steps: list[dict], node_map: dict[str, dict]) -> str:
+    """Overall flow confidence = min(step confidences)."""
+    tiers = []
+    for step in steps:
+        node = node_map.get(step["id"])
+        if node is None:
+            continue
+        tiers.append(node.get("confidence", "medium"))
+    if not tiers:
+        return "medium"
+    return min(tiers, key=lambda t: _CONFIDENCE_ORDER.get(t, 1))
+
+
+# ---------------------------------------------------------------------------
 # Auto-flow generation
 # ---------------------------------------------------------------------------
 
@@ -232,24 +418,31 @@ def _auto_flows(nodes: list[dict], edges: list[dict]) -> dict[str, str]:
         if e["type"] == "handled_by":
             rev_handled.setdefault(e["to"], []).append((e["from"], "handles"))
 
-    routes = [n for n in nodes if n["type"] == "route"]
-    if not routes:
+    # Entrypoint types seed flows; their type determines the flow `kind`
+    _ENTRYPOINT_KIND = {
+        "route": "http",                # page/http distinguished by name below
+        "cli_command": "cli",
+        "grpc_method": "grpc",
+        "queue_consumer": "queue",
+    }
+    entrypoints = [n for n in nodes if n["type"] in _ENTRYPOINT_KIND]
+    if not entrypoints:
         return {}
 
-    # Edge types worth following when building a flow (not back to routes)
+    # Edge types worth following when building a flow (not back to sibling entrypoints)
     _FOLLOW_TYPES = {"handled_by", "defines", "contains", "imports", "calls", "uses"}
 
     flows: dict[str, str] = {}
-    for route in routes:
-        name = route["name"]
+    for entry in entrypoints:
+        name = entry["name"]
         slug = name.replace(" ", "_").replace("/", "_").strip("_").lower()
         slug = slug.replace(":", "").replace("{", "").replace("}", "")
         if not slug or slug in flows:
             continue
 
-        steps = [{"id": route["id"], "type": route["type"]}]
-        visited = {route["id"]}
-        frontier = [route["id"]]
+        steps = [{"id": entry["id"], "type": entry["type"]}]
+        visited = {entry["id"]}
+        frontier = [entry["id"]]
 
         for _ in range(4):  # max depth
             next_frontier = []
@@ -258,8 +451,8 @@ def _auto_flows(nodes: list[dict], edges: list[dict]) -> dict[str, str]:
                     if target in visited or etype not in _FOLLOW_TYPES:
                         continue
                     n = node_map.get(target)
-                    if not n or n["type"] == "route":
-                        continue  # don't walk into sibling routes
+                    if not n or n["type"] in _ENTRYPOINT_KIND:
+                        continue  # don't walk into sibling entrypoints
                     visited.add(target)
                     steps.append({"id": n["id"], "type": n["type"], "edge": etype})
                     next_frontier.append(target)
@@ -268,9 +461,16 @@ def _auto_flows(nodes: list[dict], edges: list[dict]) -> dict[str, str]:
                 break
 
         if len(steps) > 1:
+            base_kind = _ENTRYPOINT_KIND[entry["type"]]
+            if entry["type"] == "route" and entry["name"].startswith("PAGE "):
+                base_kind = "page"
+            kind = base_kind
+            confidence = _flow_confidence(steps, node_map)
             flows[slug] = render_flow_yaml(
                 slug,
                 [{"name": slug, "steps": steps}],
+                kind=kind,
+                confidence=confidence,
             )
 
     return flows
@@ -289,7 +489,18 @@ def generate(repo_root: Path) -> tuple[list[dict], list[dict], dict[str, str]]:
     """
     graph_dir = repo_root / ".ai" / "repo-graph"
 
-    analyzers = discover_analyzers(repo_root)
+    config = load_config(repo_root)
+    if config.skip or config.roots:
+        print(
+            f"  [config] skip={sorted(config.skip) or '[]'} "
+            f"roots={ {k: len(v) for k, v in config.roots.items()} or '{}'}"
+        )
+    index = build_index(
+        repo_root,
+        extra_skip=config.skip,
+        config_roots=config.roots,
+    )
+    analyzers = discover_analyzers(repo_root, index)
     if not analyzers:
         print(f"No language analyzers matched for {repo_root}")
         write_graph_outputs(graph_dir, [], [], {})
@@ -334,6 +545,25 @@ def generate(repo_root: Path) -> tuple[list[dict], list[dict], dict[str, str]]:
 
     # Link cross-stack endpoints to backend routes
     deduped_edges = _link_endpoints_to_routes(deduped_nodes, deduped_edges)
+
+    # Resolve file::<rel> anchors (from data_sources analyzer) to real nodes
+    deduped_edges = _resolve_file_edges(deduped_nodes, deduped_edges)
+
+    # Deduplicate edges again after rewrites
+    seen_edges_2: set[tuple[str, str, str]] = set()
+    final_edges: list[dict] = []
+    for edge in deduped_edges:
+        key = (edge["from"], edge["to"], edge["type"])
+        if key not in seen_edges_2:
+            seen_edges_2.add(key)
+            final_edges.append(edge)
+    deduped_edges = final_edges
+
+    # Score node confidence based on file path + handler resolution
+    _score_confidence(deduped_nodes, deduped_edges)
+
+    # Emit test_file nodes + `tests` edges for detected test files
+    add_test_edges(deduped_nodes, deduped_edges, index)
 
     # Rebuild flows with cross-stack edges included
     all_flows = _auto_flows(deduped_nodes, deduped_edges)

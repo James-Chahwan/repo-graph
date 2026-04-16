@@ -15,7 +15,6 @@ from .base import (
     Node,
     read_safe,
     rel_path,
-    scan_project_dirs,
 )
 
 _FN_PATTERN = re.compile(
@@ -43,22 +42,18 @@ _AXUM_ROUTE = re.compile(
 )
 
 
-def _find_rust_roots(repo_root: Path) -> list[Path]:
-    return [d for d in scan_project_dirs(repo_root) if (d / "Cargo.toml").exists()]
-
-
 class RustAnalyzer(LanguageAnalyzer):
 
     @staticmethod
-    def detect(repo_root: Path) -> bool:
-        return bool(_find_rust_roots(repo_root))
+    def detect(index) -> bool:
+        return bool(index.roots_for("rust", "Cargo.toml"))
 
     def scan(self) -> AnalysisResult:
         nodes: list[Node] = []
         edges: list[Edge] = []
         seen: set[str] = set()
 
-        for cargo_root in _find_rust_roots(self.repo_root):
+        for cargo_root in self.index.roots_for("rust", "Cargo.toml"):
             crate_name = self._read_crate_name(cargo_root)
             crate_id = f"rs_crate_{crate_name.replace('-', '_')}"
             if crate_id not in seen:
@@ -72,7 +67,7 @@ class RustAnalyzer(LanguageAnalyzer):
             if not src.exists():
                 continue
 
-            for rs_file in sorted(src.rglob("*.rs")):
+            for rs_file in self.index.files_with_ext(".rs", under=src):
                 file_rel = rel_path(self.repo_root, rs_file)
                 mod_name = rs_file.stem
                 if mod_name == "mod":

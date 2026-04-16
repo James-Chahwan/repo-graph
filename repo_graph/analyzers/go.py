@@ -18,7 +18,6 @@ from .base import (
     path_to_slug,
     read_safe,
     rel_path,
-    scan_project_dirs,
 )
 
 
@@ -44,21 +43,15 @@ _IMPORT_LINE = re.compile(r'"([^"]+)"')
 class GoAnalyzer(LanguageAnalyzer):
 
     @staticmethod
-    def detect(repo_root: Path) -> bool:
-        return any(
-            (d / "go.mod").exists()
-            for d in scan_project_dirs(repo_root)
-        )
+    def detect(index) -> bool:
+        return bool(index.roots_for("go", "go.mod"))
 
     def scan(self) -> AnalysisResult:
         nodes: list[Node] = []
         edges: list[Edge] = []
         seen_ids: set[str] = set()
 
-        mod_roots = [
-            d for d in scan_project_dirs(self.repo_root)
-            if (d / "go.mod").exists()
-        ]
+        mod_roots = self.index.roots_for("go", "go.mod")
 
         for mod_root in mod_roots:
             mod_name = self._read_module_name(mod_root)
@@ -96,10 +89,8 @@ class GoAnalyzer(LanguageAnalyzer):
         # Two-pass: first collect all functions, then resolve route→handler links
         pending_routes: list[tuple[str, str, str | None, str]] = []  # (route_id, pkg_id, handler_name, pkg_rel)
 
-        for go_file in sorted(mod_root.rglob("*.go")):
+        for go_file in self.index.files_with_ext(".go", under=mod_root):
             if go_file.name.endswith("_test.go"):
-                continue
-            if any(p.name.startswith(".") for p in go_file.relative_to(mod_root).parents):
                 continue
 
             pkg_dir = go_file.parent
@@ -195,7 +186,7 @@ class GoAnalyzer(LanguageAnalyzer):
         lines = []
         for mod_root in mod_roots:
             mod_name = self._read_module_name(mod_root) or mod_root.name
-            go_files = list(mod_root.rglob("*.go"))
+            go_files = self.index.files_with_ext(".go", under=mod_root)
             test_files = [f for f in go_files if f.name.endswith("_test.go")]
             lines.append(
                 f"- **{mod_name}** — "

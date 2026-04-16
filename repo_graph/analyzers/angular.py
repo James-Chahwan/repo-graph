@@ -19,7 +19,6 @@ from .base import (
     read_safe,
     rel_path,
     render_flow_yaml,
-    scan_project_dirs,
 )
 
 
@@ -54,9 +53,11 @@ _SKIP_TYPES = {
 }
 
 
-def _find_angular_roots(repo_root: Path) -> list[Path]:
-    """Find all directories containing an Angular package.json."""
-    return [d for d in scan_project_dirs(repo_root) if _is_angular_dir(d)]
+def _find_angular_roots(index) -> list[Path]:
+    """Find all directories containing an Angular package.json, plus any
+    config-declared `kind: angular` roots."""
+    auto = [d for d in index.dirs_with_file("package.json") if _is_angular_dir(d)]
+    return sorted(set(auto) | set(index.extra_roots("angular")))
 
 
 def _is_angular_dir(d: Path) -> bool:
@@ -74,8 +75,8 @@ def _is_angular_dir(d: Path) -> bool:
 class AngularAnalyzer(LanguageAnalyzer):
 
     @staticmethod
-    def detect(repo_root: Path) -> bool:
-        return bool(_find_angular_roots(repo_root))
+    def detect(index) -> bool:
+        return bool(_find_angular_roots(index))
 
     def scan(self) -> AnalysisResult:
         nodes: list[Node] = []
@@ -85,7 +86,7 @@ class AngularAnalyzer(LanguageAnalyzer):
         all_flows: dict[str, str] = {}
         all_state: dict[str, str] = {}
 
-        for project_root in _find_angular_roots(self.repo_root):
+        for project_root in _find_angular_roots(self.index):
             src = self._find_app_root(project_root)
             self._scan_one(src, nodes, edges, seen_ids, all_flows)
             all_state.update(self._state_section_for(src))
@@ -169,10 +170,9 @@ class AngularAnalyzer(LanguageAnalyzer):
         return project_root
 
     def _state_section_for(self, src: Path) -> dict[str, str]:
-        components = list(src.rglob("*.component.ts"))
-        services = list(src.rglob("*.service.ts"))
-        components = [f for f in components if ".spec." not in f.name]
-        services = [f for f in services if ".spec." not in f.name]
+        ts_files = self.index.files_with_ext(".ts", under=src)
+        components = [f for f in ts_files if f.name.endswith(".component.ts") and ".spec." not in f.name]
+        services = [f for f in ts_files if f.name.endswith(".service.ts") and ".spec." not in f.name]
         return {
             f"Angular ({rel_path(self.repo_root, src)})": (
                 f"{len(components)} components, {len(services)} services\n"
@@ -205,7 +205,10 @@ class AngularAnalyzer(LanguageAnalyzer):
         dirs = []
         for candidate in ["core/services", "services", "core"]:
             d = src / candidate
-            if d.exists() and any(d.rglob("*.service.ts")):
+            if d.exists() and any(
+                f.name.endswith(".service.ts")
+                for f in self.index.files_with_ext(".ts", under=d)
+            ):
                 dirs.append(d)
         return dirs
 
@@ -223,8 +226,8 @@ class AngularAnalyzer(LanguageAnalyzer):
         """Scan service files and create service nodes."""
         service_map = {}
         for d in svc_dirs:
-            for f in sorted(d.rglob("*.service.ts")):
-                if ".spec." in f.name:
+            for f in self.index.files_with_ext(".ts", under=d):
+                if not f.name.endswith(".service.ts") or ".spec." in f.name:
                     continue
                 svc_id = f"ng_svc_{self._svc_file_to_id(f.name)}"
                 if svc_id not in seen:
@@ -243,8 +246,8 @@ class AngularAnalyzer(LanguageAnalyzer):
         self, guard_dirs: list[Path], nodes: list, edges: list, seen: set
     ) -> None:
         for d in guard_dirs:
-            for f in sorted(d.rglob("*.guard.ts")):
-                if ".spec." in f.name:
+            for f in self.index.files_with_ext(".ts", under=d):
+                if not f.name.endswith(".guard.ts") or ".spec." in f.name:
                     continue
                 gid = f"ng_guard_{re.sub(r'.guard.ts$', '', f.name).replace('-', '_')}"
                 if gid not in seen:
@@ -280,7 +283,7 @@ class AngularAnalyzer(LanguageAnalyzer):
             return result
         for feat_dir in list_dirs(features_dir):
             services_found: set[str] = set()
-            for ts_file in feat_dir.rglob("*.ts"):
+            for ts_file in self.index.files_with_ext(".ts", under=feat_dir):
                 if ".spec." in ts_file.name:
                     continue
                 content = read_safe(ts_file)
@@ -302,8 +305,8 @@ class AngularAnalyzer(LanguageAnalyzer):
         """Map service files to HTTP endpoints they call."""
         result: dict[str, list[tuple[str, str]]] = {}
         for d in svc_dirs:
-            for f in sorted(d.rglob("*.service.ts")):
-                if ".spec." in f.name:
+            for f in self.index.files_with_ext(".ts", under=d):
+                if not f.name.endswith(".service.ts") or ".spec." in f.name:
                     continue
                 content = read_safe(f)
                 endpoints: list[tuple[str, str]] = []
@@ -339,7 +342,7 @@ class AngularAnalyzer(LanguageAnalyzer):
                 ]
                 paths.append({"name": f"via-{svc_slug}", "steps": steps})
             if paths:
-                flows[feat_name] = render_flow_yaml(feat_name, paths)
+                flows[feat_name] = render_flow_yaml(feat_name, paths, kind="page")
         return flows
 
     def _svc_file_to_id(self, filename: str) -> str:

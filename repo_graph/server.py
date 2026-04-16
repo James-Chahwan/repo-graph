@@ -110,22 +110,37 @@ def status() -> str:
     return "\n".join(parts)
 
 
+_CONFIDENCE_RANK = {"weak": 0, "medium": 1, "strong": 2}
+
+
 @mcp.tool()
 def flow(
     feature: Annotated[str, Field(description="Feature name or keyword to match against available flows. Case-insensitive, supports partial matching. Example: 'login', 'users', 'checkout'.")],
+    kind: Annotated[str, Field(description="Optional kind filter: http, page, cli, grpc, queue. Restricts matches to flows tagged with this entrypoint type. Leave blank to match any kind.", default="")] = "",
+    min_confidence: Annotated[str, Field(description="Minimum trust tier: weak, medium, strong. Hides flows scored below this tier (e.g. medium hides weak). Default weak = no filter.", default="weak")] = "weak",
 ) -> str:
     """Read-only. End-to-end flow for a feature: entry point through service layer to data store, rendered as layered tiers (ENTRY -> SERVICE -> HANDLER -> DATA). Call after `status` to drill into a specific feature. Returns an ASCII tier diagram with file paths and line counts. Lists available flows if no match found."""
     g = get_graph()
     feature_lower = feature.lower().strip()
+    kind_filter = kind.lower().strip() or None
+    min_rank = _CONFIDENCE_RANK.get(min_confidence.lower().strip(), 0)
+
+    def _key_ok(key: str) -> bool:
+        if kind_filter and g.flow_kinds.get(key, "http") != kind_filter:
+            return False
+        conf = g.flow_confidence.get(key, "medium")
+        return _CONFIDENCE_RANK.get(conf, 1) >= min_rank
 
     # Find the matching flow — prefer exact match, then shortest containing key
     flow_yaml = None
     flow_key = feature_lower
-    if feature_lower in g.flows:
+    if feature_lower in g.flows and _key_ok(feature_lower):
         flow_yaml = g.flows[feature_lower]
     else:
         candidates = []
         for key, content in g.flows.items():
+            if not _key_ok(key):
+                continue
             if feature_lower in key or key in feature_lower:
                 candidates.append((key, content))
         if candidates:
@@ -135,8 +150,18 @@ def flow(
             flow_key = best_key
 
     if flow_yaml is None:
-        available = ", ".join(sorted(g.flows.keys()))
-        return f"No flow found for '{feature}'. Available flows: {available}"
+        available_keys = [k for k in g.flows.keys() if _key_ok(k)]
+        available = ", ".join(
+            f"[{g.flow_kinds.get(k, 'http')}/{g.flow_confidence.get(k, 'medium')}] {k}"
+            for k in sorted(available_keys)
+        )
+        filters = []
+        if kind_filter:
+            filters.append(f"kind={kind_filter}")
+        if min_rank > 0:
+            filters.append(f"min_confidence={min_confidence}")
+        suffix = f" ({', '.join(filters)})" if filters else ""
+        return f"No flow found for '{feature}'{suffix}. Available flows: {available}"
 
     return _render_flow_layered(flow_key, flow_yaml, g)
 
@@ -190,6 +215,7 @@ def impact(
     node: Annotated[str, Field(description="Node ID or name to analyze. Accepts exact IDs (e.g. 'func_handleLogin') or fuzzy name matches (e.g. 'handleLogin').")],
     direction: Annotated[str, Field(description="'downstream' to see what this node affects, 'upstream' to see what it depends on.", default="downstream")] = "downstream",
     depth: Annotated[int, Field(description="How many hops to traverse. Higher values find more distant dependencies. Default 3.", default=3, ge=1, le=10)] = 3,
+    include_tests: Annotated[bool, Field(description="If true, also surface test files that import the node (via `tests` edges). Useful before refactoring to see what tests need updating.", default=False)] = False,
 ) -> str:
     """Read-only. Blast radius analysis: fan out from a node to see everything it affects (downstream) or depends on (upstream), grouped by architectural tier. Call before modifying a component to understand the change's reach. Returns affected node count, file count, and a tier-grouped list of impacted components."""
     g = get_graph()
@@ -201,6 +227,21 @@ def impact(
         results = g.upstream(resolved["id"], depth)
     else:
         results = g.downstream(resolved["id"], depth)
+
+    affected_tests: list[dict] = []
+    if include_tests:
+        seen_test_ids: set[str] = set()
+        candidate_ids = {resolved["id"]} | {r["id"] for r in results}
+        for cid in candidate_ids:
+            for upstream_id, etype in g.adjacency_in.get(cid, []):
+                if etype != "tests":
+                    continue
+                if upstream_id in seen_test_ids:
+                    continue
+                seen_test_ids.add(upstream_id)
+                tn = g.nodes.get(upstream_id)
+                if tn:
+                    affected_tests.append(tn)
 
     if not results:
         return f"No {direction} nodes found from {resolved['id']} (depth={depth})"
@@ -240,6 +281,19 @@ def impact(
     if total_files:
         lines.append("")
         lines.append("  These files cover the blast radius — read them before searching further.")
+
+    if include_tests:
+        if affected_tests:
+            lines.append("")
+            lines.append(f"  [TESTS] ({len(affected_tests)} affected)")
+            for t in affected_tests[:20]:
+                lines.append(f"    ⌬ {t.get('name', t['id'])}  {t.get('file_path', '')}")
+            if len(affected_tests) > 20:
+                lines.append(f"    ... and {len(affected_tests) - 20} more")
+        else:
+            lines.append("")
+            lines.append("  [TESTS] none found")
+
     return "\n".join(lines)
 
 
@@ -677,7 +731,9 @@ def _render_node_tree(g: RepoGraph, query: str, depth: int) -> str:
         lines.append("  |")
         lines.append("  +-- Flows:")
         for fname in member_flows[:10]:
-            lines.append(f"  |     * {fname}")
+            k = g.flow_kinds.get(fname, "http")
+            c = g.flow_confidence.get(fname, "medium")
+            lines.append(f"  |     * [{k}] {_confidence_icon(c)} {fname}")
         if len(member_flows) > 10:
             lines.append(f"  |     ... and {len(member_flows) - 10} more")
 
@@ -766,13 +822,25 @@ def _render_overview(g: RepoGraph) -> str:
     if g.flows:
         lines.append("")
         flow_list = sorted(g.flows.keys())
-        lines.append(f"  Flows ({len(flow_list)}):")
+        kind_counts = Counter(g.flow_kinds.get(k, "http") for k in flow_list)
+        conf_counts = Counter(g.flow_confidence.get(k, "medium") for k in flow_list)
+        kind_summary = ", ".join(f"{c} {k}" for k, c in kind_counts.most_common())
+        conf_summary = ", ".join(f"{c} {k}" for k, c in conf_counts.most_common())
+        lines.append(f"  Flows ({len(flow_list)} — {kind_summary}; trust: {conf_summary}):")
         for f in flow_list[:20]:
-            lines.append(f"    ◆ {f}")
+            k = g.flow_kinds.get(f, "http")
+            c = g.flow_confidence.get(f, "medium")
+            icon = _confidence_icon(c)
+            lines.append(f"    ◆ [{k}] {icon} {f}")
         if len(flow_list) > 20:
             lines.append(f"    ... and {len(flow_list) - 20} more")
 
     return "\n".join(lines)
+
+
+def _confidence_icon(confidence: str) -> str:
+    """Visual tier marker: weak=⚠, medium=·, strong=●."""
+    return {"weak": "⚠", "medium": "·", "strong": "●"}.get(confidence, "·")
 
 
 def _type_icon(node_type: str) -> str:

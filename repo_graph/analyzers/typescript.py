@@ -16,7 +16,6 @@ from .base import (
     Node,
     read_safe,
     rel_path,
-    scan_project_dirs,
 )
 
 # Class/interface definitions
@@ -48,19 +47,18 @@ def _has_framework(d: Path) -> bool:
         return False
 
 
-def _find_ts_roots(repo_root: Path) -> list[Path]:
-    """Find directories with tsconfig.json that are NOT Angular/React projects."""
-    return [
-        d for d in scan_project_dirs(repo_root)
-        if (d / "tsconfig.json").exists() and not _has_framework(d)
-    ]
+def _find_ts_roots(index) -> list[Path]:
+    """Directories with tsconfig.json that are NOT Angular/React projects, plus
+    any config-declared `kind: typescript` roots."""
+    auto = [d for d in index.dirs_with_file("tsconfig.json") if not _has_framework(d)]
+    return sorted(set(auto) | set(index.extra_roots("typescript")))
 
 
 class TypeScriptAnalyzer(LanguageAnalyzer):
 
     @staticmethod
-    def detect(repo_root: Path) -> bool:
-        return bool(_find_ts_roots(repo_root))
+    def detect(index) -> bool:
+        return bool(_find_ts_roots(index))
 
     def scan(self) -> AnalysisResult:
         nodes: list[Node] = []
@@ -68,10 +66,12 @@ class TypeScriptAnalyzer(LanguageAnalyzer):
         seen_ids: set[str] = set()
 
         all_state: dict[str, str] = {}
-        for ts_root in _find_ts_roots(self.repo_root):
+        for ts_root in _find_ts_roots(self.index):
             src_root = self._find_src_root(ts_root)
 
-            for ts_file in sorted(src_root.rglob("*.ts")):
+            for ts_file in self.index.files_with_ext({".ts", ".tsx"}, under=src_root):
+                if ts_file.suffix == ".tsx":
+                    continue
                 if self._should_skip(ts_file):
                     continue
 
@@ -144,7 +144,7 @@ class TypeScriptAnalyzer(LanguageAnalyzer):
             project_root,
         ]
         for c in candidates:
-            if c.exists() and any(c.rglob("*.ts")):
+            if c.exists() and self.index.files_with_ext(".ts", under=c):
                 return c
         return project_root
 
@@ -178,7 +178,7 @@ class TypeScriptAnalyzer(LanguageAnalyzer):
         return None
 
     def _state_section(self, src_root: Path) -> dict[str, str]:
-        ts_files = list(src_root.rglob("*.ts"))
+        ts_files = self.index.files_with_ext(".ts", under=src_root)
         ts_files = [f for f in ts_files if not self._should_skip(f)]
         if not ts_files:
             return {}

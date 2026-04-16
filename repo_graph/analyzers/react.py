@@ -18,7 +18,6 @@ from .base import (
     read_safe,
     rel_path,
     render_flow_yaml,
-    scan_project_dirs,
 )
 
 # Component patterns
@@ -75,15 +74,16 @@ def _is_react(d: Path) -> bool:
         return False
 
 
-def _find_react_roots(repo_root: Path) -> list[Path]:
-    return [d for d in scan_project_dirs(repo_root) if _is_react(d)]
+def _find_react_roots(index) -> list[Path]:
+    auto = [d for d in index.dirs_with_file("package.json") if _is_react(d)]
+    return sorted(set(auto) | set(index.extra_roots("react")))
 
 
 class ReactAnalyzer(LanguageAnalyzer):
 
     @staticmethod
-    def detect(repo_root: Path) -> bool:
-        return bool(_find_react_roots(repo_root))
+    def detect(index) -> bool:
+        return bool(_find_react_roots(index))
 
     def scan(self) -> AnalysisResult:
         nodes: list[Node] = []
@@ -93,7 +93,7 @@ class ReactAnalyzer(LanguageAnalyzer):
         all_contexts: dict[str, str] = {}  # context_name -> defining module id
         all_components: list[tuple[str, str, str]] = []  # (comp_id, mod_id, file_rel)
 
-        for react_root in _find_react_roots(self.repo_root):
+        for react_root in _find_react_roots(self.index):
             proj_name = react_root.name
             proj_id = f"react_proj_{proj_name.replace('-', '_').replace('.', '_')}"
             if proj_id not in seen:
@@ -104,9 +104,7 @@ class ReactAnalyzer(LanguageAnalyzer):
                 ))
 
             src_root = self._find_src_root(react_root)
-            for ts_file in sorted(src_root.rglob("*")):
-                if ts_file.suffix not in (".ts", ".tsx", ".js", ".jsx"):
-                    continue
+            for ts_file in self.index.files_with_ext({".ts", ".tsx", ".js", ".jsx"}, under=src_root):
                 file_rel = rel_path(self.repo_root, ts_file)
                 if self._should_skip(file_rel):
                     continue
@@ -214,9 +212,7 @@ class ReactAnalyzer(LanguageAnalyzer):
                             edges.append(Edge(from_id=mod_id, to_id=target_id, type="imports"))
 
             # Second pass: connect hook usages to hook definitions
-            for ts_file in sorted(src_root.rglob("*")):
-                if ts_file.suffix not in (".ts", ".tsx", ".js", ".jsx"):
-                    continue
+            for ts_file in self.index.files_with_ext({".ts", ".tsx", ".js", ".jsx"}, under=src_root):
                 file_rel = rel_path(self.repo_root, ts_file)
                 if self._should_skip(file_rel):
                     continue
@@ -240,9 +236,7 @@ class ReactAnalyzer(LanguageAnalyzer):
 
     def _find_src_root(self, project_root: Path) -> Path:
         for candidate in [project_root / "src", project_root / "app", project_root]:
-            if candidate.exists() and any(
-                candidate.rglob("*.tsx")
-            ) or any(candidate.rglob("*.jsx")):
+            if candidate.exists() and self.index.files_with_ext({".tsx", ".jsx"}, under=candidate):
                 return candidate
         return project_root
 
@@ -318,6 +312,7 @@ class ReactAnalyzer(LanguageAnalyzer):
                 flows[flow_name] = render_flow_yaml(
                     flow_name,
                     [{"name": flow_name, "steps": steps}],
+                    kind="page",
                 )
 
         return flows

@@ -15,7 +15,6 @@ from .base import (
     Node,
     read_safe,
     rel_path,
-    scan_project_dirs,
 )
 
 _CLASS_PATTERN = re.compile(r"^\s*class\s+(\w+)", re.MULTILINE)
@@ -31,23 +30,22 @@ _RAILS_ROUTE = re.compile(
 _RAILS_RESOURCE = re.compile(r"^\s*resources?\s+:(\w+)", re.MULTILINE)
 
 
-def _find_ruby_roots(repo_root: Path) -> list[Path]:
-    return [d for d in scan_project_dirs(repo_root)
-            if (d / "Gemfile").exists() or any(d.glob("*.gemspec"))]
+def _find_ruby_roots(index) -> list[Path]:
+    return index.roots_for("ruby", ["Gemfile", "*.gemspec"])
 
 
 class RubyAnalyzer(LanguageAnalyzer):
 
     @staticmethod
-    def detect(repo_root: Path) -> bool:
-        return bool(_find_ruby_roots(repo_root))
+    def detect(index) -> bool:
+        return bool(_find_ruby_roots(index))
 
     def scan(self) -> AnalysisResult:
         nodes: list[Node] = []
         edges: list[Edge] = []
         seen: set[str] = set()
 
-        for project_root in _find_ruby_roots(self.repo_root):
+        for project_root in _find_ruby_roots(self.index):
             proj_name = project_root.name
             proj_id = f"rb_proj_{proj_name.replace('-', '_')}"
             if proj_id not in seen:
@@ -62,7 +60,7 @@ class RubyAnalyzer(LanguageAnalyzer):
             for src_dir in src_dirs:
                 if not src_dir.exists():
                     continue
-                for rb_file in sorted(src_dir.rglob("*.rb")):
+                for rb_file in self.index.files_with_ext(".rb", under=src_dir):
                     file_rel = rel_path(self.repo_root, rb_file)
                     if "/test/" in file_rel or "/spec/" in file_rel:
                         continue

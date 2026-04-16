@@ -15,7 +15,6 @@ from .base import (
     Node,
     read_safe,
     rel_path,
-    scan_project_dirs,
 )
 
 # C/C++ patterns
@@ -46,33 +45,35 @@ _EXTENSIONS = {".c", ".cc", ".cpp", ".cxx", ".h", ".hh", ".hpp", ".hxx"}
 _SOURCE_EXTENSIONS = {".c", ".cc", ".cpp", ".cxx"}
 
 
-def _find_c_roots(repo_root: Path) -> list[Path]:
-    roots = []
-    for d in scan_project_dirs(repo_root):
-        if any((d / m).exists() for m in _BUILD_MARKERS):
-            roots.append(d)
-        elif any(d.glob("*.vcxproj")):
-            roots.append(d)
-    # Fallback: if repo root has src/ with C/C++ files and no marker was found
+def _has_c_sources(index, root: Path) -> bool:
+    return any(
+        p for p in index.files_with_ext(_EXTENSIONS, under=root)
+    )
+
+
+def _find_c_roots(index) -> list[Path]:
+    markers = list(_BUILD_MARKERS) + ["*.vcxproj"]
+    roots = [d for d in index.dirs_with_any(markers) if _has_c_sources(index, d)]
     if not roots:
-        src = repo_root / "src"
-        if src.is_dir() and any(src.rglob("*.c")) or any(src.rglob("*.h")):
-            roots.append(repo_root)
-    return roots
+        # Fallback: repo root has src/ with C/C++ files
+        src = index.repo_root / "src"
+        if src.is_dir() and index.files_with_ext(_EXTENSIONS, under=src):
+            roots = [index.repo_root]
+    return sorted(set(roots) | set(index.extra_roots("c_cpp")))
 
 
 class CppAnalyzer(LanguageAnalyzer):
 
     @staticmethod
-    def detect(repo_root: Path) -> bool:
-        return bool(_find_c_roots(repo_root))
+    def detect(index) -> bool:
+        return bool(_find_c_roots(index))
 
     def scan(self) -> AnalysisResult:
         nodes: list[Node] = []
         edges: list[Edge] = []
         seen: set[str] = set()
 
-        for project_root in _find_c_roots(self.repo_root):
+        for project_root in _find_c_roots(self.index):
             proj_name = project_root.name
             proj_id = f"cpp_proj_{proj_name.replace('-', '_').replace('.', '_')}"
             if proj_id not in seen:
@@ -97,9 +98,7 @@ class CppAnalyzer(LanguageAnalyzer):
             for src_dir in src_dirs:
                 if not src_dir.exists():
                     continue
-                for src_file in sorted(src_dir.rglob("*")):
-                    if src_file.suffix not in _EXTENSIONS:
-                        continue
+                for src_file in self.index.files_with_ext(_EXTENSIONS, under=src_dir):
                     file_rel = rel_path(self.repo_root, src_file)
                     if "/build/" in file_rel or "/cmake-build" in file_rel:
                         continue

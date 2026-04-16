@@ -15,7 +15,6 @@ from .base import (
     Node,
     read_safe,
     rel_path,
-    scan_project_dirs,
 )
 
 _CLASS_PATTERN = re.compile(
@@ -40,26 +39,28 @@ _SYMFONY_ROUTE = re.compile(
 )
 
 
-def _find_php_roots(repo_root: Path) -> list[Path]:
-    roots = [d for d in scan_project_dirs(repo_root) if (d / "composer.json").exists()]
-    # Fallback: if no composer.json but repo root has .php files
-    if not roots and any(repo_root.glob("*.php")):
-        roots.append(repo_root)
-    return roots
+def _find_php_roots(index) -> list[Path]:
+    roots = index.dirs_with_file("composer.json")
+    # Fallback: if no composer.json but repo has .php files at root
+    if not roots:
+        root = index.repo_root
+        if any(f.parent == root for f in index.files_with_ext(".php")):
+            roots = [root]
+    return sorted(set(roots) | set(index.extra_roots("php")))
 
 
 class PhpAnalyzer(LanguageAnalyzer):
 
     @staticmethod
-    def detect(repo_root: Path) -> bool:
-        return bool(_find_php_roots(repo_root))
+    def detect(index) -> bool:
+        return bool(_find_php_roots(index))
 
     def scan(self) -> AnalysisResult:
         nodes: list[Node] = []
         edges: list[Edge] = []
         seen: set[str] = set()
 
-        for project_root in _find_php_roots(self.repo_root):
+        for project_root in _find_php_roots(self.index):
             proj_name = project_root.name
             proj_id = f"php_proj_{proj_name.replace('-', '_')}"
             if proj_id not in seen:
@@ -73,7 +74,7 @@ class PhpAnalyzer(LanguageAnalyzer):
             for src_dir in src_dirs:
                 if not src_dir.exists():
                     continue
-                for php_file in sorted(src_dir.rglob("*.php")):
+                for php_file in self.index.files_with_ext(".php", under=src_dir):
                     file_rel = rel_path(self.repo_root, php_file)
                     if "/vendor/" in file_rel or "/tests/" in file_rel:
                         continue
@@ -109,7 +110,11 @@ class PhpAnalyzer(LanguageAnalyzer):
             # Laravel routes
             routes_dir = project_root / "routes"
             if routes_dir.exists():
-                for rf in sorted(routes_dir.glob("*.php")):
+                routes_files = [
+                    f for f in self.index.files_with_ext(".php", under=routes_dir)
+                    if f.parent == routes_dir
+                ]
+                for rf in routes_files:
                     content = read_safe(rf)
                     file_rel = rel_path(self.repo_root, rf)
                     for m in _LARAVEL_ROUTE.finditer(content):

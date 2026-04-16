@@ -7,8 +7,25 @@ Reads nodes.json, edges.json, and flows/*.yaml from a target repo's
 
 import json
 import os
+import re
 from collections import defaultdict
 from pathlib import Path
+
+
+_KIND_LINE = re.compile(r"^kind:\s*(\w+)\s*$", re.MULTILINE)
+_CONFIDENCE_LINE = re.compile(r"^confidence:\s*(\w+)\s*$", re.MULTILINE)
+
+
+def _extract_kind(flow_yaml: str) -> str:
+    """Parse `kind:` from a flow YAML. Defaults to 'http' for pre-0.2 flows."""
+    m = _KIND_LINE.search(flow_yaml)
+    return m.group(1) if m else "http"
+
+
+def _extract_confidence(flow_yaml: str) -> str:
+    """Parse `confidence:` from a flow YAML. Defaults to 'medium'."""
+    m = _CONFIDENCE_LINE.search(flow_yaml)
+    return m.group(1) if m else "medium"
 
 
 class RepoGraph:
@@ -22,6 +39,8 @@ class RepoGraph:
         self.adjacency_out: dict[str, list[tuple[str, str]]] = defaultdict(list)
         self.adjacency_in: dict[str, list[tuple[str, str]]] = defaultdict(list)
         self.flows: dict[str, str] = {}
+        self.flow_kinds: dict[str, str] = {}
+        self.flow_confidence: dict[str, str] = {}
         self._load()
 
     def _load(self):
@@ -42,7 +61,10 @@ class RepoGraph:
 
         if flows_dir.exists():
             for flow_file in sorted(flows_dir.glob("*.yaml")):
-                self.flows[flow_file.stem] = flow_file.read_text()
+                text = flow_file.read_text()
+                self.flows[flow_file.stem] = text
+                self.flow_kinds[flow_file.stem] = _extract_kind(text)
+                self.flow_confidence[flow_file.stem] = _extract_confidence(text)
 
     def reload(self):
         """Re-read graph data from disk (e.g. after a regeneration)."""
@@ -51,6 +73,8 @@ class RepoGraph:
         self.adjacency_out.clear()
         self.adjacency_in.clear()
         self.flows.clear()
+        self.flow_kinds.clear()
+        self.flow_confidence.clear()
         self._load()
 
     # -- Traversal --

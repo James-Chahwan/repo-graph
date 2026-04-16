@@ -15,7 +15,6 @@ from .base import (
     Node,
     read_safe,
     rel_path,
-    scan_project_dirs,
 )
 
 _CLASS_PATTERN = re.compile(
@@ -40,41 +39,39 @@ _JAXRS_METHOD = re.compile(r'@(GET|POST|PUT|DELETE|PATCH)\b')
 
 _IMPORT_PATTERN = re.compile(r"^import\s+([\w.]+);", re.MULTILINE)
 
-_JAVA_MARKERS = {"pom.xml", "build.gradle", "build.gradle.kts"}
-
-
-def _find_java_roots(repo_root: Path) -> list[Path]:
-    return [d for d in scan_project_dirs(repo_root)
-            if any((d / m).exists() for m in _JAVA_MARKERS)]
+_JAVA_MARKERS = ["pom.xml", "build.gradle", "build.gradle.kts"]
 
 
 class JavaAnalyzer(LanguageAnalyzer):
 
     @staticmethod
-    def detect(repo_root: Path) -> bool:
-        return bool(_find_java_roots(repo_root))
+    def detect(index) -> bool:
+        return bool(index.roots_for("java", _JAVA_MARKERS))
 
     def scan(self) -> AnalysisResult:
         nodes: list[Node] = []
         edges: list[Edge] = []
         seen: set[str] = set()
 
-        for project_root in _find_java_roots(self.repo_root):
+        for project_root in self.index.roots_for("java", _JAVA_MARKERS):
             project_name = project_root.name
             proj_id = f"java_proj_{project_name.replace('-', '_')}"
             if proj_id not in seen:
                 seen.add(proj_id)
                 marker = next((m for m in _JAVA_MARKERS if (project_root / m).exists()), "")
+                marker_path = (
+                    project_root / marker if marker else project_root
+                )
                 nodes.append(Node(
                     id=proj_id, type="java_project", name=project_name,
-                    file_path=rel_path(self.repo_root, project_root / marker),
+                    file_path=rel_path(self.repo_root, marker_path),
                 ))
 
             # Find source roots
             for src_root in self._find_src_roots(project_root):
-                for java_file in sorted(src_root.rglob("*.java")):
+                for java_file in self.index.files_with_ext(".java", under=src_root):
                     self._scan_file(java_file, proj_id, nodes, edges, seen)
-                for kt_file in sorted(src_root.rglob("*.kt")):
+                for kt_file in self.index.files_with_ext(".kt", under=src_root):
                     self._scan_file(kt_file, proj_id, nodes, edges, seen)
 
         return AnalysisResult(
