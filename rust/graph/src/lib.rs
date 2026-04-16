@@ -8,14 +8,22 @@
 //! — because their import semantics differ (dotted qnames vs. stripped go.mod
 //! paths vs. relative/bare module sources). The symbol-table + traversal
 //! infrastructure is shared.
+//!
+//! v0.4.4b adds `MergedGraph` + `CrossGraphResolver` for cross-repo resolution.
+//! The first resolver, `HttpStackResolver`, pairs frontend Endpoints with
+//! backend Routes by (method, normalised path) and emits `HTTP_CALLS` edges.
+//! Other stack resolvers (GraphQL, gRPC, queues, shared-schema) land at v0.4.10
+//! against the same trait.
 
 use std::collections::{HashMap, HashSet, VecDeque};
 
 use repo_graph_code_domain::{
     CallQualifier, CallSite, CodeNav, FileParse, ImportStmt, ImportTarget, UnresolvedRef,
-    edge_category, node_kind,
+    cell_type, edge_category, node_kind,
 };
-use repo_graph_core::{Cell, Confidence, Edge, EdgeCategoryId, Node, NodeId, NodeKindId, RepoId};
+use repo_graph_core::{
+    Cell, CellPayload, Confidence, Edge, EdgeCategoryId, Node, NodeId, NodeKindId, RepoId,
+};
 
 // ============================================================================
 // Output graph
@@ -578,6 +586,220 @@ fn push_edge(g: &mut RepoGraph, from: NodeId, to: NodeId, category: EdgeCategory
 }
 
 // ============================================================================
+// Cross-graph resolution (v0.4.4b)
+// ============================================================================
+
+/// A bundle of per-repo `RepoGraph`s plus edges that cross repo boundaries.
+///
+/// Per-repo graphs stay owned and addressable by their `RepoId`. Cross-edges
+/// sit on the merged container so the per-repo graphs remain round-trippable
+/// through the v0.4.5 rkyv store without the intra-repo edge list being
+/// polluted by cross-repo references that only make sense once multiple repos
+/// are in scope.
+#[derive(Debug, Default)]
+pub struct MergedGraph {
+    pub graphs: Vec<RepoGraph>,
+    pub cross_edges: Vec<Edge>,
+}
+
+impl MergedGraph {
+    pub fn new(graphs: Vec<RepoGraph>) -> Self {
+        Self {
+            graphs,
+            cross_edges: Vec::new(),
+        }
+    }
+
+    pub fn run<R: CrossGraphResolver>(&mut self, resolver: &R) {
+        resolver.resolve(self);
+    }
+
+    /// All cross-repo edges plus each per-repo graph's intra edges. Used by
+    /// consumers that want a single iterator over the whole merged graph.
+    pub fn all_edges(&self) -> impl Iterator<Item = &Edge> + '_ {
+        self.graphs
+            .iter()
+            .flat_map(|g| g.edges.iter())
+            .chain(self.cross_edges.iter())
+    }
+}
+
+/// Emits edges that cross `RepoGraph` boundaries. v0.4.10 will add
+/// `GraphQLResolver`, `GrpcResolver`, `QueueResolver`, etc. against the same
+/// trait. Each resolver owns its own matching rule — path normalisation,
+/// schema-name matching, queue-topic matching, etc.
+pub trait CrossGraphResolver {
+    fn resolve(&self, merged: &mut MergedGraph);
+}
+
+/// Pairs frontend HTTP Endpoints with backend HTTP Routes by (method,
+/// normalised path) and emits `HTTP_CALLS` edges.
+///
+/// Matching rule:
+/// - Endpoint qname `endpoint:<METHOD>:<path>` is the source side. Method comes
+///   straight from the qname; path is normalised (see `normalise_http_path`).
+/// - Route qname `route:<path>` — one Route node per path across all methods.
+///   Methods live on stacked `ROUTE_METHOD` cells. Each (path, method) pair is
+///   a distinct target.
+/// - Cross-repo is the common case (Angular → Go gin backend), but same-repo
+///   matches also link correctly (Next.js route-handlers + fetchers, etc.).
+/// - Emitted edge confidence = min(endpoint_node_confidence, Strong) since
+///   Routes are always Strong at v0.4.4 — i.e. the endpoint's confidence wins.
+///
+/// Collisions (multiple Routes with the same method+path across repos) emit
+/// one edge per target. Rare in real corpora but cheap to handle.
+pub struct HttpStackResolver;
+
+impl CrossGraphResolver for HttpStackResolver {
+    fn resolve(&self, merged: &mut MergedGraph) {
+        let index = build_route_index(&merged.graphs);
+        for g in &merged.graphs {
+            for n in &g.nodes {
+                if g.nav.kind_by_id.get(&n.id) != Some(&node_kind::ENDPOINT) {
+                    continue;
+                }
+                let Some(qname) = g.nav.qname_by_id.get(&n.id) else {
+                    continue;
+                };
+                let Some((method, raw_path)) = parse_endpoint_qname(qname) else {
+                    continue;
+                };
+                if raw_path == "<unresolved>" {
+                    continue;
+                }
+                let key = (method, normalise_http_path(raw_path));
+                let Some(targets) = index.get(&key) else {
+                    continue;
+                };
+                for target in targets {
+                    merged.cross_edges.push(Edge {
+                        from: n.id,
+                        to: target.route_id,
+                        category: edge_category::HTTP_CALLS,
+                        confidence: weakest(n.confidence, target.confidence),
+                    });
+                }
+            }
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+struct RouteTarget {
+    route_id: NodeId,
+    confidence: Confidence,
+}
+
+/// Build `(METHOD, normalised_path) → Vec<RouteTarget>` across every graph in
+/// the merge. One entry per `ROUTE_METHOD` cell found on each Route node.
+fn build_route_index(
+    graphs: &[RepoGraph],
+) -> HashMap<(String, String), Vec<RouteTarget>> {
+    let mut index: HashMap<(String, String), Vec<RouteTarget>> = HashMap::new();
+    for g in graphs {
+        for n in &g.nodes {
+            if g.nav.kind_by_id.get(&n.id) != Some(&node_kind::ROUTE) {
+                continue;
+            }
+            let Some(qname) = g.nav.qname_by_id.get(&n.id) else {
+                continue;
+            };
+            let Some(path) = qname.strip_prefix("route:") else {
+                continue;
+            };
+            let norm = normalise_http_path(path);
+            for cell in &n.cells {
+                if cell.kind != cell_type::ROUTE_METHOD {
+                    continue;
+                }
+                let CellPayload::Json(json) = &cell.payload else {
+                    continue;
+                };
+                let Some(method) = extract_method_field(json) else {
+                    continue;
+                };
+                index
+                    .entry((method.to_uppercase(), norm.clone()))
+                    .or_default()
+                    .push(RouteTarget {
+                        route_id: n.id,
+                        confidence: n.confidence,
+                    });
+            }
+        }
+    }
+    index
+}
+
+fn parse_endpoint_qname(qname: &str) -> Option<(String, &str)> {
+    let rest = qname.strip_prefix("endpoint:")?;
+    let (method, path) = rest.split_once(':')?;
+    Some((method.to_uppercase(), path))
+}
+
+/// Extract the `method` string field from a `ROUTE_METHOD` cell's JSON payload.
+/// Minimal parse — the payload is a flat object written by parser-go, not
+/// arbitrary user JSON, so a tight scan is enough and keeps us off serde_json
+/// as a graph-crate dependency.
+fn extract_method_field(json: &str) -> Option<&str> {
+    let key = "\"method\"";
+    let idx = json.find(key)?;
+    let after = &json[idx + key.len()..];
+    let colon = after.find(':')?;
+    let rest = after[colon + 1..].trim_start();
+    let rest = rest.strip_prefix('"')?;
+    let end = rest.find('"')?;
+    Some(&rest[..end])
+}
+
+/// Collapse path param syntaxes into a stable form so a frontend endpoint's
+/// `/users/${id}` matches a backend route's `/users/:id` or `/users/{id}`.
+/// Rules:
+/// - Leading slash normalised to exactly one.
+/// - Trailing slash stripped (except on the root).
+/// - Segment matching `:x`, `{x}`, `${…}` (tree-sitter substitution marker),
+///   or any segment containing `${` → `{}`.
+/// - Empty segments collapse (so `//foo` → `/foo`).
+pub fn normalise_http_path(raw: &str) -> String {
+    let trimmed = raw.trim();
+    if trimmed.is_empty() {
+        return "/".to_string();
+    }
+    let body = trimmed.trim_matches('/');
+    if body.is_empty() {
+        return "/".to_string();
+    }
+    let segs: Vec<String> = body
+        .split('/')
+        .filter(|s| !s.is_empty())
+        .map(normalise_segment)
+        .collect();
+    format!("/{}", segs.join("/"))
+}
+
+fn normalise_segment(seg: &str) -> String {
+    if seg.starts_with(':')
+        || (seg.starts_with('{') && seg.ends_with('}'))
+        || seg.contains("${")
+    {
+        "{}".to_string()
+    } else {
+        seg.to_string()
+    }
+}
+
+fn weakest(a: Confidence, b: Confidence) -> Confidence {
+    fn rank(c: Confidence) -> u8 {
+        match c {
+            Confidence::Strong => 2,
+            Confidence::Medium => 1,
+            Confidence::Weak => 0,
+        }
+    }
+    if rank(a) <= rank(b) { a } else { b }
+}
+
+// ============================================================================
 // Traversal primitives
 // ============================================================================
 
@@ -666,5 +888,47 @@ mod tests {
         let g = build_python(repo(), vec![]).unwrap();
         assert!(g.nodes.is_empty());
         assert!(g.edges.is_empty());
+    }
+
+    #[test]
+    fn normalise_http_path_collapses_all_param_syntaxes() {
+        assert_eq!(normalise_http_path("/users/:id"), "/users/{}");
+        assert_eq!(normalise_http_path("/users/{id}"), "/users/{}");
+        assert_eq!(normalise_http_path("/users/${…}"), "/users/{}");
+        assert_eq!(normalise_http_path("/api/users/:id/posts/:pid"), "/api/users/{}/posts/{}");
+        assert_eq!(normalise_http_path("users/list"), "/users/list");
+        assert_eq!(normalise_http_path("/users/list/"), "/users/list");
+        assert_eq!(normalise_http_path("//double//slash"), "/double/slash");
+        assert_eq!(normalise_http_path("/"), "/");
+        assert_eq!(normalise_http_path(""), "/");
+    }
+
+    #[test]
+    fn parse_endpoint_qname_splits_method_and_path() {
+        assert_eq!(
+            parse_endpoint_qname("endpoint:GET:/users"),
+            Some(("GET".to_string(), "/users"))
+        );
+        assert_eq!(
+            parse_endpoint_qname("endpoint:POST:/api/login"),
+            Some(("POST".to_string(), "/api/login"))
+        );
+        assert_eq!(parse_endpoint_qname("route:/users"), None);
+    }
+
+    #[test]
+    fn extract_method_field_handles_ordering_and_whitespace() {
+        let json = r#"{"method":"POST","handler":"h","file":"x.go","line":1,"col":2}"#;
+        assert_eq!(extract_method_field(json), Some("POST"));
+        let spaced = r#"{ "method" : "GET" , "line" : 0 }"#;
+        assert_eq!(extract_method_field(spaced), Some("GET"));
+    }
+
+    #[test]
+    fn weakest_confidence_is_min_rank() {
+        assert_eq!(weakest(Confidence::Strong, Confidence::Strong), Confidence::Strong);
+        assert_eq!(weakest(Confidence::Strong, Confidence::Medium), Confidence::Medium);
+        assert_eq!(weakest(Confidence::Medium, Confidence::Weak), Confidence::Weak);
+        assert_eq!(weakest(Confidence::Weak, Confidence::Strong), Confidence::Weak);
     }
 }
