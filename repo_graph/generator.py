@@ -432,6 +432,11 @@ def _auto_flows(nodes: list[dict], edges: list[dict]) -> dict[str, str]:
     # Edge types worth following when building a flow (not back to sibling entrypoints)
     _FOLLOW_TYPES = {"handled_by", "defines", "contains", "imports", "calls", "uses"}
 
+    # Prefer-calls rule: if a source node has any outgoing `calls` edge, walk only
+    # calls from it (skip defines/contains/imports). Sources without calls fall
+    # back to the full follow set. Item 10 (SCOPE-DRIVEN) in dev-notes/0.3.0-decisions.md.
+    _has_calls: set[str] = {e["from"] for e in edges if e["type"] == "calls"}
+
     flows: dict[str, str] = {}
     for entry in entrypoints:
         name = entry["name"]
@@ -447,8 +452,9 @@ def _auto_flows(nodes: list[dict], edges: list[dict]) -> dict[str, str]:
         for _ in range(4):  # max depth
             next_frontier = []
             for nid in frontier:
+                allowed = {"calls"} if nid in _has_calls else _FOLLOW_TYPES
                 for target, etype in fwd.get(nid, []):
-                    if target in visited or etype not in _FOLLOW_TYPES:
+                    if target in visited or etype not in allowed:
                         continue
                     n = node_map.get(target)
                     if not n or n["type"] in _ENTRYPOINT_KIND:
