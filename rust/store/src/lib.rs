@@ -30,7 +30,7 @@ use std::{
 
 use memmap2::{Mmap, MmapOptions};
 use repo_graph_code_domain::{CallSite, CodeNav, UnresolvedRef};
-use repo_graph_core::{Edge, EdgeCategoryId, Node, NodeId, NodeKindId, RepoId};
+use repo_graph_core::{Cell, CellPayload, CellTypeId, Edge, EdgeCategoryId, Node, NodeId, NodeKindId, RepoId};
 use repo_graph_graph::{RepoGraph, SymbolTable};
 
 // ============================================================================
@@ -267,6 +267,8 @@ pub enum StoreError {
     },
     #[error("manifest references shard {0} but the file is missing")]
     ShardMissing(String),
+    #[error("node {0:?} not found in container")]
+    NodeNotFound(NodeId),
 }
 
 // ============================================================================
@@ -371,6 +373,130 @@ impl MmapContainer {
     pub fn is_empty(&self) -> bool {
         self.bytes.is_empty()
     }
+}
+
+// ============================================================================
+// Mutation — read-modify-write cycle for cell operations
+// ============================================================================
+
+/// Deserialize an archived `.gmap` back to an owned `Container`. Used by
+/// mutation operations that need to modify and re-write.
+pub fn read_to_owned(path: &Path) -> Result<Container, StoreError> {
+    let mmap = MmapContainer::open(path)?;
+    let archived = mmap.archived()?;
+    let owned: Container =
+        rkyv::deserialize::<Container, rkyv::rancor::Error>(archived)?;
+    Ok(owned)
+}
+
+/// Insert or replace a cell on a node. Full read-modify-write cycle:
+/// opens the `.gmap`, deserializes to owned form, mutates, re-serializes
+/// atomically. If a cell of the same type already exists on the node, its
+/// payload is replaced; otherwise a new cell is appended.
+pub fn upsert_cell(
+    path: &Path,
+    node_id: NodeId,
+    cell_type: CellTypeId,
+    payload: CellPayload,
+) -> Result<(), StoreError> {
+    let mut container = read_to_owned(path)?;
+    let node = container
+        .nodes
+        .iter_mut()
+        .find(|n| n.id == node_id)
+        .ok_or(StoreError::NodeNotFound(node_id))?;
+
+    if let Some(cell) = node.cells.iter_mut().find(|c| c.kind == cell_type) {
+        cell.payload = payload;
+    } else {
+        node.cells.push(Cell {
+            kind: cell_type,
+            payload,
+        });
+    }
+
+    let bytes = rkyv::to_bytes::<rkyv::rancor::Error>(&container)?;
+    write_atomic(path, &bytes)
+}
+
+/// Remove a cell of a given type from a node. Returns `Ok(true)` if a cell
+/// was removed, `Ok(false)` if the node existed but had no cell of that type.
+/// Returns `NodeNotFound` if the node id isn't in the container.
+pub fn remove_cell(
+    path: &Path,
+    node_id: NodeId,
+    cell_type: CellTypeId,
+) -> Result<bool, StoreError> {
+    let mut container = read_to_owned(path)?;
+    let node = container
+        .nodes
+        .iter_mut()
+        .find(|n| n.id == node_id)
+        .ok_or(StoreError::NodeNotFound(node_id))?;
+
+    let before = node.cells.len();
+    node.cells.retain(|c| c.kind != cell_type);
+    let removed = node.cells.len() < before;
+
+    if removed {
+        let bytes = rkyv::to_bytes::<rkyv::rancor::Error>(&container)?;
+        write_atomic(path, &bytes)?;
+    }
+    Ok(removed)
+}
+
+/// Upsert a cell in a sharded layout. Scans each shard for the target node,
+/// deserializes only the matching shard, mutates, and re-writes that shard
+/// plus the manifest (updated content hash). Other shards stay untouched.
+pub fn upsert_cell_sharded(
+    dir: &Path,
+    node_id: NodeId,
+    cell_type: CellTypeId,
+    payload: CellPayload,
+) -> Result<(), StoreError> {
+    let manifest_path = dir.join(MANIFEST_NAME);
+    let manifest_bytes = std::fs::read(&manifest_path)?;
+    let mut manifest: Manifest = serde_json::from_slice(&manifest_bytes)?;
+
+    for entry in &mut manifest.shards {
+        let shard_path = dir.join(&entry.path);
+        let mmap = MmapContainer::open(&shard_path)?;
+        let archived = mmap.archived()?;
+
+        let found = archived
+            .nodes
+            .iter()
+            .any(|n| NodeId(n.id.0.to_native()) == node_id);
+
+        if found {
+            drop(mmap);
+            let mut container = read_to_owned(&shard_path)?;
+            let node = container
+                .nodes
+                .iter_mut()
+                .find(|n| n.id == node_id)
+                .unwrap();
+
+            if let Some(cell) = node.cells.iter_mut().find(|c| c.kind == cell_type) {
+                cell.payload = payload;
+            } else {
+                node.cells.push(Cell {
+                    kind: cell_type,
+                    payload,
+                });
+            }
+
+            let bytes = rkyv::to_bytes::<rkyv::rancor::Error>(&container)?;
+            entry.content_hash = hex_xxhash64(&bytes);
+            write_atomic(&shard_path, &bytes)?;
+
+            let manifest_out = serde_json::to_vec_pretty(&manifest)?;
+            write_atomic(&manifest_path, &manifest_out)?;
+            return Ok(());
+        }
+    }
+
+    Err(StoreError::NodeNotFound(node_id))
 }
 
 // ============================================================================
@@ -629,5 +755,179 @@ mod tests {
         let store = CodeNavStore::from_owned(&nav);
         let ids: Vec<u64> = store.name_by_id.iter().map(|(k, _)| k.0).collect();
         assert_eq!(ids, vec![10, 30, 50]);
+    }
+
+    fn make_test_container() -> Container {
+        Container {
+            header: Header::for_code(),
+            repo: RepoId::from_canonical("test://cells"),
+            nodes: vec![
+                Node {
+                    id: NodeId(100),
+                    repo: RepoId::from_canonical("test://cells"),
+                    confidence: repo_graph_core::Confidence::Strong,
+                    cells: vec![Cell {
+                        kind: CellTypeId(1),
+                        payload: CellPayload::Text("fn main() {}".into()),
+                    }],
+                },
+                Node {
+                    id: NodeId(200),
+                    repo: RepoId::from_canonical("test://cells"),
+                    confidence: repo_graph_core::Confidence::Strong,
+                    cells: vec![],
+                },
+            ],
+            edges: Vec::new(),
+            code_nav: CodeNavStore::default(),
+            symbols: SymbolTableStore::default(),
+            unresolved_calls: Vec::new(),
+            unresolved_refs: Vec::new(),
+        }
+    }
+
+    fn write_test_gmap(dir: &std::path::Path) -> PathBuf {
+        let path = dir.join("test.gmap");
+        let container = make_test_container();
+        let bytes = rkyv::to_bytes::<rkyv::rancor::Error>(&container).unwrap();
+        write_atomic(&path, &bytes).unwrap();
+        path
+    }
+
+    #[test]
+    fn read_to_owned_round_trips() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = write_test_gmap(dir.path());
+        let owned = read_to_owned(&path).unwrap();
+        assert_eq!(owned.nodes.len(), 2);
+        assert_eq!(owned.nodes[0].id, NodeId(100));
+        assert_eq!(owned.nodes[0].cells.len(), 1);
+    }
+
+    #[test]
+    fn upsert_cell_adds_new_cell() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = write_test_gmap(dir.path());
+
+        upsert_cell(
+            &path,
+            NodeId(200),
+            CellTypeId(13),
+            CellPayload::Text("conversation here".into()),
+        )
+        .unwrap();
+
+        let owned = read_to_owned(&path).unwrap();
+        let node = owned.nodes.iter().find(|n| n.id == NodeId(200)).unwrap();
+        assert_eq!(node.cells.len(), 1);
+        assert_eq!(node.cells[0].kind, CellTypeId(13));
+    }
+
+    #[test]
+    fn upsert_cell_replaces_existing() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = write_test_gmap(dir.path());
+
+        upsert_cell(
+            &path,
+            NodeId(100),
+            CellTypeId(1),
+            CellPayload::Text("fn main() { updated }".into()),
+        )
+        .unwrap();
+
+        let owned = read_to_owned(&path).unwrap();
+        let node = owned.nodes.iter().find(|n| n.id == NodeId(100)).unwrap();
+        assert_eq!(node.cells.len(), 1);
+        assert!(matches!(&node.cells[0].payload, CellPayload::Text(s) if s.contains("updated")));
+    }
+
+    #[test]
+    fn upsert_cell_node_not_found() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = write_test_gmap(dir.path());
+
+        let err = upsert_cell(
+            &path,
+            NodeId(999),
+            CellTypeId(1),
+            CellPayload::Text("nope".into()),
+        );
+        assert!(matches!(err, Err(StoreError::NodeNotFound(NodeId(999)))));
+    }
+
+    #[test]
+    fn remove_cell_removes_existing() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = write_test_gmap(dir.path());
+
+        let removed = remove_cell(&path, NodeId(100), CellTypeId(1)).unwrap();
+        assert!(removed);
+
+        let owned = read_to_owned(&path).unwrap();
+        let node = owned.nodes.iter().find(|n| n.id == NodeId(100)).unwrap();
+        assert!(node.cells.is_empty());
+    }
+
+    #[test]
+    fn remove_cell_returns_false_for_missing_type() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = write_test_gmap(dir.path());
+
+        let removed = remove_cell(&path, NodeId(100), CellTypeId(99)).unwrap();
+        assert!(!removed);
+    }
+
+    #[test]
+    fn upsert_cell_sharded_finds_correct_shard() {
+        let dir = tempfile::tempdir().unwrap();
+        let shard_dir = dir.path().join("shards");
+        std::fs::create_dir_all(&shard_dir).unwrap();
+
+        let repo = RepoId::from_canonical("test://sharded");
+        let g1 = RepoGraph {
+            repo,
+            nodes: vec![Node {
+                id: NodeId(100),
+                repo,
+                confidence: repo_graph_core::Confidence::Strong,
+                cells: vec![],
+            }],
+            edges: vec![],
+            nav: CodeNav::default(),
+            symbols: SymbolTable::default(),
+            unresolved_calls: vec![],
+            unresolved_refs: vec![],
+        };
+        let g2 = RepoGraph {
+            repo,
+            nodes: vec![Node {
+                id: NodeId(200),
+                repo,
+                confidence: repo_graph_core::Confidence::Strong,
+                cells: vec![],
+            }],
+            edges: vec![],
+            nav: CodeNav::default(),
+            symbols: SymbolTable::default(),
+            unresolved_calls: vec![],
+            unresolved_refs: vec![],
+        };
+
+        write_sharded(&[("shard_a", &g1), ("shard_b", &g2)], &[], &shard_dir).unwrap();
+
+        upsert_cell_sharded(
+            &shard_dir,
+            NodeId(200),
+            CellTypeId(8),
+            CellPayload::Text("attention data".into()),
+        )
+        .unwrap();
+
+        let opened = ShardedMmap::open(&shard_dir).unwrap();
+        let shard_b = opened.shards.iter().find(|(n, _)| n == "shard_b").unwrap();
+        let archived = shard_b.1.archived().unwrap();
+        let node = &archived.nodes[0];
+        assert_eq!(node.cells.len(), 1);
     }
 }
