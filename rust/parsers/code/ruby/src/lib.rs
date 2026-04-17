@@ -36,6 +36,10 @@ pub fn parse_file(
 
     visit_body(root, src, file_rel_path, module_qname, module_id, repo, &mut acc);
 
+    if is_rails_routes_file(file_rel_path) {
+        scan_rails_routes(root, src, repo, &mut acc);
+    }
+
     Ok(FileParse {
         nodes: acc.nodes,
         edges: acc.edges,
@@ -267,6 +271,113 @@ fn text_of<'a>(node: TsNode<'a>, src: &'a [u8]) -> &'a str {
     node.utf8_text(src).unwrap_or("")
 }
 
+// ============================================================================
+// Rails route extraction (v0.4.11a R-ruby)
+// ============================================================================
+//
+// Gated to `config/routes.rb` (or any file named routes.rb) to avoid
+// false-positives on arbitrary `get`/`post` method calls elsewhere in the
+// codebase. Inside the Rails router DSL we match:
+//
+//   get/post/put/patch/delete/match '/path'[, to: 'ctrl#act']
+//   root 'ctrl#index'
+//   resources :users      → emits ANY /users
+//   resource :profile     → emits ANY /profile
+//
+// Routes are emitted in shape B — `<METHOD> <path>` qname + Text
+// ROUTE_METHOD cell — the resolver compat shape that HttpStackResolver
+// accepts uniformly across parser-java/csharp/php/rust/python/ruby.
+
+fn is_rails_routes_file(rel_path: &str) -> bool {
+    rel_path.ends_with("routes.rb") || rel_path.ends_with("/routes.rb")
+}
+
+fn scan_rails_routes(root: TsNode, src: &[u8], repo: RepoId, acc: &mut Acc) {
+    let mut stack = vec![root];
+    while let Some(n) = stack.pop() {
+        if n.kind() == "call" {
+            try_emit_rails_route(n, src, repo, acc);
+        }
+        let mut cursor = n.walk();
+        for c in n.named_children(&mut cursor) {
+            stack.push(c);
+        }
+    }
+}
+
+fn try_emit_rails_route(call: TsNode, src: &[u8], repo: RepoId, acc: &mut Acc) {
+    let method = call
+        .child_by_field_name("method")
+        .map(|n| text_of(n, src))
+        .unwrap_or("");
+    let Some(args) = call.child_by_field_name("arguments") else {
+        return;
+    };
+    let verb = match method {
+        "get" => Some("GET"),
+        "post" => Some("POST"),
+        "put" => Some("PUT"),
+        "patch" => Some("PATCH"),
+        "delete" => Some("DELETE"),
+        "match" => Some("ANY"),
+        "root" => Some("GET"),
+        "resources" | "resource" => None,
+        _ => return,
+    };
+
+    // First argument is either a string path or a :symbol (for resources).
+    let mut cursor = args.walk();
+    let first = args.named_children(&mut cursor).next();
+    let Some(first) = first else { return };
+    let first_txt = text_of(first, src);
+
+    match method {
+        "resources" | "resource" => {
+            let name = first_txt.trim_start_matches(':').trim();
+            if name.is_empty() {
+                return;
+            }
+            let path = format!("/{name}");
+            emit_rails_route("ANY", &path, repo, acc);
+        }
+        "root" => {
+            emit_rails_route("GET", "/", repo, acc);
+        }
+        _ => {
+            let Some(verb) = verb else { return };
+            let path = match first.kind() {
+                "string" => first_txt.trim_matches(|c| c == '\'' || c == '"').to_string(),
+                _ => return,
+            };
+            if path.is_empty() {
+                return;
+            }
+            emit_rails_route(verb, &path, repo, acc);
+        }
+    }
+}
+
+fn emit_rails_route(method: &str, path: &str, repo: RepoId, acc: &mut Acc) {
+    let path = if path.starts_with('/') {
+        path.to_string()
+    } else {
+        format!("/{path}")
+    };
+    let route_name = format!("{method} {path}");
+    let route_id = NodeId::from_parts(GRAPH_TYPE, repo, node_kind::ROUTE, &route_name);
+    acc.nodes.push(Node {
+        id: route_id,
+        repo,
+        confidence: Confidence::Medium,
+        cells: vec![Cell {
+            kind: cell_type::ROUTE_METHOD,
+            payload: CellPayload::Text(method.to_string()),
+        }],
+    });
+    acc.nav
+        .record(route_id, &route_name, &route_name, node_kind::ROUTE, None);
+}
+
 fn file_cells(root: &TsNode, src: &[u8], file_rel: &str) -> Vec<Cell> {
     vec![
         Cell {
@@ -353,5 +464,66 @@ require_relative '../helpers/auth'
 "#;
         let fp = parse_file(source, "app/service.rb", "app::service", repo()).unwrap();
         assert_eq!(fp.imports.len(), 2);
+    }
+
+    fn route_id(method: &str, path: &str) -> NodeId {
+        NodeId::from_parts(
+            GRAPH_TYPE,
+            repo(),
+            node_kind::ROUTE,
+            &format!("{method} {path}"),
+        )
+    }
+
+    #[test]
+    fn rails_verb_routes_emit() {
+        let source = r#"
+Rails.application.routes.draw do
+  get '/users', to: 'users#index'
+  post '/users', to: 'users#create'
+  put '/users/:id', to: 'users#update'
+  delete '/users/:id', to: 'users#destroy'
+end
+"#;
+        let fp = parse_file(source, "config/routes.rb", "config::routes", repo()).unwrap();
+        assert!(fp.nodes.iter().any(|n| n.id == route_id("GET", "/users")));
+        assert!(fp.nodes.iter().any(|n| n.id == route_id("POST", "/users")));
+        assert!(fp.nodes.iter().any(|n| n.id == route_id("PUT", "/users/:id")));
+        assert!(fp.nodes.iter().any(|n| n.id == route_id("DELETE", "/users/:id")));
+    }
+
+    #[test]
+    fn rails_resources_and_root_emit() {
+        let source = r#"
+Rails.application.routes.draw do
+  resources :posts
+  resource :profile
+  root 'home#index'
+end
+"#;
+        let fp = parse_file(source, "config/routes.rb", "config::routes", repo()).unwrap();
+        assert!(fp.nodes.iter().any(|n| n.id == route_id("ANY", "/posts")));
+        assert!(fp.nodes.iter().any(|n| n.id == route_id("ANY", "/profile")));
+        assert!(fp.nodes.iter().any(|n| n.id == route_id("GET", "/")));
+    }
+
+    #[test]
+    fn routes_not_extracted_outside_routes_file() {
+        // `get` used as hash accessor / method name elsewhere shouldn't emit routes.
+        let source = r#"
+class UsersController
+  def get(key)
+    @cache.get(key)
+  end
+end
+"#;
+        let fp = parse_file(source, "app/controllers/users.rb", "app::controllers::users", repo())
+            .unwrap();
+        let has_route = fp
+            .nav
+            .kind_by_id
+            .values()
+            .any(|k| *k == node_kind::ROUTE);
+        assert!(!has_route, "non-routes.rb file should not emit ROUTE nodes");
     }
 }
