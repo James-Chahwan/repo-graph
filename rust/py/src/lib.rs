@@ -490,6 +490,18 @@ fn generate_repo_inner(repo_path: &str) -> Result<GenerateResult, String> {
         let graph = match lang {
             "python" => repo_graph_graph::build_python(repo, parses),
             "go" => repo_graph_graph::build_go(repo, parses),
+            // Languages whose parsers emit dotted or already-`::` import paths.
+            // build_dotted reuses the Python resolver (replace is a no-op on
+            // already-`::`). Java/C#/PHP pre-convert in the parser; Rust is
+            // native `::`; Scala/Clojure/Elixir use dotted natively.
+            "java" | "csharp" | "php" | "rust" | "scala" | "clojure" | "elixir" => {
+                repo_graph_graph::build_dotted(repo, parses)
+            }
+            "ruby" => repo_graph_graph::build_ruby(repo, parses),
+            // TS-family + languages whose imports are raw paths (dart
+            // package:, swift framework, solidity ./foo.sol, terraform module
+            // sources, c_cpp #include). Closure returns None → treated as
+            // external; per-repo resolver injection is future work.
             _ => repo_graph_graph::build_typescript(repo, parses, |_, _| None),
         };
         match graph {

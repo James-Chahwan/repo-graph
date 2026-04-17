@@ -115,6 +115,31 @@ where
     Ok(g)
 }
 
+/// Build a per-repo graph for languages whose import paths are dotted
+/// (`foo.bar.Baz`) or already normalised to `::` form. Reuses the Python
+/// resolver because `.replace('.', "::")` is a no-op on already-`::` paths.
+/// Covers Java, C#, PHP, Rust, Scala, Clojure, Elixir.
+pub fn build_dotted(repo: RepoId, parses: Vec<FileParse>) -> Result<RepoGraph, GraphError> {
+    let (mut g, all_imports, all_calls, all_refs) = merge_parses(repo, parses);
+    build_symbol_table(&mut g);
+    resolve_imports_python(&mut g, &all_imports);
+    resolve_calls(&mut g, &all_calls, |_, _| None);
+    resolve_refs(&mut g, &all_refs);
+    Ok(g)
+}
+
+/// Build a per-repo graph for Ruby. `require 'foo/bar'` imports carry a
+/// slash-delimited path; convert to `::` then resolve against the module
+/// table the Go-style way.
+pub fn build_ruby(repo: RepoId, parses: Vec<FileParse>) -> Result<RepoGraph, GraphError> {
+    let (mut g, all_imports, all_calls, all_refs) = merge_parses(repo, parses);
+    build_symbol_table(&mut g);
+    resolve_imports_slash(&mut g, &all_imports);
+    resolve_calls(&mut g, &all_calls, |_, _| None);
+    resolve_refs(&mut g, &all_refs);
+    Ok(g)
+}
+
 // ============================================================================
 // Shared merge: multi-file modules with the same NodeId collapse — their cells
 // stack on a single Module node (Go packages, TS re-exports, etc.).
@@ -321,6 +346,37 @@ fn resolve_imports_go(g: &mut RepoGraph, imports: &[ImportStmt]) {
         let bound = alias
             .clone()
             .unwrap_or_else(|| path.rsplit("::").next().unwrap_or(path).to_string());
+        g.symbols
+            .module_import_bindings
+            .entry(from_mod_id)
+            .or_default()
+            .insert(bound, target_id);
+    }
+}
+
+/// Ruby imports: `require 'foo/bar'` gives a slash-delimited path. Convert
+/// slashes to `::` then look up directly (same shape as Go's resolver).
+fn resolve_imports_slash(g: &mut RepoGraph, imports: &[ImportStmt]) {
+    for stmt in imports {
+        let Some(from_mod_id) = g
+            .symbols
+            .module_by_qname
+            .get(&stmt.from_module)
+            .copied()
+        else {
+            continue;
+        };
+        let ImportTarget::Module { path, alias } = &stmt.target else {
+            continue;
+        };
+        let target_qname = path.replace('/', "::");
+        let Some(target_id) = g.symbols.module_by_qname.get(&target_qname).copied() else {
+            continue;
+        };
+        push_edge(g, from_mod_id, target_id, edge_category::IMPORTS);
+        let bound = alias
+            .clone()
+            .unwrap_or_else(|| target_qname.rsplit("::").next().unwrap_or(&target_qname).to_string());
         g.symbols
             .module_import_bindings
             .entry(from_mod_id)
@@ -1360,6 +1416,7 @@ pub fn code_activation_defaults() -> repo_graph_activation::ActivationConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use repo_graph_code_domain::GRAPH_TYPE;
 
     fn repo() -> RepoId {
         RepoId::from_canonical("test://unit")
@@ -1420,5 +1477,101 @@ mod tests {
         assert_eq!(weakest(Confidence::Strong, Confidence::Medium), Confidence::Medium);
         assert_eq!(weakest(Confidence::Medium, Confidence::Weak), Confidence::Weak);
         assert_eq!(weakest(Confidence::Weak, Confidence::Strong), Confidence::Weak);
+    }
+
+    #[test]
+    fn build_dotted_resolves_java_style_imports() {
+        // Two modules: com::foo (imports com::bar::Helper) and com::bar.
+        let repo = repo();
+        let foo_id = NodeId::from_parts(GRAPH_TYPE, repo, node_kind::MODULE, "com::foo");
+        let bar_id = NodeId::from_parts(GRAPH_TYPE, repo, node_kind::MODULE, "com::bar");
+        let helper_id = NodeId::from_parts(GRAPH_TYPE, repo, node_kind::CLASS, "com::bar::Helper");
+
+        let mut foo_nav = CodeNav::default();
+        foo_nav.record(foo_id, "foo", "com::foo", node_kind::MODULE, None);
+        let foo = FileParse {
+            nodes: vec![Node { id: foo_id, repo, confidence: Confidence::Strong, cells: vec![] }],
+            edges: vec![],
+            imports: vec![ImportStmt {
+                from_module: "com::foo".to_string(),
+                target: ImportTarget::Symbol {
+                    module: "com::bar".to_string(),
+                    name: "Helper".to_string(),
+                    alias: None,
+                    level: 0,
+                },
+            }],
+            calls: vec![],
+            refs: vec![],
+            nav: foo_nav,
+        };
+
+        let mut bar_nav = CodeNav::default();
+        bar_nav.record(bar_id, "bar", "com::bar", node_kind::MODULE, None);
+        bar_nav.record(helper_id, "Helper", "com::bar::Helper", node_kind::CLASS, Some(bar_id));
+        let bar = FileParse {
+            nodes: vec![
+                Node { id: bar_id, repo, confidence: Confidence::Strong, cells: vec![] },
+                Node { id: helper_id, repo, confidence: Confidence::Strong, cells: vec![] },
+            ],
+            edges: vec![],
+            imports: vec![],
+            calls: vec![],
+            refs: vec![],
+            nav: bar_nav,
+        };
+
+        let g = build_dotted(repo, vec![foo, bar]).unwrap();
+        assert!(
+            g.edges.iter().any(|e|
+                e.from == foo_id && e.to == bar_id && e.category == edge_category::IMPORTS
+            ),
+            "expected IMPORTS edge from com::foo to com::bar"
+        );
+        let foo_bindings = g.symbols.module_import_bindings.get(&foo_id).unwrap();
+        assert_eq!(foo_bindings.get("Helper").copied(), Some(helper_id));
+    }
+
+    #[test]
+    fn build_ruby_resolves_slash_requires() {
+        let repo = repo();
+        let app_id = NodeId::from_parts(GRAPH_TYPE, repo, node_kind::MODULE, "app");
+        let foo_bar_id = NodeId::from_parts(GRAPH_TYPE, repo, node_kind::MODULE, "foo::bar");
+
+        let mut app_nav = CodeNav::default();
+        app_nav.record(app_id, "app", "app", node_kind::MODULE, None);
+        let app = FileParse {
+            nodes: vec![Node { id: app_id, repo, confidence: Confidence::Strong, cells: vec![] }],
+            edges: vec![],
+            imports: vec![ImportStmt {
+                from_module: "app".to_string(),
+                target: ImportTarget::Module {
+                    path: "foo/bar".to_string(),
+                    alias: None,
+                },
+            }],
+            calls: vec![],
+            refs: vec![],
+            nav: app_nav,
+        };
+
+        let mut foo_bar_nav = CodeNav::default();
+        foo_bar_nav.record(foo_bar_id, "bar", "foo::bar", node_kind::MODULE, None);
+        let foo_bar = FileParse {
+            nodes: vec![Node { id: foo_bar_id, repo, confidence: Confidence::Strong, cells: vec![] }],
+            edges: vec![],
+            imports: vec![],
+            calls: vec![],
+            refs: vec![],
+            nav: foo_bar_nav,
+        };
+
+        let g = build_ruby(repo, vec![app, foo_bar]).unwrap();
+        assert!(
+            g.edges.iter().any(|e|
+                e.from == app_id && e.to == foo_bar_id && e.category == edge_category::IMPORTS
+            ),
+            "expected IMPORTS edge from app to foo::bar (slash → ::)"
+        );
     }
 }
