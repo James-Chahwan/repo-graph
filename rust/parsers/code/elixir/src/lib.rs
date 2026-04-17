@@ -36,6 +36,8 @@ pub fn parse_file(
 
     visit_top(root, src, file_rel_path, module_qname, module_id, repo, &mut acc);
 
+    scan_phoenix_routes(source, repo, &mut acc);
+
     Ok(FileParse {
         nodes: acc.nodes,
         edges: acc.edges,
@@ -345,6 +347,156 @@ fn text_of<'a>(node: TsNode<'a>, src: &'a [u8]) -> &'a str {
     node.utf8_text(src).unwrap_or("")
 }
 
+fn scan_phoenix_routes(source: &str, repo: RepoId, acc: &mut Acc) {
+    let bytes = source.as_bytes();
+    let mut seen: std::collections::HashSet<String> = std::collections::HashSet::new();
+    let mut scope_stack: Vec<String> = Vec::new();
+    let mut i = 0;
+    while i < bytes.len() {
+        // Match word at i, then dispatch.
+        if !is_word_start(bytes, i) {
+            i += 1;
+            continue;
+        }
+        let word_end = word_end(bytes, i);
+        let word = &source[i..word_end];
+        match word {
+            "scope" => {
+                let rest = &source[word_end..];
+                let prefix = first_quoted(rest).unwrap_or_default();
+                scope_stack.push(prefix);
+                // Advance past the end of the line or next do (rough).
+                if let Some(off) = rest.find(" do") {
+                    i = word_end + off + 3;
+                    continue;
+                }
+                i = word_end;
+            }
+            "end" => {
+                // End *might* close a scope — we can't tell precisely without a full parse.
+                // Pop lazily: only if non-empty.
+                if !scope_stack.is_empty() {
+                    scope_stack.pop();
+                }
+                i = word_end;
+            }
+            "get" | "post" | "put" | "patch" | "delete" | "head" | "options" => {
+                let method = word.to_ascii_uppercase();
+                let rest = &source[word_end..];
+                if let Some(path) = first_quoted(rest) {
+                    let full = join_scope(&scope_stack, &path);
+                    let route_name = format!("{method} {full}");
+                    if seen.insert(route_name.clone()) {
+                        emit_phoenix_route(&method, &full, repo, acc);
+                    }
+                }
+                i = word_end;
+            }
+            "resources" => {
+                let rest = &source[word_end..];
+                if let Some(path) = first_quoted(rest) {
+                    let full = join_scope(&scope_stack, &path);
+                    for m in ["GET", "POST", "PUT", "PATCH", "DELETE"] {
+                        let route_name = format!("{m} {full}");
+                        if seen.insert(route_name.clone()) {
+                            emit_phoenix_route(m, &full, repo, acc);
+                        }
+                    }
+                }
+                i = word_end;
+            }
+            _ => {
+                i = word_end;
+            }
+        }
+    }
+}
+
+fn is_word_start(bytes: &[u8], i: usize) -> bool {
+    let c = bytes[i];
+    if !(c.is_ascii_alphabetic() || c == b'_') {
+        return false;
+    }
+    if i == 0 {
+        return true;
+    }
+    let p = bytes[i - 1];
+    !(p.is_ascii_alphanumeric() || p == b'_' || p == b'.' || p == b':')
+}
+
+fn word_end(bytes: &[u8], start: usize) -> usize {
+    let mut i = start;
+    while i < bytes.len() && (bytes[i].is_ascii_alphanumeric() || bytes[i] == b'_') {
+        i += 1;
+    }
+    i
+}
+
+fn first_quoted(s: &str) -> Option<String> {
+    let bytes = s.as_bytes();
+    let mut i = 0;
+    while i < bytes.len() {
+        let c = bytes[i];
+        if c == b'\n' {
+            return None;
+        }
+        if c == b'"' {
+            let start = i + 1;
+            let mut j = start;
+            while j < bytes.len() && bytes[j] != b'"' {
+                if bytes[j] == b'\\' && j + 1 < bytes.len() {
+                    j += 2;
+                } else {
+                    j += 1;
+                }
+            }
+            if j < bytes.len() {
+                return Some(s[start..j].to_string());
+            }
+            return None;
+        }
+        i += 1;
+    }
+    None
+}
+
+fn join_scope(stack: &[String], path: &str) -> String {
+    let mut full = String::new();
+    for s in stack {
+        if !s.is_empty() {
+            if !s.starts_with('/') {
+                full.push('/');
+            }
+            full.push_str(s.trim_end_matches('/'));
+        }
+    }
+    if !path.starts_with('/') {
+        full.push('/');
+    }
+    full.push_str(path);
+    if full.is_empty() {
+        "/".to_string()
+    } else {
+        full
+    }
+}
+
+fn emit_phoenix_route(method: &str, path: &str, repo: RepoId, acc: &mut Acc) {
+    let route_name = format!("{method} {path}");
+    let route_id = NodeId::from_parts(GRAPH_TYPE, repo, node_kind::ROUTE, &route_name);
+    acc.nodes.push(Node {
+        id: route_id,
+        repo,
+        confidence: Confidence::Medium,
+        cells: vec![Cell {
+            kind: cell_type::ROUTE_METHOD,
+            payload: CellPayload::Text(method.to_string()),
+        }],
+    });
+    acc.nav
+        .record(route_id, &route_name, &route_name, node_kind::ROUTE, None);
+}
+
 fn file_cells(root: &TsNode, src: &[u8], file_rel: &str) -> Vec<Cell> {
     vec![
         Cell {
@@ -418,6 +570,37 @@ end
 "#;
         let fp = parse_file(source, "lib/web.ex", "lib::web", repo()).unwrap();
         assert_eq!(fp.imports.len(), 3);
+    }
+
+    #[test]
+    fn phoenix_routes_basic() {
+        let source = r#"
+defmodule MyAppWeb.Router do
+  use MyAppWeb, :router
+
+  scope "/api", MyAppWeb do
+    get "/users", UserController, :index
+    post "/users", UserController, :create
+    put "/users/:id", UserController, :update
+    delete "/users/:id", UserController, :delete
+    resources "/posts", PostController
+  end
+end
+"#;
+        let fp = parse_file(source, "lib/router.ex", "lib::router", repo()).unwrap();
+        let route_names: Vec<&str> = fp
+            .nav
+            .name_by_id
+            .iter()
+            .filter(|(id, _)| fp.nav.kind_by_id.get(*id) == Some(&node_kind::ROUTE))
+            .map(|(_, n)| n.as_str())
+            .collect();
+        assert!(route_names.contains(&"GET /api/users"));
+        assert!(route_names.contains(&"POST /api/users"));
+        assert!(route_names.contains(&"PUT /api/users/:id"));
+        assert!(route_names.contains(&"DELETE /api/users/:id"));
+        assert!(route_names.contains(&"GET /api/posts"));
+        assert!(route_names.contains(&"POST /api/posts"));
     }
 
     #[test]
