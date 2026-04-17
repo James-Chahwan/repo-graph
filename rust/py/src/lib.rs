@@ -124,7 +124,8 @@ fn apply_cross_cutting_extractors(
     repo: RepoId,
 ) {
     use repo_graph_code_extractors::{
-        angular, cli, data_sources, eventbus, graphql, grpc, queues, react, ts_routes, websocket,
+        angular, cli, data_sources, eventbus, graphql, grpc, queues, react, ts_routes, vue,
+        websocket,
     };
 
     macro_rules! run {
@@ -190,6 +191,19 @@ fn apply_cross_cutting_extractors(
             .unwrap_or_default();
         run!(angular::extract_angular_nodes(
             source, &module_qname, module_id, repo
+        ));
+    }
+
+    // Language-gated: Vue components + composables + Vue Router.
+    if matches!(lang, "vue" | "typescript") {
+        let module_qname = fp
+            .nav
+            .qname_by_id
+            .get(&module_id)
+            .cloned()
+            .unwrap_or_default();
+        run!(vue::extract_vue_nodes(
+            source, path, &module_qname, module_id, repo
         ));
     }
 }

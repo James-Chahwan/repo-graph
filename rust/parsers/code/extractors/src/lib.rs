@@ -7,4 +7,5 @@ pub mod grpc;
 pub mod queues;
 pub mod react;
 pub mod ts_routes;
+pub mod vue;
 pub mod websocket;
