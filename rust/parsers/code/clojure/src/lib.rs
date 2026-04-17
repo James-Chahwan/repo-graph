@@ -35,6 +35,7 @@ pub fn parse_file(
         .record(module_id, module_simple, module_qname, node_kind::MODULE, None);
 
     visit_top(root, src, file_rel_path, module_qname, module_id, repo, &mut acc);
+    scan_clojure_routes(source, repo, &mut acc);
 
     Ok(FileParse {
         nodes: acc.nodes,
@@ -354,6 +355,117 @@ fn text_of<'a>(node: TsNode<'a>, src: &'a [u8]) -> &'a str {
     node.utf8_text(src).unwrap_or("")
 }
 
+// ============================================================================
+// Clojure route extraction (v0.4.11a R-clojure)
+// ============================================================================
+//
+// Compojure:   (GET "/users" [] handler)      → GET /users
+//              (POST "/users/:id" [] handler) → POST /users/:id
+// Reitit:      ["/users" {:get list :post mk}] → GET /users, POST /users
+//
+// Text scan only — tree-sitter-clojure lacks semantic linking, so we match
+// syntactic patterns directly. Clojure's macro system means any
+// `(SYMBOL "literal" ...)` looks the same at parse time; gating on
+// upper-case HTTP verbs keeps precision high.
+
+fn scan_clojure_routes(source: &str, repo: RepoId, acc: &mut Acc) {
+    let mut seen = std::collections::HashSet::new();
+
+    // Compojure: `(GET "..."`, `(POST "..."`, etc.
+    for method in ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS", "ANY"] {
+        let needle = format!("({method} \"");
+        let mut idx = 0;
+        while let Some(pos) = source[idx..].find(&needle) {
+            let start = idx + pos + needle.len();
+            let after = &source[start..];
+            if let Some(end) = after.find('"') {
+                let path = &after[..end];
+                if !path.is_empty() {
+                    emit_clojure_route(method, path, repo, acc, &mut seen);
+                }
+            }
+            idx = start;
+        }
+    }
+
+    // Reitit: `["/path" {:get ... :post ...}]` (may span lines).
+    // Strategy: find each `"/..."` preceded by `[`, then within the next
+    // `{...}` block, find any `:<method>` keyword tokens.
+    let bytes = source.as_bytes();
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] == b'"' {
+            // Look backwards for '[' on the same line-ish to detect reitit form.
+            let start_back = i.saturating_sub(32);
+            let context = &source[start_back..i];
+            let opened = context
+                .chars()
+                .rev()
+                .take_while(|c| !matches!(c, ']' | ')' | '\n'))
+                .any(|c| c == '[');
+            if opened {
+                // Extract path literal.
+                let after = &source[i + 1..];
+                if let Some(end) = after.find('"') {
+                    let path = &after[..end];
+                    if path.starts_with('/') {
+                        // Find the nearest `{...}` block following.
+                        let tail = &after[end + 1..];
+                        if let Some(open_brace) = tail.find('{') {
+                            let block_start = end + 1 + open_brace + 1;
+                            let block_tail = &after[block_start..];
+                            if let Some(close_brace) = block_tail.find('}') {
+                                let block = &block_tail[..close_brace];
+                                for method in ["get", "post", "put", "patch", "delete", "head", "options"] {
+                                    let kw = format!(":{method}");
+                                    if block.contains(&kw) {
+                                        emit_clojure_route(
+                                            &method.to_ascii_uppercase(),
+                                            path,
+                                            repo,
+                                            acc,
+                                            &mut seen,
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    i += 1 + end + 1;
+                    continue;
+                }
+            }
+        }
+        i += 1;
+    }
+}
+
+fn emit_clojure_route(
+    method: &str,
+    path: &str,
+    repo: RepoId,
+    acc: &mut Acc,
+    seen: &mut std::collections::HashSet<(String, String)>,
+) {
+    let key = (method.to_string(), path.to_string());
+    if !seen.insert(key) {
+        return;
+    }
+    let route_name = format!("{method} {path}");
+    let route_id = NodeId::from_parts(GRAPH_TYPE, repo, node_kind::ROUTE, &route_name);
+    acc.nodes.push(Node {
+        id: route_id,
+        repo,
+        confidence: Confidence::Medium,
+        cells: vec![Cell {
+            kind: cell_type::ROUTE_METHOD,
+            payload: CellPayload::Text(method.to_string()),
+        }],
+    });
+    acc.nav
+        .record(route_id, &route_name, &route_name, node_kind::ROUTE, None);
+}
+
 fn file_cells(root: &TsNode, src: &[u8], file_rel: &str) -> Vec<Cell> {
     vec![
         Cell {
@@ -434,5 +546,41 @@ mod tests {
         let fp = parse_file(source, "src/proc.clj", "src::proc", repo()).unwrap();
         assert!(fp.calls.iter().any(|c| matches!(&c.qualifier, CallQualifier::Bare(n) if n == "validate")));
         assert!(fp.calls.iter().any(|c| matches!(&c.qualifier, CallQualifier::Attribute { base, name } if base == "db" && name == "save")));
+    }
+
+    fn route_id(method: &str, path: &str) -> NodeId {
+        NodeId::from_parts(
+            GRAPH_TYPE,
+            repo(),
+            node_kind::ROUTE,
+            &format!("{method} {path}"),
+        )
+    }
+
+    #[test]
+    fn compojure_routes_emit() {
+        let source = r#"
+(defroutes app-routes
+  (GET "/users" [] (list-users))
+  (POST "/users" [] (create-user))
+  (DELETE "/users/:id" [id] (delete-user id)))
+"#;
+        let fp = parse_file(source, "src/routes.clj", "src::routes", repo()).unwrap();
+        assert!(fp.nodes.iter().any(|n| n.id == route_id("GET", "/users")));
+        assert!(fp.nodes.iter().any(|n| n.id == route_id("POST", "/users")));
+        assert!(fp.nodes.iter().any(|n| n.id == route_id("DELETE", "/users/:id")));
+    }
+
+    #[test]
+    fn reitit_routes_emit() {
+        let source = r#"
+(def routes
+  [["/users" {:get list-users :post create-user}]
+   ["/users/:id" {:delete delete-user}]])
+"#;
+        let fp = parse_file(source, "src/api.clj", "src::api", repo()).unwrap();
+        assert!(fp.nodes.iter().any(|n| n.id == route_id("GET", "/users")));
+        assert!(fp.nodes.iter().any(|n| n.id == route_id("POST", "/users")));
+        assert!(fp.nodes.iter().any(|n| n.id == route_id("DELETE", "/users/:id")));
     }
 }
