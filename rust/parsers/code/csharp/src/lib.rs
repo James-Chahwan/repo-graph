@@ -224,9 +224,13 @@ fn check_route_attrs(node: TsNode, src: &[u8], handler_id: NodeId, repo: RepoId,
         ("[HttpPut", "PUT"),
         ("[HttpDelete", "DELETE"),
         ("[HttpPatch", "PATCH"),
+        ("[HttpHead", "HEAD"),
+        ("[HttpOptions", "OPTIONS"),
     ];
     for (prefix, method) in &aspnet {
-        if let Some(pos) = text.find(prefix) {
+        let mut search_from = 0;
+        while let Some(rel) = text[search_from..].find(prefix) {
+            let pos = search_from + rel;
             let after = &text[pos + prefix.len()..];
             let path = if after.starts_with("(\"") {
                 extract_quoted(&after[1..])
@@ -236,18 +240,33 @@ fn check_route_attrs(node: TsNode, src: &[u8], handler_id: NodeId, repo: RepoId,
             if let Some(path) = path {
                 emit_route(method, &path, handler_id, repo, acc);
             }
+            search_from = pos + prefix.len();
         }
     }
+    // [Route("/path")] — ASP.NET conventional routing, ANY method.
+    let mut search_from = 0;
+    while let Some(rel) = text[search_from..].find("[Route(\"") {
+        let pos = search_from + rel;
+        let after = &text[pos + "[Route(\"".len()..];
+        if let Some(end) = after.find('"') {
+            let path = &after[..end];
+            emit_route("ANY", path, handler_id, repo, acc);
+        }
+        search_from = pos + "[Route(\"".len();
+    }
     // Minimal API: app.MapGet("/path", ...)
-    for method_name in &["MapGet", "MapPost", "MapPut", "MapDelete", "MapPatch"] {
+    for method_name in &["MapGet", "MapPost", "MapPut", "MapDelete", "MapPatch", "MapHead", "MapOptions"] {
         let search = format!(".{method_name}(\"");
-        if let Some(pos) = text.find(&search) {
+        let mut search_from = 0;
+        while let Some(rel) = text[search_from..].find(&search) {
+            let pos = search_from + rel;
             let after = &text[pos + search.len()..];
             if let Some(end) = after.find('"') {
                 let path = &after[..end];
                 let method = method_name.trim_start_matches("Map").to_uppercase();
                 emit_route(&method, path, handler_id, repo, acc);
             }
+            search_from = pos + search.len();
         }
     }
 }
@@ -506,6 +525,39 @@ public class UsersController {
             .collect();
         assert!(routes.contains(&"GET /users"));
         assert!(routes.contains(&"POST /users"));
+    }
+
+    #[test]
+    fn aspnet_full_methods_and_route_attr() {
+        let source = r#"
+[Route("/api/v1")]
+public class ThingsController {
+    [HttpGet("/things")]
+    public IActionResult List() { return Ok(); }
+    [HttpPut("/things/{id}")]
+    public IActionResult Update() { return Ok(); }
+    [HttpDelete("/things/{id}")]
+    public IActionResult Destroy() { return Ok(); }
+    [HttpHead("/things")]
+    public IActionResult Head() { return Ok(); }
+    [HttpOptions("/things")]
+    public IActionResult Opts() { return Ok(); }
+}
+"#;
+        let fp = parse_file(source, "Controllers/Things.cs", "MyApp", repo()).unwrap();
+        let routes: Vec<_> = fp
+            .nav
+            .kind_by_id
+            .iter()
+            .filter(|(_, k)| **k == node_kind::ROUTE)
+            .filter_map(|(id, _)| fp.nav.name_by_id.get(id).map(|s| s.as_str()))
+            .collect();
+        assert!(routes.contains(&"GET /things"));
+        assert!(routes.contains(&"PUT /things/{id}"));
+        assert!(routes.contains(&"DELETE /things/{id}"));
+        assert!(routes.contains(&"HEAD /things"));
+        assert!(routes.contains(&"OPTIONS /things"));
+        assert!(routes.contains(&"ANY /api/v1"));
     }
 
     #[test]
