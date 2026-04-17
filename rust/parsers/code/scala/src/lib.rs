@@ -35,6 +35,7 @@ pub fn parse_file(
         .record(module_id, module_simple, module_qname, node_kind::MODULE, None);
 
     visit_top(root, src, file_rel_path, module_qname, module_id, repo, &mut acc);
+    scan_scala_routes(source, repo, &mut acc);
 
     Ok(FileParse {
         nodes: acc.nodes,
@@ -343,6 +344,167 @@ fn entity_cells(node: &TsNode, src: &[u8], file_rel: &str) -> Vec<Cell> {
     ]
 }
 
+// ============================================================================
+// Scala route extraction (v0.4.11a R-scala)
+// ============================================================================
+//
+// Coverage (text scan — Scala DSLs are deeply nested and awkward to track via
+// tree-sitter alone):
+//
+//   Akka HTTP:   path("users") { ... }                 → ANY /users
+//   http4s:      case GET -> Root / "users"            → GET /users
+//                case POST -> Root / "u" / IntVar(id)  → POST /u/:id
+//
+// Play Framework's primary routing is a `conf/routes` file (not Scala source)
+// parsed by sbt compiler — out of scope for this parser. Play annotation
+// forms are rare in practice.
+
+fn scan_scala_routes(source: &str, repo: RepoId, acc: &mut Acc) {
+    let mut seen = std::collections::HashSet::new();
+
+    // Akka HTTP `path("X") {` — emit ANY /X.
+    let needle = "path(";
+    let mut idx = 0;
+    while let Some(pos) = source[idx..].find(needle) {
+        let start = idx + pos + needle.len();
+        if let Some(path) = first_string_literal_scala(&source[start..])
+            && is_pathlike(&path)
+        {
+            emit_scala_route("ANY", &path, repo, acc, &mut seen);
+        }
+        idx = start;
+    }
+
+    // http4s pattern `case METHOD -> Root / "seg" ...` — split by method
+    // and accumulate segments.
+    for method in ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"] {
+        let needle = format!("{method} -> Root");
+        let mut idx = 0;
+        while let Some(pos) = source[idx..].find(&needle) {
+            let start = idx + pos + needle.len();
+            let after = &source[start..];
+            let path = collect_http4s_path(after);
+            if !path.is_empty() {
+                emit_scala_route(method, &path, repo, acc, &mut seen);
+            } else {
+                // Bare `METHOD -> Root` with no segments = root path.
+                emit_scala_route(method, "/", repo, acc, &mut seen);
+            }
+            idx = start;
+        }
+    }
+}
+
+fn collect_http4s_path(after: &str) -> String {
+    // Consume a sequence of `/ "segment"` or `/ IntVar(id)` tokens.
+    let mut out = String::new();
+    let mut rest = after;
+    loop {
+        let trimmed = rest.trim_start();
+        let Some(slash_off) = trimmed.strip_prefix('/') else { break };
+        let next = slash_off.trim_start();
+        if let Some(lit_rest) = next.strip_prefix('"')
+            && let Some(end) = lit_rest.find('"')
+        {
+            out.push('/');
+            out.push_str(&lit_rest[..end]);
+            rest = &lit_rest[end + 1..];
+            continue;
+        }
+        // Segment variable: IntVar / LongVar / UUIDVar → treat as :id
+        let next_bytes = next.as_bytes();
+        if next_bytes.first().is_some_and(|b| b.is_ascii_alphabetic() || *b == b'_') {
+            let end = next
+                .find(|c: char| !c.is_ascii_alphanumeric() && c != '_')
+                .unwrap_or(next.len());
+            let ident = &next[..end];
+            // Common http4s Var extractors — inject :id placeholder.
+            if matches!(
+                ident,
+                "IntVar" | "LongVar" | "UUIDVar" | "IntPathVar" | "LongPathVar"
+            ) {
+                out.push_str("/:id");
+                // Skip the `(id)` call tail if present.
+                let tail = &next[end..];
+                let tail = tail.trim_start();
+                rest = if let Some(after_paren) = tail.strip_prefix('(')
+                    && let Some(cp) = after_paren.find(')')
+                {
+                    &after_paren[cp + 1..]
+                } else {
+                    tail
+                };
+                continue;
+            }
+            // Unknown identifier — treat as dynamic segment.
+            out.push_str("/:");
+            out.push_str(ident);
+            rest = &next[end..];
+            continue;
+        }
+        break;
+    }
+    out
+}
+
+fn first_string_literal_scala(s: &str) -> Option<String> {
+    let bytes = s.as_bytes();
+    let mut i = 0;
+    while i < bytes.len() {
+        match bytes[i] {
+            b'"' => {
+                let rest = &s[i + 1..];
+                let end = rest.find('"')?;
+                let lit = &rest[..end];
+                if lit.is_empty() || lit.len() > 256 {
+                    return None;
+                }
+                return Some(lit.to_string());
+            }
+            b')' | b'{' | b';' | b'\n' if i > 0 => return None,
+            _ => i += 1,
+        }
+    }
+    None
+}
+
+fn is_pathlike(s: &str) -> bool {
+    !s.is_empty()
+        && s.chars()
+            .all(|c| c.is_ascii_alphanumeric() || matches!(c, '/' | '-' | '_' | '.' | ':' | '*'))
+}
+
+fn emit_scala_route(
+    method: &str,
+    path: &str,
+    repo: RepoId,
+    acc: &mut Acc,
+    seen: &mut std::collections::HashSet<(String, String)>,
+) {
+    let path = if path.starts_with('/') {
+        path.to_string()
+    } else {
+        format!("/{path}")
+    };
+    let key = (method.to_string(), path.clone());
+    if !seen.insert(key) {
+        return;
+    }
+    let route_name = format!("{method} {path}");
+    let route_id = NodeId::from_parts(GRAPH_TYPE, repo, node_kind::ROUTE, &route_name);
+    acc.nodes.push(Node {
+        id: route_id,
+        repo,
+        confidence: Confidence::Medium,
+        cells: vec![Cell {
+            kind: cell_type::ROUTE_METHOD,
+            payload: CellPayload::Text(method.to_string()),
+        }],
+    });
+    acc.nav
+        .record(route_id, &route_name, &route_name, node_kind::ROUTE, None);
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -391,5 +553,47 @@ import akka.actor.ActorSystem
 "#;
         let fp = parse_file(source, "src/App.scala", "src::App", repo()).unwrap();
         assert_eq!(fp.imports.len(), 2);
+    }
+
+    fn route_id(method: &str, path: &str) -> NodeId {
+        NodeId::from_parts(
+            GRAPH_TYPE,
+            repo(),
+            node_kind::ROUTE,
+            &format!("{method} {path}"),
+        )
+    }
+
+    #[test]
+    fn akka_http_path_routes_emit() {
+        let source = r#"
+val route = path("users") {
+  get {
+    complete("ok")
+  }
+} ~ path("admin") {
+  post {
+    complete("ok")
+  }
+}
+"#;
+        let fp = parse_file(source, "src/Routes.scala", "src::Routes", repo()).unwrap();
+        assert!(fp.nodes.iter().any(|n| n.id == route_id("ANY", "/users")));
+        assert!(fp.nodes.iter().any(|n| n.id == route_id("ANY", "/admin")));
+    }
+
+    #[test]
+    fn http4s_get_post_routes_emit() {
+        let source = r#"
+val service = HttpRoutes.of[IO] {
+  case GET -> Root / "users" => Ok("list")
+  case POST -> Root / "users" => Ok("created")
+  case GET -> Root / "users" / IntVar(id) => Ok(s"user $id")
+}
+"#;
+        let fp = parse_file(source, "src/Api.scala", "src::Api", repo()).unwrap();
+        assert!(fp.nodes.iter().any(|n| n.id == route_id("GET", "/users")));
+        assert!(fp.nodes.iter().any(|n| n.id == route_id("POST", "/users")));
+        assert!(fp.nodes.iter().any(|n| n.id == route_id("GET", "/users/:id")));
     }
 }
