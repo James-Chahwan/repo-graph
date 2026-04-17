@@ -124,7 +124,7 @@ fn apply_cross_cutting_extractors(
     repo: RepoId,
 ) {
     use repo_graph_code_extractors::{
-        cli, data_sources, eventbus, graphql, grpc, queues, react, ts_routes, websocket,
+        angular, cli, data_sources, eventbus, graphql, grpc, queues, react, ts_routes, websocket,
     };
 
     macro_rules! run {
@@ -176,6 +176,19 @@ fn apply_cross_cutting_extractors(
             .cloned()
             .unwrap_or_default();
         run!(react::extract_react_nodes(
+            source, &module_qname, module_id, repo
+        ));
+    }
+
+    // Language-gated: Angular @Component/@Injectable/... + Angular Router.
+    if matches!(lang, "angular" | "typescript") {
+        let module_qname = fp
+            .nav
+            .qname_by_id
+            .get(&module_id)
+            .cloned()
+            .unwrap_or_default();
+        run!(angular::extract_angular_nodes(
             source, &module_qname, module_id, repo
         ));
     }
