@@ -35,6 +35,7 @@ pub fn parse_file(
         .record(module_id, module_simple, module_qname, node_kind::MODULE, None);
 
     visit_top(root, src, file_rel_path, module_qname, module_id, repo, &mut acc);
+    scan_dart_routes(source, repo, &mut acc);
 
     Ok(FileParse {
         nodes: acc.nodes,
@@ -326,6 +327,113 @@ fn text_of<'a>(node: TsNode<'a>, src: &'a [u8]) -> &'a str {
     node.utf8_text(src).unwrap_or("")
 }
 
+// ============================================================================
+// Dart route extraction (v0.4.11a R-dart)
+// ============================================================================
+//
+// Two framework surfaces covered via text scan (robust to tree-sitter-dart's
+// no-field-name quirk):
+//
+//   go_router navigation:  GoRoute(path: '/users', ...)  → ANY /users
+//   shelf / shelf_router:  router.get('/users', handler) → GET /users
+//                          ..post('/x', h)  (cascade)    → POST /x
+//
+// Shape B ROUTE nodes (METHOD <path> qname + Text ROUTE_METHOD cell).
+
+fn scan_dart_routes(source: &str, repo: RepoId, acc: &mut Acc) {
+    // Track emitted routes to dedup — a file may hit the same path twice
+    // between the tree walk and the text scan.
+    let mut seen = std::collections::HashSet::new();
+
+    // go_router — look for `GoRoute(path:` token.
+    let needle = "GoRoute(";
+    let mut idx = 0;
+    while let Some(pos) = source[idx..].find(needle) {
+        let start = idx + pos + needle.len();
+        if let Some(path) = extract_kwarg_string(&source[start..], "path") {
+            emit_dart_route("ANY", &path, repo, acc, &mut seen);
+        }
+        idx = start;
+    }
+
+    // shelf-style `.get('/...' / .post('/...' / etc.
+    for method in ["get", "post", "put", "patch", "delete", "head", "options"] {
+        let needle = format!(".{method}(");
+        let mut idx = 0;
+        while let Some(pos) = source[idx..].find(&needle) {
+            let after = &source[idx + pos + needle.len()..];
+            if let Some(path) = first_string_literal_dart(after)
+                && path.starts_with('/')
+            {
+                let verb = method.to_ascii_uppercase();
+                emit_dart_route(&verb, &path, repo, acc, &mut seen);
+            }
+            idx += pos + needle.len();
+        }
+    }
+}
+
+fn extract_kwarg_string(s: &str, key: &str) -> Option<String> {
+    // Looks for `path: '/x'` or `path: "/x"` allowing whitespace.
+    let mut i = 0;
+    while let Some(pos) = s[i..].find(key) {
+        let start = i + pos + key.len();
+        let rest = s[start..].trim_start();
+        if let Some(after_colon) = rest.strip_prefix(':')
+            && let Some(lit) = first_string_literal_dart(after_colon)
+        {
+            return Some(lit);
+        }
+        i = start;
+    }
+    None
+}
+
+fn first_string_literal_dart(s: &str) -> Option<String> {
+    let trimmed = s.trim_start();
+    let bytes = trimmed.as_bytes();
+    if bytes.is_empty() {
+        return None;
+    }
+    let quote = match bytes[0] {
+        b'\'' | b'"' => bytes[0],
+        _ => return None,
+    };
+    let rest = &trimmed[1..];
+    let end = rest.find(quote as char)?;
+    let lit = &rest[..end];
+    if lit.is_empty() || lit.len() > 256 {
+        return None;
+    }
+    Some(lit.to_string())
+}
+
+fn emit_dart_route(
+    method: &str,
+    path: &str,
+    repo: RepoId,
+    acc: &mut Acc,
+    seen: &mut std::collections::HashSet<(String, String)>,
+) {
+    let key = (method.to_string(), path.to_string());
+    if !seen.insert(key) {
+        return;
+    }
+    let route_name = format!("{method} {path}");
+    let route_id = NodeId::from_parts(GRAPH_TYPE, repo, node_kind::ROUTE, &route_name);
+    acc.nodes.push(Node {
+        id: route_id,
+        repo,
+        confidence: Confidence::Medium,
+        cells: vec![Cell {
+            kind: cell_type::ROUTE_METHOD,
+            payload: CellPayload::Text(method.to_string()),
+        }],
+    });
+    acc.nav
+        .record(route_id, &route_name, &route_name, node_kind::ROUTE, None);
+}
+
 fn file_cells(root: &TsNode, src: &[u8], file_rel: &str) -> Vec<Cell> {
     vec![
         Cell {
@@ -406,5 +514,41 @@ void main() {
 "#;
         let fp = parse_file(source, "lib/main.dart", "lib::main", repo()).unwrap();
         assert_eq!(fp.nav.kind_by_id.values().filter(|k| **k == node_kind::FUNCTION).count(), 1);
+    }
+
+    fn route_id(method: &str, path: &str) -> NodeId {
+        NodeId::from_parts(
+            GRAPH_TYPE,
+            repo(),
+            node_kind::ROUTE,
+            &format!("{method} {path}"),
+        )
+    }
+
+    #[test]
+    fn go_router_routes_emit() {
+        let source = r#"
+final router = GoRouter(routes: [
+  GoRoute(path: '/users', builder: (c, s) => UsersScreen()),
+  GoRoute(path: '/users/:id', builder: (c, s) => UserDetail()),
+]);
+"#;
+        let fp = parse_file(source, "lib/router.dart", "lib::router", repo()).unwrap();
+        assert!(fp.nodes.iter().any(|n| n.id == route_id("ANY", "/users")));
+        assert!(fp.nodes.iter().any(|n| n.id == route_id("ANY", "/users/:id")));
+    }
+
+    #[test]
+    fn shelf_routes_emit() {
+        let source = r#"
+import 'package:shelf_router/shelf_router.dart';
+
+final app = Router()
+  ..get('/users', handleList)
+  ..post('/users', handleCreate);
+"#;
+        let fp = parse_file(source, "bin/server.dart", "bin::server", repo()).unwrap();
+        assert!(fp.nodes.iter().any(|n| n.id == route_id("GET", "/users")));
+        assert!(fp.nodes.iter().any(|n| n.id == route_id("POST", "/users")));
     }
 }
