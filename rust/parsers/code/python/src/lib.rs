@@ -61,6 +61,12 @@ pub fn parse_file(
             "function_definition" => {
                 visit_function(
                     child, src, file_rel_path, module_qname, module_id, None, repo, &mut acc,
+                    &[],
+                );
+            }
+            "decorated_definition" => {
+                visit_decorated_top(
+                    child, src, file_rel_path, module_qname, module_id, repo, &mut acc,
                 );
             }
             "import_statement" => collect_import(child, src, module_qname, &mut acc),
@@ -68,12 +74,62 @@ pub fn parse_file(
             "expression_statement" => {
                 // Top-level calls — record them with module as source.
                 collect_calls_in(child, src, module_id, None, &mut acc);
+                // Django-style path('/x', view) registrations in urls.py scan.
+                scan_django_routes(child, src, repo, &mut acc);
+            }
+            "assignment" => {
+                // urlpatterns = [ path(...), re_path(...) ] lives here too.
+                scan_django_routes(child, src, repo, &mut acc);
             }
             _ => {}
         }
     }
 
     resolve_intra_file(acc, repo)
+}
+
+/// Unwrap a top-level `decorated_definition` into its inner def + decorator
+/// list, then dispatch. v0.4.11a R-python — needed so Flask/FastAPI handlers
+/// (which are always decorated) emit both their function node and the
+/// associated Route nodes.
+fn visit_decorated_top(
+    n: TsNode,
+    src: &[u8],
+    file_rel: &str,
+    module_qname: &str,
+    module_id: NodeId,
+    repo: RepoId,
+    acc: &mut Acc,
+) {
+    let (decos, inner) = split_decorated(n);
+    let Some(inner) = inner else { return };
+    match inner.kind() {
+        "function_definition" => {
+            visit_function(
+                inner, src, file_rel, module_qname, module_id, None, repo, acc, &decos,
+            );
+        }
+        "class_definition" => {
+            // Class decorators are rare route surface in Py frameworks; skip
+            // route extraction here but still visit so nodes/methods emit.
+            visit_class(inner, src, file_rel, module_qname, module_id, repo, acc);
+        }
+        _ => {}
+    }
+}
+
+fn split_decorated<'a>(n: TsNode<'a>) -> (Vec<TsNode<'a>>, Option<TsNode<'a>>) {
+    let mut decos = Vec::new();
+    let mut inner = None;
+    let mut cursor = n.walk();
+    for c in n.named_children(&mut cursor) {
+        match c.kind() {
+            "decorator" => decos.push(c),
+            "function_definition" | "class_definition" => inner = Some(c),
+            _ => {}
+        }
+    }
+    (decos, inner)
 }
 
 // ============================================================================
@@ -137,12 +193,24 @@ fn visit_class(
     };
     let mut cursor = body.walk();
     for member in body.named_children(&mut cursor) {
-        if member.kind() == "function_definition" {
-            visit_method(member, src, file_rel, &class_qname, class_id, repo, acc);
+        match member.kind() {
+            "function_definition" => {
+                visit_method(member, src, file_rel, &class_qname, class_id, repo, acc, &[]);
+            }
+            "decorated_definition" => {
+                let (decos, inner) = split_decorated(member);
+                if let Some(inner) = inner
+                    && inner.kind() == "function_definition"
+                {
+                    visit_method(inner, src, file_rel, &class_qname, class_id, repo, acc, &decos);
+                }
+            }
+            _ => {}
         }
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn visit_method(
     n: TsNode,
     src: &[u8],
@@ -151,6 +219,7 @@ fn visit_method(
     class_id: NodeId,
     repo: RepoId,
     acc: &mut Acc,
+    decorators: &[TsNode],
 ) {
     let Some(name) = child_text(n, "name", src) else {
         return;
@@ -174,6 +243,10 @@ fn visit_method(
     acc.nav
         .record(method_id, name, &method_qname, node_kind::METHOD, Some(class_id));
 
+    for deco in decorators {
+        check_route_decorator(*deco, src, method_id, repo, acc);
+    }
+
     if let Some(body) = n.child_by_field_name("body") {
         collect_calls_in(body, src, method_id, Some(class_id), acc);
     }
@@ -189,6 +262,7 @@ fn visit_function(
     parent_func_id: Option<NodeId>,
     repo: RepoId,
     acc: &mut Acc,
+    decorators: &[TsNode],
 ) {
     let Some(name) = child_text(n, "name", src) else {
         return;
@@ -217,22 +291,31 @@ fn visit_function(
     acc.nav
         .record(func_id, name, &func_qname, node_kind::FUNCTION, Some(parent));
 
+    for deco in decorators {
+        check_route_decorator(*deco, src, func_id, repo, acc);
+    }
+
     if let Some(body) = n.child_by_field_name("body") {
         collect_calls_in(body, src, func_id, None, acc);
         // Nested defs inside the body — visited recursively.
         let mut cursor = body.walk();
         for member in body.named_children(&mut cursor) {
-            if member.kind() == "function_definition" {
-                visit_function(
-                    member,
-                    src,
-                    file_rel,
-                    &func_qname,
-                    module_id,
-                    Some(func_id),
-                    repo,
-                    acc,
-                );
+            match member.kind() {
+                "function_definition" => visit_function(
+                    member, src, file_rel, &func_qname, module_id, Some(func_id), repo, acc, &[],
+                ),
+                "decorated_definition" => {
+                    let (decos, inner) = split_decorated(member);
+                    if let Some(inner) = inner
+                        && inner.kind() == "function_definition"
+                    {
+                        visit_function(
+                            inner, src, file_rel, &func_qname, module_id, Some(func_id), repo,
+                            acc, &decos,
+                        );
+                    }
+                }
+                _ => {}
             }
         }
     }
@@ -511,6 +594,200 @@ fn strip_string_quotes(s: &str) -> String {
 }
 
 // ============================================================================
+// Route extraction — Flask / FastAPI / Django (v0.4.11a R-python)
+// ============================================================================
+//
+// Flask / FastAPI use decorators on function/method handlers:
+//   @app.route('/path', methods=['GET','POST'])   (Flask)
+//   @app.get('/path')                              (Flask 2+, FastAPI)
+//   @router.post('/path')                          (FastAPI)
+//   @blueprint.route('/path')                      (Flask)
+//
+// Django uses `path('/url', view)` / `re_path(...)` inside a `urlpatterns`
+// list in `urls.py`. Method defaults to ANY because Django method dispatch
+// happens inside the view function, not the URL declaration.
+
+fn check_route_decorator(
+    deco: TsNode,
+    src: &[u8],
+    handler_id: NodeId,
+    repo: RepoId,
+    acc: &mut Acc,
+) {
+    // Decorator text starts with '@'. Its `.call` form gives us the function
+    // expression + argument list.
+    let raw = text(deco, src);
+    let body = raw.trim_start_matches('@').trim();
+    let Some(paren) = body.find('(') else {
+        return;
+    };
+    let head = &body[..paren];
+    // Verb is the trailing attribute: `app.get` → "get"; `app.route` → "route".
+    let verb = head.rsplit('.').next().unwrap_or("").to_ascii_lowercase();
+    let Some(methods) = route_methods_for(&verb, &body[paren..]) else {
+        return;
+    };
+    let args = &body[paren + 1..];
+    let Some(path) = first_string_literal(args) else {
+        return;
+    };
+    for m in methods {
+        emit_route(m, &path, handler_id, repo, acc);
+    }
+}
+
+/// Returns the HTTP methods a Python decorator maps to, or None if not a
+/// route decorator. The inputs are the trailing attribute (`get`, `route`,
+/// `websocket`…) and the full arg-list slice starting at `(`.
+fn route_methods_for(verb: &str, args: &str) -> Option<Vec<&'static str>> {
+    match verb {
+        "get" => Some(vec!["GET"]),
+        "post" => Some(vec!["POST"]),
+        "put" => Some(vec!["PUT"]),
+        "delete" => Some(vec!["DELETE"]),
+        "patch" => Some(vec!["PATCH"]),
+        "head" => Some(vec!["HEAD"]),
+        "options" => Some(vec!["OPTIONS"]),
+        "route" => Some(flask_route_methods(args)),
+        _ => None,
+    }
+}
+
+/// Extract the `methods=[...]` kwarg from a Flask-style `@app.route(...)`.
+/// Defaults to `["GET"]` when absent.
+fn flask_route_methods(args: &str) -> Vec<&'static str> {
+    let Some(idx) = args.find("methods") else {
+        return vec!["GET"];
+    };
+    let rest = &args[idx + "methods".len()..];
+    let Some(lb) = rest.find('[') else {
+        return vec!["GET"];
+    };
+    let Some(rb) = rest[lb..].find(']') else {
+        return vec!["GET"];
+    };
+    let list = &rest[lb + 1..lb + rb];
+    let mut out = Vec::new();
+    for part in list.split(',') {
+        let t = part.trim().trim_matches('\'').trim_matches('"').trim();
+        let verb = match t.to_ascii_uppercase().as_str() {
+            "GET" => "GET",
+            "POST" => "POST",
+            "PUT" => "PUT",
+            "DELETE" => "DELETE",
+            "PATCH" => "PATCH",
+            "HEAD" => "HEAD",
+            "OPTIONS" => "OPTIONS",
+            _ => continue,
+        };
+        out.push(verb);
+    }
+    if out.is_empty() {
+        out.push("GET");
+    }
+    out
+}
+
+/// Django `urls.py` scan — finds `path('/url', view)` / `re_path(r'/url', …)`
+/// / `url(r'/url', …)` calls inside the node and emits one Route per path.
+/// Method is ANY because Django views dispatch internally.
+fn scan_django_routes(root: TsNode, src: &[u8], repo: RepoId, acc: &mut Acc) {
+    let mut stack = vec![root];
+    while let Some(n) = stack.pop() {
+        if n.kind() == "call"
+            && let Some(func) = n.child_by_field_name("function")
+        {
+            let name = text(func, src);
+            let is_django =
+                matches!(name, "path" | "re_path" | "url") || name.ends_with(".path");
+            if is_django
+                && let Some(args) = n.child_by_field_name("arguments")
+            {
+                let arg_text = text(args, src);
+                if let Some(path) = first_string_literal(&arg_text[1..]) {
+                    emit_route_no_handler("ANY", &path, repo, acc);
+                }
+            }
+        }
+        let mut cursor = n.walk();
+        for c in n.named_children(&mut cursor) {
+            stack.push(c);
+        }
+    }
+}
+
+fn emit_route(method: &str, path: &str, handler_id: NodeId, repo: RepoId, acc: &mut Acc) {
+    let route_name = format!("{method} {path}");
+    let route_id = NodeId::from_parts(GRAPH_TYPE, repo, node_kind::ROUTE, &route_name);
+    acc.nodes.push(Node {
+        id: route_id,
+        repo,
+        confidence: Confidence::Strong,
+        cells: vec![Cell {
+            kind: cell_type::ROUTE_METHOD,
+            payload: CellPayload::Text(method.to_string()),
+        }],
+    });
+    acc.edges.push(Edge {
+        from: route_id,
+        to: handler_id,
+        category: edge_category::HANDLED_BY,
+        confidence: Confidence::Strong,
+    });
+    acc.nav
+        .record(route_id, &route_name, &route_name, node_kind::ROUTE, None);
+}
+
+fn emit_route_no_handler(method: &str, path: &str, repo: RepoId, acc: &mut Acc) {
+    let route_name = format!("{method} {path}");
+    let route_id = NodeId::from_parts(GRAPH_TYPE, repo, node_kind::ROUTE, &route_name);
+    acc.nodes.push(Node {
+        id: route_id,
+        repo,
+        confidence: Confidence::Medium,
+        cells: vec![Cell {
+            kind: cell_type::ROUTE_METHOD,
+            payload: CellPayload::Text(method.to_string()),
+        }],
+    });
+    acc.nav
+        .record(route_id, &route_name, &route_name, node_kind::ROUTE, None);
+}
+
+fn first_string_literal(s: &str) -> Option<String> {
+    let bytes = s.as_bytes();
+    let mut i = 0;
+    while i < bytes.len() {
+        let b = bytes[i];
+        if b == b'\'' || b == b'"' {
+            let quote = b;
+            // Skip leading r/b/u/f string prefixes captured earlier — s has
+            // already been sliced past the `(`, so we can match the opener.
+            let mut j = i + 1;
+            while j < bytes.len() && bytes[j] != quote {
+                if bytes[j] == b'\\' {
+                    j += 2;
+                    continue;
+                }
+                j += 1;
+            }
+            if j >= bytes.len() {
+                return None;
+            }
+            let lit = std::str::from_utf8(&bytes[i + 1..j]).ok()?.to_string();
+            if lit.is_empty() || lit.len() > 256 {
+                return None;
+            }
+            return Some(lit);
+        }
+        // Skip common prefix chars before a quote (r''/b""/rb'' — up to 2
+        // char prefix). If `b` is alphanumeric or '_' we just keep walking.
+        i += 1;
+    }
+    None
+}
+
+// ============================================================================
 // Tree-sitter helpers
 // ============================================================================
 
@@ -724,5 +1001,100 @@ mod tests {
         let parse = parse_file(src, "broken.py", "broken", repo()).unwrap();
         let ok_id = NodeId::from_parts(GRAPH_TYPE, repo(), node_kind::FUNCTION, "broken::ok");
         assert!(parse.nodes.iter().any(|n| n.id == ok_id));
+    }
+
+    // ----- v0.4.11a R-python: route extraction -----
+
+    fn route_id(method: &str, path: &str) -> NodeId {
+        NodeId::from_parts(
+            GRAPH_TYPE,
+            repo(),
+            node_kind::ROUTE,
+            &format!("{method} {path}"),
+        )
+    }
+
+    #[test]
+    fn flask_app_get_decorator_emits_route() {
+        let src = "from flask import Flask\napp = Flask(__name__)\n\n@app.get('/users')\ndef list_users():\n    return []\n";
+        let parse = parse_file(src, "app.py", "app", repo()).unwrap();
+        let handler = NodeId::from_parts(
+            GRAPH_TYPE,
+            repo(),
+            node_kind::FUNCTION,
+            "app::list_users",
+        );
+        let rid = route_id("GET", "/users");
+        assert!(parse.nodes.iter().any(|n| n.id == rid), "missing Route");
+        assert!(parse.nodes.iter().any(|n| n.id == handler));
+        assert!(
+            has_edge(&parse, rid, handler, edge_category::HANDLED_BY),
+            "missing HANDLED_BY edge"
+        );
+    }
+
+    #[test]
+    fn flask_route_with_methods_kwarg_emits_multiple() {
+        let src = "from flask import Flask\napp = Flask(__name__)\n\n@app.route('/users', methods=['GET','POST'])\ndef users():\n    return []\n";
+        let parse = parse_file(src, "app.py", "app", repo()).unwrap();
+        assert!(parse.nodes.iter().any(|n| n.id == route_id("GET", "/users")));
+        assert!(parse.nodes.iter().any(|n| n.id == route_id("POST", "/users")));
+    }
+
+    #[test]
+    fn flask_route_without_methods_defaults_to_get() {
+        let src = "@app.route('/ping')\ndef ping():\n    return 'pong'\n";
+        let parse = parse_file(src, "app.py", "app", repo()).unwrap();
+        assert!(parse.nodes.iter().any(|n| n.id == route_id("GET", "/ping")));
+    }
+
+    #[test]
+    fn fastapi_router_post_decorator_emits_route() {
+        let src = "from fastapi import APIRouter\nrouter = APIRouter()\n\n@router.post('/items')\nasync def create_item(item: dict):\n    return item\n";
+        let parse = parse_file(src, "routes.py", "routes", repo()).unwrap();
+        let handler = NodeId::from_parts(
+            GRAPH_TYPE,
+            repo(),
+            node_kind::FUNCTION,
+            "routes::create_item",
+        );
+        let rid = route_id("POST", "/items");
+        assert!(parse.nodes.iter().any(|n| n.id == rid));
+        assert!(has_edge(&parse, rid, handler, edge_category::HANDLED_BY));
+    }
+
+    #[test]
+    fn django_path_call_emits_route_without_handler() {
+        let src = "from django.urls import path, re_path\nfrom . import views\n\nurlpatterns = [\n    path('users/', views.user_list),\n    re_path(r'^admin/', views.admin),\n]\n";
+        let parse = parse_file(src, "urls.py", "urls", repo()).unwrap();
+        assert!(parse.nodes.iter().any(|n| n.id == route_id("ANY", "users/")));
+        assert!(parse.nodes.iter().any(|n| n.id == route_id("ANY", "^admin/")));
+    }
+
+    #[test]
+    fn class_method_decorator_emits_route() {
+        let src = "class Api:\n    @staticmethod\n    @app.get('/ok')\n    def ok():\n        return 'ok'\n";
+        let parse = parse_file(src, "api.py", "api", repo()).unwrap();
+        let handler = NodeId::from_parts(
+            GRAPH_TYPE,
+            repo(),
+            node_kind::METHOD,
+            "api::Api::ok",
+        );
+        let rid = route_id("GET", "/ok");
+        assert!(parse.nodes.iter().any(|n| n.id == handler), "method missing");
+        assert!(parse.nodes.iter().any(|n| n.id == rid), "route missing");
+        assert!(has_edge(&parse, rid, handler, edge_category::HANDLED_BY));
+    }
+
+    #[test]
+    fn non_route_decorator_is_ignored() {
+        let src = "@functools.lru_cache(maxsize=128)\ndef compute(x):\n    return x\n";
+        let parse = parse_file(src, "m.py", "m", repo()).unwrap();
+        let has_any_route = parse
+            .nodes
+            .iter()
+            .any(|n| matches!(parse.nav.kind_by_id.get(&n.id).copied(), Some(k) if k == node_kind::ROUTE));
+        assert!(!has_any_route, "non-route decorator shouldn't emit a Route");
     }
 }
