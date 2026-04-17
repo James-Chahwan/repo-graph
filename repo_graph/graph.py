@@ -1,209 +1,177 @@
 """
-Graph data loader and traversal engine.
+Graph wrapper around PyGraph (Rust engine).
 
-Reads nodes.json, edges.json, and flows/*.yaml from a target repo's
-.ai/repo-graph/ directory. Builds adjacency lists for fast traversal.
+Parses nodes_json/edges_json from the Rust PyGraph into Python dicts,
+builds adjacency lists, and provides BFS traversal for MCP tools.
 """
 
 import json
-import os
-import re
 from collections import defaultdict
 from pathlib import Path
 
 
-_KIND_LINE = re.compile(r"^kind:\s*(\w+)\s*$", re.MULTILINE)
-_CONFIDENCE_LINE = re.compile(r"^confidence:\s*(\w+)\s*$", re.MULTILINE)
+KIND_NAMES = {
+    1: "module", 2: "class", 3: "function", 4: "method",
+    5: "route", 6: "package", 7: "interface", 8: "struct",
+    9: "endpoint", 10: "enum",
+    11: "grpc_service", 12: "grpc_client", 13: "queue_consumer", 14: "queue_producer",
+    15: "graphql_resolver", 16: "graphql_operation", 17: "ws_handler", 18: "ws_client",
+    19: "event_handler", 20: "event_emitter", 21: "cli_command", 22: "cli_invocation",
+}
+
+CATEGORY_NAMES = {
+    1: "defines", 2: "contains", 3: "imports", 4: "calls", 5: "uses",
+    6: "documents", 7: "tests", 8: "injects",
+    9: "handled_by", 10: "http_calls",
+    11: "grpc_calls", 12: "queue_flows", 13: "graphql_calls", 14: "ws_connects",
+    15: "event_flows", 16: "shares_schema", 17: "cli_invokes",
+}
+
+ENTRY_KINDS = {5, 11, 13, 15, 17, 19, 21}  # route, grpc_service, queue_consumer, graphql_resolver, ws_handler, event_handler, cli_command
 
 
-def _extract_kind(flow_yaml: str) -> str:
-    """Parse `kind:` from a flow YAML. Defaults to 'http' for pre-0.2 flows."""
-    m = _KIND_LINE.search(flow_yaml)
-    return m.group(1) if m else "http"
+class RustGraph:
+    """Wraps PyGraph with adjacency lists and traversal."""
 
-
-def _extract_confidence(flow_yaml: str) -> str:
-    """Parse `confidence:` from a flow YAML. Defaults to 'medium'."""
-    m = _CONFIDENCE_LINE.search(flow_yaml)
-    return m.group(1) if m else "medium"
-
-
-class RepoGraph:
-    """Loaded graph of a codebase — nodes, edges, adjacency, flows."""
-
-    def __init__(self, repo_path: str):
+    def __init__(self, pygraph, repo_path: str):
+        self.pygraph = pygraph
         self.repo_path = Path(repo_path)
-        self.graph_dir = self.repo_path / ".ai" / "repo-graph"
-        self.nodes: dict[str, dict] = {}
-        self.edges: list[dict] = []
-        self.adjacency_out: dict[str, list[tuple[str, str]]] = defaultdict(list)
-        self.adjacency_in: dict[str, list[tuple[str, str]]] = defaultdict(list)
-        self.flows: dict[str, str] = {}
-        self.flow_kinds: dict[str, str] = {}
-        self.flow_confidence: dict[str, str] = {}
-        self._load()
+        self.nodes: dict[int, dict] = {}
+        self.adjacency_out: dict[int, list[tuple[int, str]]] = defaultdict(list)
+        self.adjacency_in: dict[int, list[tuple[int, str]]] = defaultdict(list)
+        self.flows: dict[str, list[dict]] = {}
+        self._build_indices()
+        self._build_flows()
 
-    def _load(self):
-        nodes_path = self.graph_dir / "nodes.json"
-        edges_path = self.graph_dir / "edges.json"
-        flows_dir = self.graph_dir / "flows"
+    def _build_indices(self):
+        for n in json.loads(self.pygraph.nodes_json()):
+            self.nodes[n["id"]] = {
+                "id": n["id"],
+                "kind": KIND_NAMES.get(n["kind"], f"kind_{n['kind']}"),
+                "kind_id": n["kind"],
+                "name": n["name"],
+                "qname": n["qname"],
+                "confidence": n["confidence"],
+            }
+        for e in json.loads(self.pygraph.edges_json()):
+            cat = CATEGORY_NAMES.get(e["category"], f"cat_{e['category']}")
+            self.adjacency_out[e["from"]].append((e["to"], cat))
+            self.adjacency_in[e["to"]].append((e["from"], cat))
 
-        if nodes_path.exists():
-            raw_nodes = json.loads(nodes_path.read_text())
-            for node in raw_nodes:
-                self.nodes[node["id"]] = node
-
-        if edges_path.exists():
-            self.edges = json.loads(edges_path.read_text())
-            for edge in self.edges:
-                self.adjacency_out[edge["from"]].append((edge["to"], edge["type"]))
-                self.adjacency_in[edge["to"]].append((edge["from"], edge["type"]))
-
-        if flows_dir.exists():
-            for flow_file in sorted(flows_dir.glob("*.yaml")):
-                text = flow_file.read_text()
-                self.flows[flow_file.stem] = text
-                self.flow_kinds[flow_file.stem] = _extract_kind(text)
-                self.flow_confidence[flow_file.stem] = _extract_confidence(text)
-
-    def reload(self):
-        """Re-read graph data from disk (e.g. after a regeneration)."""
-        self.nodes.clear()
-        self.edges.clear()
-        self.adjacency_out.clear()
-        self.adjacency_in.clear()
-        self.flows.clear()
-        self.flow_kinds.clear()
-        self.flow_confidence.clear()
-        self._load()
+    def _build_flows(self):
+        for node in self.nodes.values():
+            if node["kind_id"] not in ENTRY_KINDS:
+                continue
+            path = self.downstream(node["id"], depth=6)
+            if len(path) < 2:
+                continue
+            key = node["name"].lower().replace(" ", "_")
+            self.flows[key] = [node] + path
 
     # -- Traversal --
 
-    def downstream(self, node_id: str, depth: int = 3) -> list[dict]:
-        """Fan out from a node following outbound edges, up to depth hops."""
-        return self._traverse(node_id, depth, direction="out")
+    def downstream(self, node_id: int, depth: int = 3) -> list[dict]:
+        return self._traverse(node_id, depth, "out")
 
-    def upstream(self, node_id: str, depth: int = 3) -> list[dict]:
-        """Fan in to a node following inbound edges, up to depth hops."""
-        return self._traverse(node_id, depth, direction="in")
+    def upstream(self, node_id: int, depth: int = 3) -> list[dict]:
+        return self._traverse(node_id, depth, "in")
 
-    def _traverse(self, start: str, depth: int, direction: str) -> list[dict]:
+    def _traverse(self, start: int, depth: int, direction: str) -> list[dict]:
         adj = self.adjacency_out if direction == "out" else self.adjacency_in
-        visited = set()
+        visited: set[int] = set()
         result = []
         queue = [(start, 0)]
-
         while queue:
             node_id, d = queue.pop(0)
             if node_id in visited or d > depth:
                 continue
             visited.add(node_id)
-
             node = self.nodes.get(node_id)
             if node and node_id != start:
                 result.append({**node, "depth": d})
-
             if d < depth:
-                for neighbour_id, edge_type in adj.get(node_id, []):
-                    if neighbour_id not in visited:
-                        queue.append((neighbour_id, d + 1))
-
+                for nid, _ in adj.get(node_id, []):
+                    if nid not in visited:
+                        queue.append((nid, d + 1))
         return result
 
-    def shortest_path(self, from_id: str, to_id: str) -> list[dict] | None:
-        """BFS shortest path between two nodes (undirected)."""
+    def shortest_path(self, from_id: int, to_id: int) -> list[dict] | None:
         if from_id not in self.nodes or to_id not in self.nodes:
             return None
-
         visited = {from_id}
         queue = [(from_id, [from_id])]
-
         while queue:
             current, path = queue.pop(0)
             if current == to_id:
                 return [self.nodes[nid] for nid in path]
-
-            # Check both directions for path finding
-            neighbours = set()
+            nbrs: set[int] = set()
             for nid, _ in self.adjacency_out.get(current, []):
-                neighbours.add(nid)
+                nbrs.add(nid)
             for nid, _ in self.adjacency_in.get(current, []):
-                neighbours.add(nid)
-
-            for nid in neighbours:
+                nbrs.add(nid)
+            for nid in nbrs:
                 if nid not in visited:
                     visited.add(nid)
                     queue.append((nid, path + [nid]))
-
         return None
 
     # -- Lookups --
 
-    def nodes_for_feature(self, feature: str) -> list[dict]:
-        """All nodes reachable from a feature's entry point."""
-        slug = feature.lower().replace("-", "_").replace(" ", "_")
-
-        # Try common ID patterns for feature entry points
-        for prefix in ("ng_page_", "fe_page_", "page_", "module_", "entry_", ""):
-            candidate = f"{prefix}{slug}"
-            if candidate in self.nodes:
-                return self.downstream(candidate, depth=10)
-
-        # Fuzzy fallback — match on node name or id
-        page_types = {"ng_page", "fe_page", "frontend_page", "page", "module", "entry_point"}
-        for node_id, node in self.nodes.items():
-            if slug in node_id.lower() and node["type"] in page_types:
-                return self.downstream(node_id, depth=10)
-
-        return []
-
-    def nodes_by_type(self, node_type: str) -> list[dict]:
-        """All nodes of a given type."""
-        return [n for n in self.nodes.values() if n["type"] == node_type]
-
     def find_node(self, query: str) -> dict | None:
-        """Find a node by exact ID or fuzzy name match."""
-        if query in self.nodes:
-            return self.nodes[query]
+        nid = self.pygraph.find_node(query)
+        if nid is not None:
+            return self.nodes.get(nid)
+        ids = self.pygraph.find_nodes_by_qname(query)
+        if ids:
+            return self.nodes.get(ids[0])
         q = query.lower()
         for node in self.nodes.values():
-            if q in node["id"].lower() or q in node.get("name", "").lower():
+            if q in node["name"].lower() or q in node["qname"].lower():
                 return node
         return None
 
-    def neighbours(self, node_id: str) -> dict:
-        """Direct neighbours in both directions."""
+    def find_nodes(self, query: str) -> list[dict]:
+        ids = self.pygraph.find_nodes_by_qname(query)
+        return [self.nodes[nid] for nid in ids if nid in self.nodes]
+
+    def neighbours(self, node_id: int) -> dict:
         out = [
-            {"node": self.nodes.get(nid, {"id": nid}), "edge": etype}
-            for nid, etype in self.adjacency_out.get(node_id, [])
+            {"node": self.nodes.get(nid, {"id": nid, "kind": "?", "name": str(nid)}), "edge": cat}
+            for nid, cat in self.adjacency_out.get(node_id, [])
         ]
         inc = [
-            {"node": self.nodes.get(nid, {"id": nid}), "edge": etype}
-            for nid, etype in self.adjacency_in.get(node_id, [])
+            {"node": self.nodes.get(nid, {"id": nid, "kind": "?", "name": str(nid)}), "edge": cat}
+            for nid, cat in self.adjacency_in.get(node_id, [])
         ]
         return {"outbound": out, "inbound": inc}
 
+    def nodes_for_feature(self, feature: str) -> list[dict]:
+        slug = feature.lower().replace("-", "_").replace(" ", "_")
+        if slug in self.flows:
+            return self.flows[slug]
+        for key, nodes in self.flows.items():
+            if slug in key or key in slug:
+                return nodes
+        results = self.find_nodes(feature)
+        if results:
+            return self.downstream(results[0]["id"], depth=6)
+        return []
+
     # -- File sizes --
 
-    def file_line_count(self, file_path: str) -> int:
-        """Count lines in a file relative to repo root."""
-        full_path = self.repo_path / file_path
-        if not full_path.is_file():
-            return 0
-        try:
-            return sum(1 for _ in full_path.open(encoding="utf-8", errors="ignore"))
-        except OSError:
-            return 0
-
-    def file_sizes_for_nodes(self, nodes: list[dict]) -> list[dict]:
-        """Attach line counts to a list of nodes."""
-        seen_paths = set()
-        result = []
-        for node in nodes:
-            fp = node.get("file_path", "")
-            if not fp or fp in seen_paths:
-                continue
-            seen_paths.add(fp)
-            lines = self.file_line_count(fp)
-            result.append({**node, "lines": lines})
-        return result
+    def file_line_count(self, qname: str) -> int:
+        parts = qname.replace("::", "/")
+        candidates = [
+            self.repo_path / f"{parts}.py",
+            self.repo_path / f"{parts}.go",
+            self.repo_path / f"{parts}.ts",
+            self.repo_path / f"{parts}.tsx",
+            self.repo_path / f"{parts}.rs",
+        ]
+        for p in candidates:
+            if p.is_file():
+                try:
+                    return sum(1 for _ in p.open(encoding="utf-8", errors="ignore"))
+                except OSError:
+                    return 0
+        return 0

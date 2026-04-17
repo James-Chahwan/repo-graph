@@ -35,6 +35,20 @@ pub mod node_kind {
     pub const STRUCT: NodeKindId = NodeKindId(8);
     pub const ENDPOINT: NodeKindId = NodeKindId(9);
     pub const ENUM: NodeKindId = NodeKindId(10);
+
+    // v0.4.10 — cross-stack entity kinds
+    pub const GRPC_SERVICE: NodeKindId = NodeKindId(11);
+    pub const GRPC_CLIENT: NodeKindId = NodeKindId(12);
+    pub const QUEUE_CONSUMER: NodeKindId = NodeKindId(13);
+    pub const QUEUE_PRODUCER: NodeKindId = NodeKindId(14);
+    pub const GRAPHQL_RESOLVER: NodeKindId = NodeKindId(15);
+    pub const GRAPHQL_OPERATION: NodeKindId = NodeKindId(16);
+    pub const WS_HANDLER: NodeKindId = NodeKindId(17);
+    pub const WS_CLIENT: NodeKindId = NodeKindId(18);
+    pub const EVENT_HANDLER: NodeKindId = NodeKindId(19);
+    pub const EVENT_EMITTER: NodeKindId = NodeKindId(20);
+    pub const CLI_COMMAND: NodeKindId = NodeKindId(21);
+    pub const CLI_INVOCATION: NodeKindId = NodeKindId(22);
 }
 
 // ============================================================================
@@ -63,6 +77,15 @@ pub mod edge_category {
     /// Endpoint → Route cross-repo link. Emitted by `HttpStackResolver`
     /// when a frontend HTTP call matches a backend route by (method, path).
     pub const HTTP_CALLS: EdgeCategoryId = EdgeCategoryId(10);
+
+    // v0.4.10 — cross-stack resolvers
+    pub const GRPC_CALLS: EdgeCategoryId = EdgeCategoryId(11);
+    pub const QUEUE_FLOWS: EdgeCategoryId = EdgeCategoryId(12);
+    pub const GRAPHQL_CALLS: EdgeCategoryId = EdgeCategoryId(13);
+    pub const WS_CONNECTS: EdgeCategoryId = EdgeCategoryId(14);
+    pub const EVENT_FLOWS: EdgeCategoryId = EdgeCategoryId(15);
+    pub const SHARES_SCHEMA: EdgeCategoryId = EdgeCategoryId(16);
+    pub const CLI_INVOKES: EdgeCategoryId = EdgeCategoryId(17);
 }
 
 // ============================================================================

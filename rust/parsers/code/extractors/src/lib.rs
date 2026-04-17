@@ -1,4 +1,7 @@
 pub mod cli;
 pub mod data_sources;
+pub mod eventbus;
+pub mod graphql;
 pub mod grpc;
 pub mod queues;
+pub mod websocket;

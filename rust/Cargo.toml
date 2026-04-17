@@ -28,4 +28,5 @@ members = [
     "parsers/code/angular",
     "parsers/code/vue",
     "parsers/code/extractors",
+    "py",
 ]

@@ -828,6 +828,362 @@ fn weakest(a: Confidence, b: Confidence) -> Confidence {
 }
 
 // ============================================================================
+// GrpcStackResolver — matches gRPC client → service by service name
+// ============================================================================
+
+pub struct GrpcStackResolver;
+
+impl CrossGraphResolver for GrpcStackResolver {
+    fn resolve(&self, merged: &mut MergedGraph) {
+        let index = build_grpc_service_index(&merged.graphs);
+        for g in &merged.graphs {
+            for n in &g.nodes {
+                if g.nav.kind_by_id.get(&n.id) != Some(&node_kind::GRPC_CLIENT) {
+                    continue;
+                }
+                let Some(qname) = g.nav.qname_by_id.get(&n.id) else { continue };
+                let Some(svc_name) = qname.strip_prefix("grpc_client:") else { continue };
+                let key = svc_name.split('.').next().unwrap_or(svc_name);
+                if let Some(targets) = index.get(key) {
+                    for t in targets {
+                        merged.cross_edges.push(Edge {
+                            from: n.id,
+                            to: t.id,
+                            category: edge_category::GRPC_CALLS,
+                            confidence: weakest(n.confidence, t.confidence),
+                        });
+                    }
+                }
+            }
+        }
+    }
+}
+
+struct ServiceTarget {
+    id: NodeId,
+    confidence: Confidence,
+}
+
+fn build_grpc_service_index(graphs: &[RepoGraph]) -> HashMap<String, Vec<ServiceTarget>> {
+    let mut index: HashMap<String, Vec<ServiceTarget>> = HashMap::new();
+    for g in graphs {
+        for n in &g.nodes {
+            if g.nav.kind_by_id.get(&n.id) != Some(&node_kind::GRPC_SERVICE) {
+                continue;
+            }
+            let Some(qname) = g.nav.qname_by_id.get(&n.id) else { continue };
+            let Some(svc_name) = qname.strip_prefix("grpc:") else { continue };
+            index
+                .entry(svc_name.to_string())
+                .or_default()
+                .push(ServiceTarget {
+                    id: n.id,
+                    confidence: n.confidence,
+                });
+        }
+    }
+    index
+}
+
+// ============================================================================
+// QueueStackResolver — matches producer → consumer by topic name
+// ============================================================================
+
+pub struct QueueStackResolver;
+
+impl CrossGraphResolver for QueueStackResolver {
+    fn resolve(&self, merged: &mut MergedGraph) {
+        let consumer_index = build_queue_index(&merged.graphs, node_kind::QUEUE_CONSUMER, "queue_consumer:");
+        for g in &merged.graphs {
+            for n in &g.nodes {
+                if g.nav.kind_by_id.get(&n.id) != Some(&node_kind::QUEUE_PRODUCER) {
+                    continue;
+                }
+                let Some(qname) = g.nav.qname_by_id.get(&n.id) else { continue };
+                let Some(topic) = qname.strip_prefix("queue_producer:") else { continue };
+                if let Some(targets) = consumer_index.get(topic) {
+                    for t in targets {
+                        merged.cross_edges.push(Edge {
+                            from: n.id,
+                            to: t.id,
+                            category: edge_category::QUEUE_FLOWS,
+                            confidence: weakest(n.confidence, t.confidence),
+                        });
+                    }
+                }
+            }
+        }
+    }
+}
+
+fn build_queue_index(
+    graphs: &[RepoGraph],
+    kind: NodeKindId,
+    prefix: &str,
+) -> HashMap<String, Vec<ServiceTarget>> {
+    let mut index: HashMap<String, Vec<ServiceTarget>> = HashMap::new();
+    for g in graphs {
+        for n in &g.nodes {
+            if g.nav.kind_by_id.get(&n.id) != Some(&kind) {
+                continue;
+            }
+            let Some(qname) = g.nav.qname_by_id.get(&n.id) else { continue };
+            let Some(topic) = qname.strip_prefix(prefix) else { continue };
+            index
+                .entry(topic.to_string())
+                .or_default()
+                .push(ServiceTarget {
+                    id: n.id,
+                    confidence: n.confidence,
+                });
+        }
+    }
+    index
+}
+
+// ============================================================================
+// GraphQLStackResolver — matches operation → resolver by name
+// ============================================================================
+
+pub struct GraphQLStackResolver;
+
+impl CrossGraphResolver for GraphQLStackResolver {
+    fn resolve(&self, merged: &mut MergedGraph) {
+        let resolver_index = build_kind_index(&merged.graphs, node_kind::GRAPHQL_RESOLVER, "graphql_resolver:");
+        for g in &merged.graphs {
+            for n in &g.nodes {
+                if g.nav.kind_by_id.get(&n.id) != Some(&node_kind::GRAPHQL_OPERATION) {
+                    continue;
+                }
+                let Some(qname) = g.nav.qname_by_id.get(&n.id) else { continue };
+                let Some(op_name) = qname.strip_prefix("graphql_op:") else { continue };
+                for (resolver_key, targets) in &resolver_index {
+                    if names_match_graphql(op_name, resolver_key) {
+                        for t in targets {
+                            merged.cross_edges.push(Edge {
+                                from: n.id,
+                                to: t.id,
+                                category: edge_category::GRAPHQL_CALLS,
+                                confidence: weakest(n.confidence, t.confidence),
+                            });
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+fn names_match_graphql(operation: &str, resolver: &str) -> bool {
+    let op_lower = operation.to_lowercase();
+    let res_lower = resolver.to_lowercase();
+    op_lower == res_lower
+        || op_lower.contains(&res_lower)
+        || res_lower.contains(&op_lower)
+}
+
+// ============================================================================
+// WebSocketStackResolver — matches WS client → handler by path
+// ============================================================================
+
+pub struct WebSocketStackResolver;
+
+impl CrossGraphResolver for WebSocketStackResolver {
+    fn resolve(&self, merged: &mut MergedGraph) {
+        let handler_index = build_kind_index(&merged.graphs, node_kind::WS_HANDLER, "ws:");
+        for g in &merged.graphs {
+            for n in &g.nodes {
+                if g.nav.kind_by_id.get(&n.id) != Some(&node_kind::WS_CLIENT) {
+                    continue;
+                }
+                let Some(qname) = g.nav.qname_by_id.get(&n.id) else { continue };
+                let Some(client_path) = qname.strip_prefix("ws_client:") else { continue };
+                for (handler_key, targets) in &handler_index {
+                    if ws_paths_match(client_path, handler_key) {
+                        for t in targets {
+                            merged.cross_edges.push(Edge {
+                                from: n.id,
+                                to: t.id,
+                                category: edge_category::WS_CONNECTS,
+                                confidence: weakest(n.confidence, t.confidence),
+                            });
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+fn ws_paths_match(client: &str, handler: &str) -> bool {
+    let norm_c = client.trim_matches('/').to_lowercase();
+    let norm_h = handler.trim_matches('/').to_lowercase();
+    norm_c == norm_h
+        || norm_c.ends_with(&norm_h)
+        || norm_h.ends_with(&norm_c)
+        || (norm_c == "ws" || norm_h == "ws" || norm_h == "default")
+}
+
+// ============================================================================
+// EventBusResolver — matches event emitter → handler by event name
+// ============================================================================
+
+pub struct EventBusResolver;
+
+impl CrossGraphResolver for EventBusResolver {
+    fn resolve(&self, merged: &mut MergedGraph) {
+        let handler_index = build_kind_index(&merged.graphs, node_kind::EVENT_HANDLER, "event_handle:");
+        for g in &merged.graphs {
+            for n in &g.nodes {
+                if g.nav.kind_by_id.get(&n.id) != Some(&node_kind::EVENT_EMITTER) {
+                    continue;
+                }
+                let Some(qname) = g.nav.qname_by_id.get(&n.id) else { continue };
+                let Some(event_name) = qname.strip_prefix("event_emit:") else { continue };
+                if let Some(targets) = handler_index.get(event_name) {
+                    for t in targets {
+                        merged.cross_edges.push(Edge {
+                            from: n.id,
+                            to: t.id,
+                            category: edge_category::EVENT_FLOWS,
+                            confidence: weakest(n.confidence, t.confidence),
+                        });
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ============================================================================
+// SharedSchemaResolver — detects shared imports across repos
+// ============================================================================
+
+pub struct SharedSchemaResolver;
+
+impl CrossGraphResolver for SharedSchemaResolver {
+    fn resolve(&self, merged: &mut MergedGraph) {
+        let mut import_index: HashMap<String, Vec<(NodeId, RepoId, Confidence)>> = HashMap::new();
+        for g in &merged.graphs {
+            for n in &g.nodes {
+                if g.nav.kind_by_id.get(&n.id) != Some(&node_kind::MODULE) {
+                    continue;
+                }
+                if let Some(children) = g.nav.children_of.get(&n.id) {
+                    for &child in children {
+                        if let Some(qname) = g.nav.qname_by_id.get(&child)
+                            && is_schema_type(qname, g.nav.kind_by_id.get(&child).copied())
+                        {
+                            import_index
+                                .entry(g.nav.name_by_id.get(&child).cloned().unwrap_or_default())
+                                .or_default()
+                                .push((child, g.repo, n.confidence));
+                        }
+                    }
+                }
+            }
+        }
+
+        for refs in import_index.values() {
+            if refs.len() < 2 {
+                continue;
+            }
+            let repos: HashSet<RepoId> = refs.iter().map(|(_, r, _)| *r).collect();
+            if repos.len() < 2 {
+                continue;
+            }
+            for i in 0..refs.len() {
+                for j in (i + 1)..refs.len() {
+                    if refs[i].1 != refs[j].1 {
+                        merged.cross_edges.push(Edge {
+                            from: refs[i].0,
+                            to: refs[j].0,
+                            category: edge_category::SHARES_SCHEMA,
+                            confidence: weakest(
+                                refs[i].2,
+                                refs[j].2,
+                            ),
+                        });
+                    }
+                }
+            }
+        }
+    }
+}
+
+fn is_schema_type(qname: &str, kind: Option<NodeKindId>) -> bool {
+    let schema_hints = [
+        "Schema", "Validator", "Type", "Model", "Entity", "DTO",
+        "Input", "Output", "Params", "Request", "Response",
+    ];
+    let is_type_kind = matches!(
+        kind,
+        Some(k) if k == node_kind::CLASS || k == node_kind::INTERFACE || k == node_kind::STRUCT
+    );
+    is_type_kind && schema_hints.iter().any(|h| qname.contains(h))
+}
+
+// ============================================================================
+// CliInvocationResolver — matches CLI invocations → CLI commands
+// ============================================================================
+
+pub struct CliInvocationResolver;
+
+impl CrossGraphResolver for CliInvocationResolver {
+    fn resolve(&self, merged: &mut MergedGraph) {
+        let command_index = build_kind_index(&merged.graphs, node_kind::CLI_COMMAND, "cli:");
+        for g in &merged.graphs {
+            for n in &g.nodes {
+                if g.nav.kind_by_id.get(&n.id) != Some(&node_kind::CLI_INVOCATION) {
+                    continue;
+                }
+                let Some(qname) = g.nav.qname_by_id.get(&n.id) else { continue };
+                let Some(tool) = qname.strip_prefix("cli_invoke:") else { continue };
+                if let Some(targets) = command_index.get(tool) {
+                    for t in targets {
+                        merged.cross_edges.push(Edge {
+                            from: n.id,
+                            to: t.id,
+                            category: edge_category::CLI_INVOKES,
+                            confidence: weakest(n.confidence, t.confidence),
+                        });
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ============================================================================
+// Shared index builder
+// ============================================================================
+
+fn build_kind_index(
+    graphs: &[RepoGraph],
+    kind: NodeKindId,
+    prefix: &str,
+) -> HashMap<String, Vec<ServiceTarget>> {
+    let mut index: HashMap<String, Vec<ServiceTarget>> = HashMap::new();
+    for g in graphs {
+        for n in &g.nodes {
+            if g.nav.kind_by_id.get(&n.id) != Some(&kind) {
+                continue;
+            }
+            let Some(qname) = g.nav.qname_by_id.get(&n.id) else { continue };
+            let Some(key) = qname.strip_prefix(prefix) else { continue };
+            index
+                .entry(key.to_string())
+                .or_default()
+                .push(ServiceTarget {
+                    id: n.id,
+                    confidence: n.confidence,
+                });
+        }
+    }
+    index
+}
+
+// ============================================================================
 // Traversal primitives
 // ============================================================================
 
@@ -931,9 +1287,16 @@ pub fn code_activation_defaults() -> repo_graph_activation::ActivationConfig {
     let mut weights = HashMap::new();
     weights.insert(edge_category::CALLS, 5.0);
     weights.insert(edge_category::HTTP_CALLS, 5.0);
+    weights.insert(edge_category::GRPC_CALLS, 5.0);
+    weights.insert(edge_category::GRAPHQL_CALLS, 5.0);
+    weights.insert(edge_category::QUEUE_FLOWS, 4.0);
+    weights.insert(edge_category::WS_CONNECTS, 4.0);
+    weights.insert(edge_category::EVENT_FLOWS, 4.0);
+    weights.insert(edge_category::CLI_INVOKES, 3.0);
     weights.insert(edge_category::HANDLED_BY, 4.0);
     weights.insert(edge_category::IMPORTS, 3.0);
     weights.insert(edge_category::USES, 3.0);
+    weights.insert(edge_category::SHARES_SCHEMA, 2.0);
     weights.insert(edge_category::TESTS, 2.0);
     weights.insert(edge_category::INJECTS, 2.0);
     weights.insert(edge_category::DEFINES, 1.0);

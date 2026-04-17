@@ -1,0 +1,38 @@
+[package]
+name = "repo-graph-py"
+version = "0.4.10"
+edition = "2024"
+publish = false
+
+[lib]
+name = "repo_graph_py"
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = { version = "0.28", features = ["extension-module"] }
+repo-graph-core = { path = "../core" }
+repo-graph-code-domain = { path = "../code-domain" }
+repo-graph-graph = { path = "../graph" }
+repo-graph-code-extractors = { path = "../parsers/code/extractors" }
+repo-graph-projection-text = { path = "../projection-text" }
+repo-graph-activation = { path = "../activation" }
+repo-graph-parser-python = { path = "../parsers/code/python" }
+repo-graph-parser-go = { path = "../parsers/code/go" }
+repo-graph-parser-typescript = { path = "../parsers/code/typescript" }
+repo-graph-parser-rust = { path = "../parsers/code/rust" }
+repo-graph-parser-java = { path = "../parsers/code/java" }
+repo-graph-parser-csharp = { path = "../parsers/code/csharp" }
+repo-graph-parser-ruby = { path = "../parsers/code/ruby" }
+repo-graph-parser-php = { path = "../parsers/code/php" }
+repo-graph-parser-swift = { path = "../parsers/code/swift" }
+repo-graph-parser-c-cpp = { path = "../parsers/code/c_cpp" }
+repo-graph-parser-scala = { path = "../parsers/code/scala" }
+repo-graph-parser-clojure = { path = "../parsers/code/clojure" }
+repo-graph-parser-dart = { path = "../parsers/code/dart" }
+repo-graph-parser-elixir = { path = "../parsers/code/elixir" }
+repo-graph-parser-solidity = { path = "../parsers/code/solidity" }
+repo-graph-parser-terraform = { path = "../parsers/code/terraform" }
+repo-graph-parser-react = { path = "../parsers/code/react" }
+repo-graph-parser-angular = { path = "../parsers/code/angular" }
+repo-graph-parser-vue = { path = "../parsers/code/vue" }
+serde_json = "1"
