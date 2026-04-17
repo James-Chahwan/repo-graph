@@ -366,6 +366,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "repo-graph-code-extractors"
+version = "0.4.9"
+dependencies = [
+ "repo-graph-code-domain",
+ "repo-graph-core",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "repo-graph-core"
 version = "0.4.1"
 dependencies = [
@@ -390,6 +400,86 @@ dependencies = [
 ]
 
 [[package]]
+name = "repo-graph-parser-angular"
+version = "0.4.9"
+dependencies = [
+ "repo-graph-code-domain",
+ "repo-graph-core",
+ "repo-graph-parser-typescript",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tree-sitter",
+ "tree-sitter-typescript",
+]
+
+[[package]]
+name = "repo-graph-parser-c-cpp"
+version = "0.4.9"
+dependencies = [
+ "repo-graph-code-domain",
+ "repo-graph-core",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tree-sitter",
+ "tree-sitter-c",
+ "tree-sitter-cpp",
+]
+
+[[package]]
+name = "repo-graph-parser-clojure"
+version = "0.4.9"
+dependencies = [
+ "repo-graph-code-domain",
+ "repo-graph-core",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tree-sitter",
+ "tree-sitter-clojure-orchard",
+]
+
+[[package]]
+name = "repo-graph-parser-csharp"
+version = "0.4.9"
+dependencies = [
+ "repo-graph-code-domain",
+ "repo-graph-core",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tree-sitter",
+ "tree-sitter-c-sharp",
+]
+
+[[package]]
+name = "repo-graph-parser-dart"
+version = "0.4.9"
+dependencies = [
+ "repo-graph-code-domain",
+ "repo-graph-core",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tree-sitter",
+ "tree-sitter-dart",
+]
+
+[[package]]
+name = "repo-graph-parser-elixir"
+version = "0.4.9"
+dependencies = [
+ "repo-graph-code-domain",
+ "repo-graph-core",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tree-sitter",
+ "tree-sitter-elixir",
+]
+
+[[package]]
 name = "repo-graph-parser-go"
 version = "0.4.3"
 dependencies = [
@@ -400,6 +490,32 @@ dependencies = [
  "thiserror",
  "tree-sitter",
  "tree-sitter-go",
+]
+
+[[package]]
+name = "repo-graph-parser-java"
+version = "0.4.9"
+dependencies = [
+ "repo-graph-code-domain",
+ "repo-graph-core",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tree-sitter",
+ "tree-sitter-java",
+]
+
+[[package]]
+name = "repo-graph-parser-php"
+version = "0.4.9"
+dependencies = [
+ "repo-graph-code-domain",
+ "repo-graph-core",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tree-sitter",
+ "tree-sitter-php",
 ]
 
 [[package]]
@@ -416,11 +532,117 @@ dependencies = [
 ]
 
 [[package]]
+name = "repo-graph-parser-react"
+version = "0.4.9"
+dependencies = [
+ "repo-graph-code-domain",
+ "repo-graph-core",
+ "repo-graph-parser-typescript",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tree-sitter",
+ "tree-sitter-typescript",
+]
+
+[[package]]
+name = "repo-graph-parser-ruby"
+version = "0.4.9"
+dependencies = [
+ "repo-graph-code-domain",
+ "repo-graph-core",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tree-sitter",
+ "tree-sitter-ruby",
+]
+
+[[package]]
+name = "repo-graph-parser-rust"
+version = "0.4.9"
+dependencies = [
+ "repo-graph-code-domain",
+ "repo-graph-core",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tree-sitter",
+ "tree-sitter-rust",
+]
+
+[[package]]
+name = "repo-graph-parser-scala"
+version = "0.4.9"
+dependencies = [
+ "repo-graph-code-domain",
+ "repo-graph-core",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tree-sitter",
+ "tree-sitter-scala",
+]
+
+[[package]]
+name = "repo-graph-parser-solidity"
+version = "0.4.9"
+dependencies = [
+ "repo-graph-code-domain",
+ "repo-graph-core",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tree-sitter",
+ "tree-sitter-solidity",
+]
+
+[[package]]
+name = "repo-graph-parser-swift"
+version = "0.4.9"
+dependencies = [
+ "repo-graph-code-domain",
+ "repo-graph-core",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tree-sitter",
+ "tree-sitter-swift",
+]
+
+[[package]]
+name = "repo-graph-parser-terraform"
+version = "0.4.9"
+dependencies = [
+ "repo-graph-code-domain",
+ "repo-graph-core",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tree-sitter",
+ "tree-sitter-hcl",
+]
+
+[[package]]
 name = "repo-graph-parser-typescript"
 version = "0.4.3"
 dependencies = [
  "repo-graph-code-domain",
  "repo-graph-core",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tree-sitter",
+ "tree-sitter-typescript",
+]
+
+[[package]]
+name = "repo-graph-parser-vue"
+version = "0.4.9"
+dependencies = [
+ "repo-graph-code-domain",
+ "repo-graph-core",
+ "repo-graph-parser-typescript",
  "serde",
  "serde_json",
  "thiserror",
@@ -658,10 +880,90 @@ dependencies = [
 ]
 
 [[package]]
+name = "tree-sitter-c"
+version = "0.24.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1a3aad8f0129083a59fe8596157552d2bb7148c492d44c21558d68ca1c722707"
+dependencies = [
+ "cc",
+ "tree-sitter-language",
+]
+
+[[package]]
+name = "tree-sitter-c-sharp"
+version = "0.23.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c1aac67f1ad71de1d6d39708d34811081c26dfa495658de6c14c34200849357c"
+dependencies = [
+ "cc",
+ "tree-sitter-language",
+]
+
+[[package]]
+name = "tree-sitter-clojure-orchard"
+version = "0.2.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c3e2db28a1ab22649790656936325bdc69e992c38006258694ea39a7620e784d"
+dependencies = [
+ "cc",
+ "tree-sitter-language",
+]
+
+[[package]]
+name = "tree-sitter-cpp"
+version = "0.23.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "df2196ea9d47b4ab4a31b9297eaa5a5d19a0b121dceb9f118f6790ad0ab94743"
+dependencies = [
+ "cc",
+ "tree-sitter-language",
+]
+
+[[package]]
+name = "tree-sitter-dart"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bba6bf8675e6fe92ba6da371a5497ee5df2a04d2c503e3599c8ad771f6f1faec"
+dependencies = [
+ "cc",
+ "tree-sitter-language",
+]
+
+[[package]]
+name = "tree-sitter-elixir"
+version = "0.3.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "66dd064a762ed95bfc29857fa3cb7403bb1e5cb88112de0f6341b7e47284ba40"
+dependencies = [
+ "cc",
+ "tree-sitter-language",
+]
+
+[[package]]
 name = "tree-sitter-go"
 version = "0.25.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c8560a4d2f835cc0d4d2c2e03cbd0dde2f6114b43bc491164238d333e28b16ea"
+dependencies = [
+ "cc",
+ "tree-sitter-language",
+]
+
+[[package]]
+name = "tree-sitter-hcl"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5a7b2cc3d7121553b84309fab9d11b3ff3d420403eef9ae50f9fd1cd9d9cf012"
+dependencies = [
+ "cc",
+ "tree-sitter-language",
+]
+
+[[package]]
+name = "tree-sitter-java"
+version = "0.23.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0aa6cbcdc8c679b214e616fd3300da67da0e492e066df01bcf5a5921a71e90d6"
 dependencies = [
  "cc",
  "tree-sitter-language",
@@ -674,10 +976,70 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "009994f150cc0cd50ff54917d5bc8bffe8cad10ca10d81c34da2ec421ae61782"
 
 [[package]]
+name = "tree-sitter-php"
+version = "0.24.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0d8c17c3ab69052c5eeaa7ff5cd972dd1bc25d1b97ee779fec391ad3b5df5592"
+dependencies = [
+ "cc",
+ "tree-sitter-language",
+]
+
+[[package]]
 name = "tree-sitter-python"
 version = "0.25.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6bf85fd39652e740bf60f46f4cda9492c3a9ad75880575bf14960f775cb74a1c"
+dependencies = [
+ "cc",
+ "tree-sitter-language",
+]
+
+[[package]]
+name = "tree-sitter-ruby"
+version = "0.23.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "be0484ea4ef6bb9c575b4fdabde7e31340a8d2dbc7d52b321ac83da703249f95"
+dependencies = [
+ "cc",
+ "tree-sitter-language",
+]
+
+[[package]]
+name = "tree-sitter-rust"
+version = "0.24.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "439e577dbe07423ec2582ac62c7531120dbfccfa6e5f92406f93dd271a120e45"
+dependencies = [
+ "cc",
+ "tree-sitter-language",
+]
+
+[[package]]
+name = "tree-sitter-scala"
+version = "0.25.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "83079f50ea7d03e0faf6be6260ed97538e6df7349ec3cbcbf5771f7b38e3c8b7"
+dependencies = [
+ "cc",
+ "tree-sitter-language",
+]
+
+[[package]]
+name = "tree-sitter-solidity"
+version = "1.2.13"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4eacf8875b70879f0cb670c60b233ad0b68752d9e1474e6c3ef168eea8a90b25"
+dependencies = [
+ "cc",
+ "tree-sitter-language",
+]
+
+[[package]]
+name = "tree-sitter-swift"
+version = "0.7.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4ef216011c3e3df4fa864736f347cb8d509b1066cf0c8549fb1fd81ac9832e59"
 dependencies = [
  "cc",
  "tree-sitter-language",

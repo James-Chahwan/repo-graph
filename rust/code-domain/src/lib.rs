@@ -34,6 +34,7 @@ pub mod node_kind {
     pub const INTERFACE: NodeKindId = NodeKindId(7);
     pub const STRUCT: NodeKindId = NodeKindId(8);
     pub const ENDPOINT: NodeKindId = NodeKindId(9);
+    pub const ENUM: NodeKindId = NodeKindId(10);
 }
 
 // ============================================================================
