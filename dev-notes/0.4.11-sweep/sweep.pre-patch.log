@@ -1,0 +1,299 @@
+[17:01:07] starting sweep: 99 repos total, 0 already done
+[17:01:07] [1/99] cloning calcom/cal.com
+[17:01:35]   generating (size=341.0MB)
+[17:01:38]   ok nodes=15279 edges=12825 cross=0 t=3.728s
+[17:01:39] [2/99] cloning medusajs/medusa
+[17:01:47]   generating (size=321.0MB)
+[17:01:53]   ok nodes=21565 edges=13655 cross=0 t=5.571s
+[17:01:53] [3/99] cloning excalidraw/excalidraw
+[17:02:01]   generating (size=88.0MB)
+[17:02:02]   ok nodes=2696 edges=3234 cross=0 t=1.1s
+[17:02:02] [4/99] cloning supabase/supabase
+[17:03:45]   generating (size=1332.0MB)
+[17:03:56]   ok nodes=19400 edges=17591 cross=0 t=10.398s
+[17:03:56] [5/99] cloning appwrite/appwrite
+[17:04:12]   generating (size=203.0MB)
+[17:04:14]   ok nodes=9058 edges=11193 cross=0 t=2.061s
+[17:04:14] [6/99] cloning mattermost/mattermost
+[17:04:37]   generating (size=340.0MB)
+[17:04:48]   ok nodes=39351 edges=42861 cross=0 t=10.713s
+[17:04:48] [7/99] cloning chatwoot/chatwoot
+[17:05:02]   generating (size=207.0MB)
+[17:05:04]   ok nodes=14569 edges=11459 cross=0 t=1.937s
+[17:05:04] [8/99] cloning immich-app/immich
+[17:05:15]   generating (size=167.0MB)
+[17:05:20]   ok nodes=20544 edges=19802 cross=0 t=4.685s
+[17:05:20] [9/99] cloning novuhq/novu
+[17:05:24]   generating (size=59.0MB)
+[17:05:28]   ok nodes=20191 edges=18197 cross=0 t=4.18s
+[17:05:29] [10/99] cloning saleor/saleor
+[17:05:36]   generating (size=95.0MB)
+[17:05:39]   ok nodes=20980 edges=51353 cross=0 t=3.306s
+[17:05:39] [11/99] cloning outline/outline
+[17:05:41]   generating (size=25.0MB)
+[17:05:43]   ok nodes=5966 edges=4562 cross=0 t=1.574s
+[17:05:43] [12/99] cloning twentyhq/twenty
+[17:06:10]   generating (size=464.0MB)
+[17:06:18]   ok nodes=37024 edges=25039 cross=0 t=7.528s
+[17:06:18] [13/99] cloning metabase/metabase
+[17:06:44]   generating (size=437.0MB)
+[17:06:55]   ok nodes=49239 edges=49798 cross=0 t=11.087s
+[17:06:56] [14/99] cloning vercel/next.js
+[17:07:08]   generating (size=289.0MB)
+[17:07:21]   ok nodes=61816 edges=75146 cross=0 t=13.583s
+[17:07:22] [15/99] cloning firefly-iii/firefly-iii
+[17:07:25]   generating (size=37.0MB)
+[17:07:27]   ok nodes=8333 edges=9489 cross=0 t=1.535s
+[17:07:27] [16/99] cloning celery/celery
+[17:07:28]   generating (size=10.0MB)
+[17:07:29]   ok nodes=6395 edges=11872 cross=0 t=0.519s
+[17:07:29] [17/99] cloning sidekiq/sidekiq
+[17:07:30]   generating (size=5.0MB)
+[17:07:30]   ok nodes=1504 edges=1366 cross=0 t=0.229s
+[17:07:30] [18/99] cloning taskforcesh/bullmq
+[17:07:32]   generating (size=12.0MB)
+[17:07:33]   ok nodes=1860 edges=2243 cross=0 t=0.644s
+[17:07:33] [19/99] cloning oban-bg/oban
+[17:07:34]   generating (size=2.0MB)
+[17:07:34]   ok nodes=879 edges=944 cross=0 t=0.243s
+[17:07:34] [20/99] cloning nats-io/nats-server
+[17:07:36]   generating (size=17.0MB)
+[17:07:39]   ok nodes=9922 edges=20684 cross=0 t=2.519s
+[17:07:39] [21/99] cloning grpc/grpc-go
+[17:07:41]   generating (size=19.0MB)
+[17:07:42]   ok nodes=13362 edges=17559 cross=0 t=1.666s
+[17:07:42] [22/99] cloning etcd-io/etcd
+[17:07:45]   generating (size=27.0MB)
+[17:07:47]   ok nodes=12600 edges=17376 cross=0 t=1.485s
+[17:07:47] [23/99] cloning tikv/tikv
+[17:07:50]   generating (size=52.0MB)
+[17:07:54]   ok nodes=21685 edges=27602 cross=0 t=3.7s
+[17:07:54] [24/99] cloning temporalio/temporal
+[17:07:57]   generating (size=47.0MB)
+[17:08:03]   ok nodes=45923 edges=59499 cross=0 t=5.219s
+[17:08:03] [25/99] cloning pingcap/tidb
+[17:08:14]   generating (size=203.0MB)
+[17:08:27]   ok nodes=61605 edges=92032 cross=0 t=12.747s
+[17:08:27] [26/99] cloning graphql/graphql-js
+[17:08:28]   generating (size=9.0MB)
+[17:08:29]   ok nodes=1319 edges=1869 cross=0 t=0.223s
+[17:08:29] [27/99] cloning apollographql/apollo-server
+[17:08:31]   generating (size=10.0MB)
+[17:08:31]   ok nodes=563 edges=585 cross=0 t=0.223s
+[17:08:31] [28/99] cloning dgraph-io/dgraph
+[17:08:41]   generating (size=122.0MB)
+[17:08:43]   ok nodes=9652 edges=14832 cross=0 t=1.341s
+[17:08:43] [29/99] cloning rmosolgo/graphql-ruby
+[17:08:45]   generating (size=20.0MB)
+[17:08:45]   ok nodes=5353 edges=4637 cross=0 t=0.712s
+[17:08:45] [30/99] cloning socketio/socket.io
+[17:08:48]   generating (size=29.0MB)
+[17:08:48]   ok nodes=1521 edges=1714 cross=0 t=0.253s
+[17:08:49] [31/99] cloning centrifugal/centrifugo
+[17:08:52]   generating (size=25.0MB)
+[17:08:55]   ok nodes=4077 edges=4886 cross=0 t=3.406s
+[17:08:55] [32/99] cloning NginxProxyManager/nginx-proxy-manager
+[17:08:57]   generating (size=11.0MB)
+[17:08:58]   ok nodes=915 edges=697 cross=0 t=0.258s
+[17:08:58] [33/99] cloning spf13/cobra
+[17:08:59]   generating (size=2.0MB)
+[17:08:59]   ok nodes=635 edges=1189 cross=0 t=0.085s
+[17:08:59] [34/99] cloning clap-rs/clap
+[17:09:00]   generating (size=6.0MB)
+[17:09:00]   ok nodes=3814 edges=4552 cross=0 t=0.412s
+[17:09:00] [35/99] cloning pallets/click
+[17:09:02]   generating (size=3.0MB)
+[17:09:02]   ok nodes=942 edges=1482 cross=0 t=0.106s
+[17:09:02] [36/99] cloning urfave/cli
+[17:09:03]   generating (size=16.0MB)
+[17:09:04]   ok nodes=1041 edges=1165 cross=0 t=0.128s
+[17:09:04] [37/99] cloning tj/commander.js
+[17:09:05]   generating (size=3.0MB)
+[17:09:05]   ok nodes=412 edges=407 cross=0 t=0.085s
+[17:09:05] [38/99] cloning gin-gonic/gin
+[17:09:06]   generating (size=2.0MB)
+[17:09:06]   ok nodes=1646 edges=2383 cross=0 t=0.155s
+[17:09:06] [39/99] cloning labstack/echo
+[17:09:07]   generating (size=3.0MB)
+[17:09:07]   ok nodes=1449 edges=1712 cross=0 t=0.199s
+[17:09:07] [40/99] cloning hashicorp/vault
+[17:09:11]   generating (size=74.0MB)
+[17:09:16]   ok nodes=31140 edges=36269 cross=0 t=4.829s
+[17:09:16] [41/99] cloning hashicorp/consul
+[17:09:21]   generating (size=100.0MB)
+[17:09:25]   ok nodes=30894 edges=36459 cross=0 t=4.107s
+[17:09:25] [42/99] cloning tokio-rs/tokio
+[17:09:27]   generating (size=10.0MB)
+[17:09:27]   ok nodes=7739 edges=8815 cross=0 t=0.694s
+[17:09:27] [43/99] cloning actix/actix-web
+[17:09:28]   generating (size=5.0MB)
+[17:09:29]   ok nodes=3340 edges=3713 cross=0 t=0.355s
+[17:09:29] [44/99] cloning BurntSushi/ripgrep
+[17:09:30]   generating (size=5.0MB)
+[17:09:30]   ok nodes=2754 edges=3417 cross=0 t=0.226s
+[17:09:30] [45/99] cloning rust-lang/cargo
+[17:09:33]   generating (size=30.0MB)
+[17:09:34]   ok nodes=11229 edges=13727 cross=0 t=1.701s
+[17:09:34] [46/99] cloning honojs/hono
+[17:09:36]   generating (size=8.0MB)
+[17:09:37]   ok nodes=1202 edges=1252 cross=0 t=0.523s
+[17:09:37] [47/99] cloning nestjs/nest
+[17:09:38]   generating (size=14.0MB)
+[17:09:38]   ok nodes=5746 edges=4979 cross=0 t=0.485s
+[17:09:38] [48/99] cloning expressjs/express
+[17:09:40]   generating (size=2.0MB)
+[17:09:40]   ok nodes=196 edges=72 cross=0 t=0.08s
+[17:09:40] [49/99] cloning axios/axios
+[17:09:41]   generating (size=5.0MB)
+[17:09:41]   ok nodes=662 edges=580 cross=0 t=0.104s
+[17:09:41] [50/99] cloning sveltejs/svelte
+[17:09:43]   generating (size=42.0MB)
+[17:09:44]   ok nodes=5635 edges=3396 cross=0 t=0.608s
+[17:09:44] [51/99] cloning facebook/react
+[17:09:48]   generating (size=66.0MB)
+[17:09:54]   ok nodes=15517 edges=18753 cross=0 t=5.478s
+[17:09:54] [52/99] cloning TanStack/query
+[17:09:58]   generating (size=50.0MB)
+[17:10:00]   ok nodes=2434 edges=2177 cross=0 t=1.419s
+[17:10:00] [53/99] cloning remix-run/remix
+[17:10:03]   generating (size=40.0MB)
+[17:10:05]   ok nodes=3871 edges=4851 cross=0 t=1.025s
+[17:10:05] [54/99] cloning angular/angular
+[17:10:17]   generating (size=189.0MB)
+[17:10:21]   ok nodes=29550 edges=34317 cross=0 t=4.013s
+[17:10:22] [55/99] cloning ngrx/platform
+[17:10:25]   generating (size=37.0MB)
+[17:10:26]   ok nodes=4177 edges=4304 cross=0 t=0.532s
+[17:10:26] [56/99] cloning vuejs/core
+[17:10:27]   generating (size=10.0MB)
+[17:10:28]   ok nodes=2105 edges=2650 cross=0 t=0.605s
+[17:10:28] [57/99] cloning nuxt/nuxt
+[17:10:29]   generating (size=11.0MB)
+[17:10:30]   ok nodes=1974 edges=1481 cross=0 t=0.342s
+[17:10:30] [58/99] cloning vuejs/pinia
+[17:10:31]   generating (size=5.0MB)
+[17:10:31]   ok nodes=283 edges=207 cross=0 t=0.054s
+[17:10:31] [59/99] cloning django/django
+[17:10:36]   generating (size=74.0MB)
+[17:10:38]   ok nodes=30352 edges=49497 cross=0 t=2.68s
+[17:10:39] [60/99] cloning pallets/flask
+[17:10:40]   generating (size=4.0MB)
+[17:10:40]   ok nodes=855 edges=1052 cross=0 t=0.079s
+[17:10:40] [61/99] cloning tiangolo/fastapi
+[17:10:45]   generating (size=55.0MB)
+[17:10:45]   ok nodes=4141 edges=4803 cross=0 t=0.458s
+[17:10:45] [62/99] cloning psf/requests
+[17:10:47]   generating (size=8.0MB)
+[17:10:47]   ok nodes=605 edges=1021 cross=0 t=0.052s
+[17:10:47] [63/99] cloning encode/starlette
+[17:10:49]   generating (size=7.0MB)
+[17:10:49]   ok nodes=1363 edges=2952 cross=0 t=0.104s
+[17:10:49] [64/99] cloning spring-projects/spring-boot
+[17:10:54]   generating (size=78.0MB)
+[17:10:58]   ok nodes=71866 edges=65667 cross=0 t=3.899s
+[17:10:58] [65/99] cloning apache/kafka
+[17:11:05]   generating (size=110.0MB)
+[17:11:15]   ok nodes=88442 edges=87708 cross=0 t=9.433s
+[17:11:15] [66/99] cloning elastic/elasticsearch
+[17:11:39]   generating (size=580.0MB)
+[17:12:11]   ok nodes=342804 edges=336081 cross=0 t=31.306s
+[17:12:12] [67/99] cloning akka/akka
+[17:12:17]   generating (size=66.0MB)
+[17:12:22]   ok nodes=56391 edges=61772 cross=0 t=5.633s
+[17:12:22] [68/99] cloning playframework/playframework
+[17:12:24]   generating (size=22.0MB)
+[17:12:26]   ok nodes=11951 edges=12305 cross=0 t=1.427s
+[17:12:26] [69/99] cloning ring-clojure/ring
+[17:12:27]   generating (size=1.0MB)
+[17:12:27]   ok nodes=3083 edges=3701 cross=0 t=0.345s
+[17:12:27] [70/99] cloning metosin/reitit
+[17:12:29]   generating (size=11.0MB)
+[17:12:29]   ok nodes=2143 edges=2686 cross=0 t=0.194s
+[17:12:29] [71/99] cloning dotnet/aspnetcore
+[17:12:37]   generating (size=229.0MB)
+[17:12:56]   ok nodes=92543 edges=99028 cross=0 t=19.142s
+[17:12:57] [72/99] cloning ServiceStack/ServiceStack
+[17:13:02]   generating (size=112.0MB)
+[17:13:15]   ok nodes=63476 edges=73145 cross=0 t=12.392s
+[17:13:15] [73/99] cloning rails/rails
+[17:13:18]   generating (size=56.0MB)
+[17:13:22]   ok nodes=48827 edges=45641 cross=0 t=3.722s
+[17:13:22] [74/99] cloning fastlane/fastlane
+[17:13:28]   generating (size=107.0MB)
+[17:13:30]   ok nodes=9990 edges=8904 cross=0 t=1.633s
+[17:13:30] [75/99] cloning discourse/discourse
+[17:13:47]   generating (size=280.0MB)
+[17:13:56]   ok nodes=60500 edges=51972 cross=0 t=8.165s
+[17:13:56] [76/99] cloning laravel/laravel
+[17:13:57]   generating (size=1.0MB)
+[17:13:57]   ok nodes=53 edges=24 cross=0 t=0.007s
+[17:13:57] [77/99] cloning symfony/symfony
+[17:14:03]   generating (size=146.0MB)
+[17:14:14]   ok nodes=67022 edges=77551 cross=0 t=10.479s
+[17:14:14] [78/99] cloning WordPress/WordPress
+[17:14:26]   generating (size=176.0MB)
+[17:14:30]   ok nodes=14809 edges=22444 cross=0 t=4.313s
+[17:14:30] [79/99] cloning vapor/vapor
+[17:14:31]   generating (size=3.0MB)
+[17:14:32]   ok nodes=2494 edges=2836 cross=0 t=0.848s
+[17:14:32] [80/99] cloning pointfreeco/swift-composable-architecture
+[17:14:38]   generating (size=53.0MB)
+[17:14:39]   ok nodes=4859 edges=4483 cross=0 t=1.294s
+[17:14:39] [81/99] cloning apple/swift-package-manager
+[17:14:41]   generating (size=26.0MB)
+[17:14:49]   ok nodes=12168 edges=13216 cross=0 t=7.275s
+[17:14:49] [82/99] cloning nlohmann/json
+[17:14:52]   generating (size=29.0MB)
+[17:14:54]   ok nodes=1681 edges=2318 cross=0 t=1.933s
+[17:14:54] [83/99] cloning fmtlib/fmt
+[17:14:55]   generating (size=5.0MB)
+[17:14:56]   ok nodes=944 edges=1611 cross=0 t=1.181s
+[17:14:56] [84/99] cloning redis/redis
+[17:14:58]   generating (size=28.0MB)
+[17:15:01]   ok nodes=9794 edges=20708 cross=0 t=2.718s
+[17:15:01] [85/99] cloning curl/curl
+[17:15:03]   generating (size=33.0MB)
+[17:15:05]   ok nodes=3921 edges=5727 cross=0 t=1.771s
+[17:15:05] [86/99] cloning flutter/samples
+[17:15:09]   generating (size=51.0MB)
+[17:15:11]   ok nodes=10866 edges=10107 cross=0 t=1.912s
+[17:15:11] [87/99] cloning felangel/bloc
+[17:15:16]   generating (size=61.0MB)
+[17:15:16]   ok nodes=2728 edges=2089 cross=0 t=0.452s
+[17:15:16] [88/99] cloning dart-lang/http
+[17:15:18]   generating (size=8.0MB)
+[17:15:19]   ok nodes=3520 edges=3170 cross=0 t=1.016s
+[17:15:19] [89/99] cloning phoenixframework/phoenix
+[17:15:20]   generating (size=7.0MB)
+[17:15:21]   ok nodes=1962 edges=2268 cross=0 t=0.674s
+[17:15:21] [90/99] cloning elixir-lang/elixir
+[17:15:23]   generating (size=20.0MB)
+[17:15:26]   ok nodes=7188 edges=10063 cross=0 t=3.432s
+[17:15:26] [91/99] cloning OpenZeppelin/openzeppelin-contracts
+[17:15:29]   generating (size=21.0MB)
+[17:15:29]   ok nodes=4401 edges=4315 cross=0 t=0.396s
+[17:15:29] [92/99] cloning Uniswap/v2-core
+[17:15:30]   generating (size=1.0MB)
+[17:15:30]   ok nodes=144 edges=129 cross=0 t=0.01s
+[17:15:30] [93/99] cloning hashicorp/terraform
+[17:15:33]   generating (size=47.0MB)
+[17:15:37]   ok nodes=26252 edges=29004 cross=0 t=3.622s
+[17:15:37] [94/99] cloning terraform-aws-modules/terraform-aws-vpc
+[17:15:38]   generating (size=2.0MB)
+[17:15:38]   ok nodes=1815 edges=1738 cross=0 t=0.108s
+[17:15:38] [95/99] cloning JetBrains/kotlin
+[17:16:03]   generating (size=683.0MB)
+[17:17:16]   ok nodes=246894 edges=195876 cross=0 t=73.071s
+[17:17:18] [96/99] cloning ktorio/ktor
+[17:17:25]   generating (size=98.0MB)
+[17:17:29]   ok nodes=3964 edges=1803 cross=0 t=4.259s
+[17:17:30] [97/99] cloning huggingface/transformers
+[17:17:37]   generating (size=111.0MB)
+[17:17:44]   ok nodes=38416 edges=73145 cross=0 t=7.409s
+[17:17:44] [98/99] cloning strapi/strapi
+[17:17:52]   generating (size=110.0MB)
+[17:17:55]   ok nodes=10815 edges=8480 cross=0 t=2.813s
+[17:17:55] [99/99] cloning keystonejs/keystone
+[17:18:01]   generating (size=63.0MB)
+[17:18:02]   ok nodes=2180 edges=1714 cross=0 t=0.977s
+[17:18:02] sweep complete

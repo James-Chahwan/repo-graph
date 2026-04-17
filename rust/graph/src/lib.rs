@@ -702,31 +702,70 @@ fn build_route_index(
             let Some(qname) = g.nav.qname_by_id.get(&n.id) else {
                 continue;
             };
-            let Some(path) = qname.strip_prefix("route:") else {
-                continue;
+            let target = RouteTarget {
+                route_id: n.id,
+                confidence: n.confidence,
             };
-            let norm = normalise_http_path(path);
-            for cell in &n.cells {
-                if cell.kind != cell_type::ROUTE_METHOD {
-                    continue;
-                }
-                let CellPayload::Json(json) = &cell.payload else {
-                    continue;
-                };
-                let Some(method) = extract_method_field(json) else {
-                    continue;
-                };
-                index
-                    .entry((method.to_uppercase(), norm.clone()))
-                    .or_default()
-                    .push(RouteTarget {
-                        route_id: n.id,
-                        confidence: n.confidence,
-                    });
-            }
+            index_route_node(&mut index, qname, &n.cells, target);
         }
     }
     index
+}
+
+/// Register a ROUTE node into the (METHOD, path) index. Handles both qname
+/// conventions now in the repo:
+///   1. parser-go / ts_routes: qname = `route:<path>`, methods live on
+///      stacked ROUTE_METHOD cells (JSON payload).
+///   2. parser-java / parser-csharp / parser-rust / parser-php: qname =
+///      `<METHOD> <path>`, one Route node per (method, path) with a single
+///      ROUTE_METHOD cell carrying the method as a plain Text payload.
+///
+/// Both shapes target the same downstream key space so HttpStackResolver sees
+/// all routes uniformly. Migrate the non-Go parsers to shape (1) when the
+/// other resolvers start needing per-path aggregation.
+fn index_route_node(
+    index: &mut HashMap<(String, String), Vec<RouteTarget>>,
+    qname: &str,
+    cells: &[Cell],
+    target: RouteTarget,
+) {
+    if let Some(path) = qname.strip_prefix("route:") {
+        let norm = normalise_http_path(path);
+        for cell in cells {
+            if cell.kind != cell_type::ROUTE_METHOD {
+                continue;
+            }
+            let Some(method) = cell_method(cell) else {
+                continue;
+            };
+            index
+                .entry((method.to_ascii_uppercase(), norm.clone()))
+                .or_default()
+                .push(target);
+        }
+        return;
+    }
+    // Legacy shape: "<METHOD> <path>". Split on the first space.
+    if let Some((method, path)) = qname.split_once(' ')
+        && path.starts_with('/')
+    {
+        let norm = normalise_http_path(path);
+        index
+            .entry((method.to_ascii_uppercase(), norm))
+            .or_default()
+            .push(target);
+    }
+}
+
+/// Extract a method name from a ROUTE_METHOD cell, handling both the JSON
+/// payload used by parser-go/ts_routes and the plain Text payload used by
+/// parser-java/csharp/rust/php.
+fn cell_method(cell: &Cell) -> Option<String> {
+    match &cell.payload {
+        CellPayload::Json(json) => extract_method_field(json).map(|s| s.to_string()),
+        CellPayload::Text(s) => Some(s.clone()),
+        CellPayload::Bytes(_) => None,
+    }
 }
 
 fn parse_endpoint_qname(qname: &str) -> Option<(String, &str)> {

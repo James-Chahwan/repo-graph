@@ -1,0 +1,62 @@
+=== SUMMARY (99 repos) ===
+  ok:         99
+  clone fail: 0
+  gen fail:   0
+
+=== DISTRIBUTIONS (ok repos) ===
+  nodes        min=    53.0  median=  5746.0  p90= 60500.0  max=342804.0
+  edges        min=    24.0  median=  4979.0  p90= 65667.0  max=336081.0
+  cross_edges  min=     0.0  median=     0.0  p90=     0.0  max=     0.0
+  elapsed_s    min=     0.0  median=     1.4  p90=    10.4  max=    73.1
+  size_mb      min=     1.0  median=    30.0  p90=   280.0  max=  1332.0
+
+=== ANOMALIES ===
+
+  Fullstack repos with ZERO cross-stack edges (HttpStackResolver miss):
+    calcom/cal.com                                 nodes=15279 edges=12825
+    medusajs/medusa                                nodes=21565 edges=13655
+    supabase/supabase                              nodes=19400 edges=17591
+    appwrite/appwrite                              nodes=9058 edges=11193
+    mattermost/mattermost                          nodes=39351 edges=42861
+    chatwoot/chatwoot                              nodes=14569 edges=11459
+    immich-app/immich                              nodes=20544 edges=19802
+    novuhq/novu                                    nodes=20191 edges=18197
+    saleor/saleor                                  nodes=20980 edges=51353
+    outline/outline                                nodes=5966 edges=4562
+    twentyhq/twenty                                nodes=37024 edges=25039
+    metabase/metabase                              nodes=49239 edges=49798
+    firefly-iii/firefly-iii                        nodes=8333 edges=9489
+    strapi/strapi                                  nodes=10815 edges=8480
+    keystonejs/keystone                            nodes=2180 edges=1714
+
+  Slow repos (>30s):
+    JetBrains/kotlin                                 73.1s  size=683.0MB  nodes=246894
+    elastic/elasticsearch                            31.3s  size=580.0MB  nodes=342804
+
+=== CROSS-STACK HITS (HttpStackResolver + others) ===
+    (none — suggests resolver miss or test set lacks crossstack)
+
+=== CONFIDENCE (aggregate over all ok repos) ===
+    strong       2083186  (100.0%)
+    medium           412  (0.0%)
+    weak             157  (0.0%)
+
+=== NODE KIND DISTRIBUTION (aggregate) ===
+      1 MODULE             338729  (16.3%)
+      2 CLASS              212604  (10.2%)
+      3 FUNCTION           313581  (15.0%)
+      4 METHOD            1113492  (53.4%)
+      5 ROUTE                 822  (0.0%)
+      6 PACKAGE             16154  (0.8%)
+      7 INTERFACE           41690  (2.0%)
+      8 STRUCT              38068  (1.8%)
+      9 ENDPOINT             1245  (0.1%)
+     10 ENUM                 7283  (0.3%)
+     11 GRPC_SERVICE           87  (0.0%)
+
+=== EDGE CATEGORY DISTRIBUTION (aggregate) ===
+      1 DEFINES           1803114  (80.4%)
+      2 CONTAINS            37599  (1.7%)
+      3 IMPORTS             52728  (2.4%)
+      4 CALLS              347449  (15.5%)
+      9 HANDLED_BY           2774  (0.1%)

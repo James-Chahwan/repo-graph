@@ -1,0 +1,154 @@
+# v0.4.11 pre-publish sweep — ~100 repos, mix of depth (cross-stack) + breadth (language coverage)
+
+# --- DEPTH: Full-stack monorepos (expect HTTP cross-stack hits) ---
+calcom/cal.com
+medusajs/medusa
+excalidraw/excalidraw
+supabase/supabase
+appwrite/appwrite
+mattermost/mattermost
+chatwoot/chatwoot
+immich-app/immich
+novuhq/novu
+saleor/saleor
+outline/outline
+twentyhq/twenty
+metabase/metabase
+vercel/next.js
+firefly-iii/firefly-iii
+
+# --- DEPTH: Queues ---
+celery/celery
+sidekiq/sidekiq
+taskforcesh/bullmq
+oban-bg/oban
+nats-io/nats-server
+
+# --- DEPTH: gRPC / proto ---
+grpc/grpc-go
+etcd-io/etcd
+tikv/tikv
+temporalio/temporal
+pingcap/tidb
+
+# --- DEPTH: GraphQL ---
+graphql/graphql-js
+apollographql/apollo-server
+dgraph-io/dgraph
+rmosolgo/graphql-ruby
+
+# --- DEPTH: WebSocket / realtime ---
+socketio/socket.io
+centrifugal/centrifugo
+NginxProxyManager/nginx-proxy-manager
+
+# --- DEPTH: CLI ---
+spf13/cobra
+clap-rs/clap
+pallets/click
+urfave/cli
+tj/commander.js
+
+# --- BREADTH: Go ---
+gin-gonic/gin
+labstack/echo
+hashicorp/vault
+hashicorp/consul
+
+# --- BREADTH: Rust ---
+tokio-rs/tokio
+actix/actix-web
+BurntSushi/ripgrep
+rust-lang/cargo
+
+# --- BREADTH: TS/JS ---
+honojs/hono
+nestjs/nest
+expressjs/express
+axios/axios
+sveltejs/svelte
+
+# --- BREADTH: React ---
+facebook/react
+TanStack/query
+remix-run/remix
+
+# --- BREADTH: Angular ---
+angular/angular
+ngrx/platform
+
+# --- BREADTH: Vue ---
+vuejs/core
+nuxt/nuxt
+vuejs/pinia
+
+# --- BREADTH: Python ---
+django/django
+pallets/flask
+tiangolo/fastapi
+psf/requests
+encode/starlette
+
+# --- BREADTH: Java ---
+spring-projects/spring-boot
+apache/kafka
+elastic/elasticsearch
+
+# --- BREADTH: Scala ---
+akka/akka
+playframework/playframework
+
+# --- BREADTH: Clojure ---
+ring-clojure/ring
+metosin/reitit
+
+# --- BREADTH: C# ---
+dotnet/aspnetcore
+ServiceStack/ServiceStack
+
+# --- BREADTH: Ruby ---
+rails/rails
+fastlane/fastlane
+discourse/discourse
+
+# --- BREADTH: PHP ---
+laravel/laravel
+symfony/symfony
+WordPress/WordPress
+
+# --- BREADTH: Swift ---
+vapor/vapor
+pointfreeco/swift-composable-architecture
+apple/swift-package-manager
+
+# --- BREADTH: C/C++ ---
+nlohmann/json
+fmtlib/fmt
+redis/redis
+curl/curl
+
+# --- BREADTH: Dart / Flutter ---
+flutter/samples
+felangel/bloc
+dart-lang/http
+
+# --- BREADTH: Elixir ---
+phoenixframework/phoenix
+elixir-lang/elixir
+
+# --- BREADTH: Solidity ---
+OpenZeppelin/openzeppelin-contracts
+Uniswap/v2-core
+
+# --- BREADTH: Terraform ---
+hashicorp/terraform
+terraform-aws-modules/terraform-aws-vpc
+
+# --- BREADTH: Kotlin (Java analyzer) ---
+JetBrains/kotlin
+ktorio/ktor
+
+# --- Additional interesting ---
+huggingface/transformers
+strapi/strapi
+keystonejs/keystone

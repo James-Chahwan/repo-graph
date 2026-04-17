@@ -4,8 +4,8 @@ use std::path::{Path, PathBuf};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 
-use repo_graph_code_domain::{FileParse, node_kind, GRAPH_TYPE};
-use repo_graph_core::{Confidence, NodeId, RepoId};
+use repo_graph_code_domain::{CodeNav, FileParse, edge_category, node_kind, GRAPH_TYPE};
+use repo_graph_core::{Confidence, Edge, NodeId, RepoId};
 use repo_graph_graph::{
     CliInvocationResolver, EventBusResolver, GrpcStackResolver,
     GraphQLStackResolver, HttpStackResolver, MergedGraph, QueueStackResolver,
@@ -108,6 +108,287 @@ fn parse_one(
     }
 }
 
+// ============================================================================
+// Cross-cutting extractors — run on every parsed file and merge into its
+// FileParse. These are pattern-based and language-agnostic (grpc-client,
+// queue consumer/producer, CLI command/invocation, websocket handler/client,
+// event emitter/handler, GraphQL operation/resolver).
+// ============================================================================
+
+fn apply_cross_cutting_extractors(
+    fp: &mut FileParse,
+    source: &str,
+    path: &str,
+    lang: &str,
+    module_id: NodeId,
+    repo: RepoId,
+) {
+    use repo_graph_code_extractors::{
+        cli, eventbus, graphql, grpc, queues, ts_routes, websocket,
+    };
+
+    macro_rules! run {
+        ($call:expr) => {{
+            let out = $call;
+            fp.nodes.extend(out.nodes);
+            merge_nav(&mut fp.nav, out.nav);
+        }};
+    }
+
+    run!(queues::extract_queue_consumer_nodes(source, module_id, repo));
+    run!(queues::extract_queue_producer_nodes(source, module_id, repo));
+    run!(cli::extract_cli_command_nodes(source, module_id, repo));
+    run!(cli::extract_cli_invocation_nodes(source, module_id, repo));
+    run!(websocket::extract_ws_handler_nodes(source, module_id, repo));
+    run!(websocket::extract_ws_client_nodes(source, module_id, repo));
+    run!(eventbus::extract_event_emitter_nodes(source, module_id, repo));
+    run!(eventbus::extract_event_handler_nodes(source, module_id, repo));
+    run!(graphql::extract_graphql_operation_nodes(source, module_id, repo));
+    run!(graphql::extract_graphql_resolver_nodes(source, module_id, repo));
+    run!(grpc::extract_grpc_client_nodes(source, module_id, repo));
+
+    // Language-gated: backend HTTP routes for JS/TS-family files (Express,
+    // Koa, Hono, Next.js file-based routing, etc.).
+    if matches!(lang, "typescript" | "react" | "angular" | "vue") {
+        run!(ts_routes::extract_ts_backend_routes(
+            source, path, module_id, repo
+        ));
+    }
+}
+
+// ============================================================================
+// Test-edge post-pass — match test modules to the modules they test.
+// Port of the v0.2.0 `test_edges.py` post-pass. Detects test modules by qname
+// (path-derived) and emits TESTS edges (category 7) to same-repo modules whose
+// name matches after stripping test prefix/suffix.
+// ============================================================================
+
+fn emit_tests_edges(merged: &mut MergedGraph) {
+    use std::collections::HashMap;
+
+    // Bucket modules by their last qname segment — then disambiguate by the
+    // parent path. Two modules with the same tail in different packages of a
+    // monorepo (`apps/web/utils` vs `packages/ui/utils`) share a bucket but
+    // win on prefix distance to the test module individually.
+    let mut modules_by_tail: HashMap<String, Vec<(NodeId, String)>> = HashMap::new();
+    let mut module_info: Vec<(NodeId, String)> = Vec::new();
+
+    for g in &merged.graphs {
+        for n in &g.nodes {
+            if g.nav.kind_by_id.get(&n.id).copied() != Some(node_kind::MODULE) {
+                continue;
+            }
+            let Some(qname) = g.nav.qname_by_id.get(&n.id) else {
+                continue;
+            };
+            module_info.push((n.id, qname.clone()));
+            if let Some(tail) = qname.rsplit("::").next() {
+                modules_by_tail
+                    .entry(tail.to_string())
+                    .or_default()
+                    .push((n.id, qname.clone()));
+            }
+        }
+    }
+
+    for (from_id, qname) in &module_info {
+        if !is_test_qname(qname) {
+            continue;
+        }
+        let Some(tail) = qname.rsplit("::").next() else {
+            continue;
+        };
+        let stripped = strip_test_affixes(tail);
+        if stripped.is_empty() || stripped == tail {
+            continue;
+        }
+        let Some(candidates) = modules_by_tail.get(stripped) else {
+            continue;
+        };
+        for to_id in select_test_targets(*from_id, qname, candidates) {
+            merged.cross_edges.push(Edge {
+                from: *from_id,
+                to: to_id,
+                category: edge_category::TESTS,
+                confidence: Confidence::Strong,
+            });
+        }
+    }
+}
+
+/// Pick which candidate modules the test qname is most likely testing.
+/// Ranks by longest common package prefix with the test qname, breaks ties
+/// by keeping them all, and caps at `MAX_TEST_TARGETS` to bound the
+/// cross-product explosion monorepos would otherwise trigger (F1 in the
+/// v0.4.11 sweep report: vercel/next.js emitted 818k TESTS edges with
+/// tail-only matching).
+fn select_test_targets(
+    from_id: NodeId,
+    test_qname: &str,
+    candidates: &[(NodeId, String)],
+) -> Vec<NodeId> {
+    const MAX_TEST_TARGETS: usize = 3;
+
+    let test_parent: Vec<&str> = qname_parent_segments(test_qname);
+
+    let mut scored: Vec<(usize, NodeId)> = candidates
+        .iter()
+        .filter(|(id, _)| *id != from_id)
+        .map(|(id, qn)| {
+            let cand_parent = qname_parent_segments(qn);
+            (common_prefix_len(&test_parent, &cand_parent), *id)
+        })
+        .collect();
+
+    if scored.is_empty() {
+        return Vec::new();
+    }
+
+    let max_score = scored.iter().map(|(s, _)| *s).max().unwrap_or(0);
+    // Only take candidates that reach the max common prefix. If max is 0 —
+    // i.e. no candidate shares even one package segment — fall through with
+    // all zero-score candidates but still capped, so we don't regress the
+    // flat-repo case where cross-package prefix doesn't exist.
+    scored.retain(|(s, _)| *s == max_score);
+    scored.truncate(MAX_TEST_TARGETS);
+    scored.into_iter().map(|(_, id)| id).collect()
+}
+
+fn qname_parent_segments(qname: &str) -> Vec<&str> {
+    let mut segs: Vec<&str> = qname.split("::").collect();
+    segs.pop();
+    segs
+}
+
+fn common_prefix_len(a: &[&str], b: &[&str]) -> usize {
+    a.iter().zip(b.iter()).take_while(|(x, y)| x == y).count()
+}
+
+// ============================================================================
+// Path-based confidence downgrade — port of the v0.2.0 behaviour where nodes
+// derived from test/fixture/example/e2e paths get downgraded to Weak. Matching
+// is segment-based against the `::`-separated qname (which is path-derived for
+// modules and carries the module prefix for definitions inside them).
+// ============================================================================
+//
+// Routes carry synthetic qnames (`route:METHOD:/path`) that don't encode a
+// path, so they are left at their extractor-assigned confidence.
+
+fn downgrade_test_paths(merged: &mut MergedGraph) {
+    for g in &mut merged.graphs {
+        for n in &mut g.nodes {
+            let Some(qname) = g.nav.qname_by_id.get(&n.id) else {
+                continue;
+            };
+            if qname.starts_with("route:") {
+                continue;
+            }
+            if qname_is_noncritical_path(qname) {
+                n.confidence = Confidence::Weak;
+            }
+        }
+    }
+}
+
+// ============================================================================
+// Match-based confidence tiering — after the resolvers run, ROUTE and ENDPOINT
+// nodes that are *not* referenced by any HTTP_CALLS cross-edge drop from
+// Strong to Medium. A matched pair is evidence that the node participates in
+// real cross-stack traffic; an unmatched one might be dead, typo'd, or simply
+// not yet wired. Leaves already-Weak (path-downgraded) nodes alone.
+// ============================================================================
+
+fn demote_unmatched_http_nodes(merged: &mut MergedGraph) {
+    use std::collections::HashSet;
+
+    let mut matched: HashSet<NodeId> = HashSet::new();
+    for e in &merged.cross_edges {
+        if e.category == edge_category::HTTP_CALLS {
+            matched.insert(e.from);
+            matched.insert(e.to);
+        }
+    }
+
+    for g in &mut merged.graphs {
+        for n in &mut g.nodes {
+            let kind = g.nav.kind_by_id.get(&n.id).copied();
+            let is_http_node = matches!(kind, Some(k) if k == node_kind::ROUTE || k == node_kind::ENDPOINT);
+            if !is_http_node {
+                continue;
+            }
+            if matches!(n.confidence, Confidence::Weak) {
+                continue;
+            }
+            if !matched.contains(&n.id) {
+                n.confidence = Confidence::Medium;
+            }
+        }
+    }
+}
+
+fn qname_is_noncritical_path(qname: &str) -> bool {
+    const NONCRITICAL: &[&str] = &[
+        "tests", "test", "__tests__", "spec", "specs",
+        "fixtures", "fixture", "examples", "example",
+        "e2e", "__mocks__", "mocks", "testdata",
+    ];
+    qname
+        .split("::")
+        .any(|seg| {
+            let lowered = seg.to_ascii_lowercase();
+            NONCRITICAL.contains(&lowered.as_str())
+        })
+}
+
+fn is_test_qname(qname: &str) -> bool {
+    // Path-derived qname uses `::` as separator. Match the conventions from the
+    // v0.2.0 Python pipeline: Python tests/, test_ prefix, _test suffix; JS/TS
+    // __tests__/, .test / .spec; Go _test; Ruby spec/, _spec.
+    let lowered = qname.to_ascii_lowercase();
+    if lowered.contains("::tests::")
+        || lowered.contains("::test::")
+        || lowered.contains("::__tests__::")
+        || lowered.contains("::spec::")
+        || lowered.starts_with("tests::")
+        || lowered.starts_with("test::")
+        || lowered.starts_with("spec::")
+    {
+        return true;
+    }
+    let Some(tail) = qname.rsplit("::").next() else {
+        return false;
+    };
+    let t = tail.to_ascii_lowercase();
+    t.starts_with("test_")
+        || t.ends_with("_test")
+        || t.ends_with("_spec")
+        || t.ends_with(".test")
+        || t.ends_with(".spec")
+}
+
+fn strip_test_affixes(name: &str) -> &str {
+    let lowered = name.to_ascii_lowercase();
+    if let Some(rest) = lowered.strip_prefix("test_") {
+        return &name[name.len() - rest.len()..];
+    }
+    for suffix in ["_test", "_spec", ".test", ".spec"] {
+        if lowered.ends_with(suffix) {
+            return &name[..name.len() - suffix.len()];
+        }
+    }
+    name
+}
+
+fn merge_nav(dst: &mut CodeNav, src: CodeNav) {
+    dst.name_by_id.extend(src.name_by_id);
+    dst.qname_by_id.extend(src.qname_by_id);
+    dst.kind_by_id.extend(src.kind_by_id);
+    dst.parent_of.extend(src.parent_of);
+    for (k, v) in src.children_of {
+        dst.children_of.entry(k).or_default().extend(v);
+    }
+}
+
 fn path_to_qname(path: &str) -> String {
     Path::new(path)
         .with_extension("")
@@ -187,7 +468,14 @@ fn generate_repo_inner(repo_path: &str) -> Result<GenerateResult, String> {
         }
 
         match parse_one(source, path, lang, repo) {
-            Ok(fp) => {
+            Ok(mut fp) => {
+                let module_id = NodeId::from_parts(
+                    GRAPH_TYPE,
+                    repo,
+                    node_kind::MODULE,
+                    &path_to_qname(path),
+                );
+                apply_cross_cutting_extractors(&mut fp, source, path, lang, module_id, repo);
                 parses_by_lang.entry(lang).or_default().push(fp);
             }
             Err(e) => {
@@ -225,6 +513,10 @@ fn generate_repo_inner(repo_path: &str) -> Result<GenerateResult, String> {
     merged.run(&EventBusResolver);
     merged.run(&SharedSchemaResolver);
     merged.run(&CliInvocationResolver);
+
+    downgrade_test_paths(&mut merged);
+    demote_unmatched_http_nodes(&mut merged);
+    emit_tests_edges(&mut merged);
 
     let total_nodes: usize = merged.graphs.iter().map(|g| g.nodes.len()).sum();
     let total_edges: usize = merged.graphs.iter().map(|g| g.edges.len()).sum::<usize>()
