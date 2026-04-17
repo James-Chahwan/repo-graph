@@ -1,6 +1,6 @@
 [project]
 name = "mcp-repo-graph"
-version = "0.4.10"
+version = "0.4.11"
 description = "MCP server that gives LLMs a structural map of any codebase — entities, relationships, and flows — so they navigate to the right files without reading everything first."
 readme = "README.md"
 license = "MIT"
@@ -20,7 +20,7 @@ classifiers = [
 ]
 dependencies = [
     "mcp[cli]>=1.0.0",
-    "repo-graph-py>=0.4.10",
+    "repo-graph-py>=0.4.11",
 ]
 
 [project.optional-dependencies]
