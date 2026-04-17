@@ -46,6 +46,9 @@ pub fn parse_file(
         }
     }
 
+    scan_ktor_routes(source, repo, &mut acc);
+    scan_webflux_routes(source, repo, &mut acc);
+
     Ok(FileParse {
         nodes: acc.nodes,
         edges: acc.edges,
@@ -176,19 +179,33 @@ fn check_route_annotations(
     let text = text_of(node, src);
 
     // Spring: @GetMapping("/path"), @PostMapping, @RequestMapping
-    let spring_patterns = [
+    // Micronaut: @Get("/path"), @Post, @Put, @Delete, @Patch, @Head, @Options (no Mapping suffix)
+    let patterns = [
         ("@GetMapping", "GET"),
         ("@PostMapping", "POST"),
         ("@PutMapping", "PUT"),
         ("@DeleteMapping", "DELETE"),
         ("@PatchMapping", "PATCH"),
+        ("@Get(", "GET"),
+        ("@Post(", "POST"),
+        ("@Put(", "PUT"),
+        ("@Delete(", "DELETE"),
+        ("@Patch(", "PATCH"),
+        ("@Head(", "HEAD"),
+        ("@Options(", "OPTIONS"),
     ];
-    for (prefix, method) in &spring_patterns {
+    for (prefix, method) in &patterns {
         if let Some(pos) = text.find(prefix)
             && let Some(path) = extract_annotation_string(&text[pos..])
         {
             emit_route(method, &path, handler_id, repo, acc);
         }
+    }
+    // Micronaut @Controller("/api") at class level — emit as ANY base route.
+    if let Some(pos) = text.find("@Controller(")
+        && let Some(path) = extract_annotation_string(&text[pos..])
+    {
+        emit_route("ANY", &path, handler_id, repo, acc);
     }
     // @RequestMapping with method param
     if let Some(pos) = text.find("@RequestMapping")
@@ -232,6 +249,129 @@ fn emit_route(method: &str, path: &str, handler_id: NodeId, repo: RepoId, acc: &
         to: handler_id,
         category: edge_category::HANDLED_BY,
         confidence: Confidence::Strong,
+    });
+    acc.nav
+        .record(route_id, &route_name, &route_name, node_kind::ROUTE, None);
+}
+
+fn scan_ktor_routes(source: &str, repo: RepoId, acc: &mut Acc) {
+    // Ktor (Kotlin): `get("/path") { ... }`, `post("/path") { ... }`, etc.
+    // File is Kotlin (tree-sitter-java rejects most of it so we rely on text).
+    let methods: &[(&str, &str)] = &[
+        ("get(\"", "GET"),
+        ("post(\"", "POST"),
+        ("put(\"", "PUT"),
+        ("patch(\"", "PATCH"),
+        ("delete(\"", "DELETE"),
+        ("head(\"", "HEAD"),
+        ("options(\"", "OPTIONS"),
+    ];
+    let mut seen: std::collections::HashSet<String> = std::collections::HashSet::new();
+    for (needle, method) in methods {
+        let mut search_from = 0;
+        while let Some(rel) = source[search_from..].find(needle) {
+            let pos = search_from + rel;
+            // Require the needle to be a word-start so we don't match e.g.
+            // `forget("...")` or `setget("...")`.
+            let word_start = pos == 0 || {
+                let prev = source.as_bytes()[pos - 1];
+                !(prev.is_ascii_alphanumeric() || prev == b'_' || prev == b'.')
+            };
+            let start = pos + needle.len();
+            if !word_start {
+                search_from = start;
+                continue;
+            }
+            let bytes = source.as_bytes();
+            let mut j = start;
+            while j < bytes.len() && bytes[j] != b'"' {
+                if bytes[j] == b'\\' && j + 1 < bytes.len() {
+                    j += 2;
+                } else {
+                    j += 1;
+                }
+            }
+            if j >= bytes.len() {
+                break;
+            }
+            let path = &source[start..j];
+            // Ktor DSL expects routes to start with `/`. This filters out many
+            // false positives (e.g., `get("count")`) at zero cost.
+            if !path.starts_with('/') {
+                search_from = j + 1;
+                continue;
+            }
+            // Look ahead for opening `{` — Ktor route DSL always opens a block.
+            let after_paren = source[j + 1..]
+                .find(|c: char| !c.is_whitespace() && c != ')')
+                .map(|o| source.as_bytes()[j + 1 + o]);
+            if after_paren != Some(b'{') {
+                search_from = j + 1;
+                continue;
+            }
+            let key = format!("{method} {path}");
+            if seen.insert(key.clone()) {
+                emit_ktor_route(method, path, repo, acc);
+            }
+            search_from = j + 1;
+        }
+    }
+}
+
+fn scan_webflux_routes(source: &str, repo: RepoId, acc: &mut Acc) {
+    // Spring WebFlux functional DSL: RouterFunctions.route().GET("/path", h).POST(...)
+    let methods: &[(&str, &str)] = &[
+        (".GET(\"", "GET"),
+        (".POST(\"", "POST"),
+        (".PUT(\"", "PUT"),
+        (".PATCH(\"", "PATCH"),
+        (".DELETE(\"", "DELETE"),
+        (".HEAD(\"", "HEAD"),
+        (".OPTIONS(\"", "OPTIONS"),
+    ];
+    let mut seen: std::collections::HashSet<String> = std::collections::HashSet::new();
+    let bytes = source.as_bytes();
+    for (needle, method) in methods {
+        let mut search_from = 0;
+        while let Some(rel) = source[search_from..].find(needle) {
+            let pos = search_from + rel;
+            let start = pos + needle.len();
+            let mut j = start;
+            while j < bytes.len() && bytes[j] != b'"' {
+                if bytes[j] == b'\\' && j + 1 < bytes.len() {
+                    j += 2;
+                } else {
+                    j += 1;
+                }
+            }
+            if j >= bytes.len() {
+                break;
+            }
+            let path = &source[start..j];
+            if !path.starts_with('/') {
+                search_from = j + 1;
+                continue;
+            }
+            let key = format!("{method} {path}");
+            if seen.insert(key.clone()) {
+                emit_ktor_route(method, path, repo, acc);
+            }
+            search_from = j + 1;
+        }
+    }
+}
+
+fn emit_ktor_route(method: &str, path: &str, repo: RepoId, acc: &mut Acc) {
+    let route_name = format!("{method} {path}");
+    let route_id = NodeId::from_parts(GRAPH_TYPE, repo, node_kind::ROUTE, &route_name);
+    acc.nodes.push(Node {
+        id: route_id,
+        repo,
+        confidence: Confidence::Medium,
+        cells: vec![Cell {
+            kind: cell_type::ROUTE_METHOD,
+            payload: CellPayload::Text(method.to_string()),
+        }],
     });
     acc.nav
         .record(route_id, &route_name, &route_name, node_kind::ROUTE, None);
@@ -452,6 +592,98 @@ public class UserController {
             .collect();
         assert!(routes.contains(&"GET /users"));
         assert!(routes.contains(&"POST /users"));
+    }
+
+    #[test]
+    fn micronaut_routes() {
+        let source = r#"
+package com.example;
+
+@Controller("/api")
+public class ThingsController {
+    @Get("/things")
+    public Thing list() { return null; }
+
+    @Post("/things")
+    public Thing create() { return null; }
+
+    @Put("/things/{id}")
+    public Thing update() { return null; }
+
+    @Delete("/things/{id}")
+    public void destroy() {}
+}
+"#;
+        let fp = parse_file(source, "ThingsController.java", "com::example", repo()).unwrap();
+        let routes: Vec<&str> = fp
+            .nav
+            .kind_by_id
+            .iter()
+            .filter(|(_, k)| **k == node_kind::ROUTE)
+            .filter_map(|(id, _)| fp.nav.name_by_id.get(id).map(|s| s.as_str()))
+            .collect();
+        assert!(routes.contains(&"GET /things"));
+        assert!(routes.contains(&"PUT /things/{id}"));
+        assert!(routes.contains(&"DELETE /things/{id}"));
+        assert!(routes.contains(&"ANY /api"));
+    }
+
+    #[test]
+    fn ktor_routes() {
+        let source = r#"
+fun Application.module() {
+    routing {
+        get("/users") {
+            call.respond(listOf<String>())
+        }
+        post("/users") {
+            call.respond("ok")
+        }
+        route("/admin") {
+            delete("/users/{id}") { call.respond("ok") }
+        }
+    }
+}
+"#;
+        let fp = parse_file(source, "Application.kt", "com::example", repo()).unwrap();
+        let routes: Vec<&str> = fp
+            .nav
+            .kind_by_id
+            .iter()
+            .filter(|(_, k)| **k == node_kind::ROUTE)
+            .filter_map(|(id, _)| fp.nav.name_by_id.get(id).map(|s| s.as_str()))
+            .collect();
+        assert!(routes.contains(&"GET /users"));
+        assert!(routes.contains(&"POST /users"));
+        assert!(routes.contains(&"DELETE /users/{id}"));
+    }
+
+    #[test]
+    fn webflux_functional_routes() {
+        let source = r#"
+@Configuration
+public class RouterConfig {
+    @Bean
+    public RouterFunction<ServerResponse> routes(UserHandler handler) {
+        return RouterFunctions.route()
+            .GET("/users", handler::list)
+            .POST("/users", handler::create)
+            .DELETE("/users/{id}", handler::destroy)
+            .build();
+    }
+}
+"#;
+        let fp = parse_file(source, "RouterConfig.java", "com::example", repo()).unwrap();
+        let routes: Vec<&str> = fp
+            .nav
+            .kind_by_id
+            .iter()
+            .filter(|(_, k)| **k == node_kind::ROUTE)
+            .filter_map(|(id, _)| fp.nav.name_by_id.get(id).map(|s| s.as_str()))
+            .collect();
+        assert!(routes.contains(&"GET /users"));
+        assert!(routes.contains(&"POST /users"));
+        assert!(routes.contains(&"DELETE /users/{id}"));
     }
 
     #[test]
