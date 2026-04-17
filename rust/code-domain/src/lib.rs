@@ -49,6 +49,13 @@ pub mod node_kind {
     pub const EVENT_EMITTER: NodeKindId = NodeKindId(20);
     pub const CLI_COMMAND: NodeKindId = NodeKindId(21);
     pub const CLI_INVOCATION: NodeKindId = NodeKindId(22);
+
+    // v0.4.11a — data source entity kinds (D1)
+    pub const DATABASE: NodeKindId = NodeKindId(23);
+    pub const CACHE: NodeKindId = NodeKindId(24);
+    pub const BLOB_STORE: NodeKindId = NodeKindId(25);
+    pub const SEARCH_INDEX: NodeKindId = NodeKindId(26);
+    pub const EMAIL_SERVICE: NodeKindId = NodeKindId(27);
 }
 
 // ============================================================================
@@ -86,6 +93,9 @@ pub mod edge_category {
     pub const EVENT_FLOWS: EdgeCategoryId = EdgeCategoryId(15);
     pub const SHARES_SCHEMA: EdgeCategoryId = EdgeCategoryId(16);
     pub const CLI_INVOKES: EdgeCategoryId = EdgeCategoryId(17);
+
+    // v0.4.11a — module → data-source access (D1)
+    pub const ACCESSES_DATA: EdgeCategoryId = EdgeCategoryId(18);
 }
 
 // ============================================================================

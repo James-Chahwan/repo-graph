@@ -124,13 +124,22 @@ fn apply_cross_cutting_extractors(
     repo: RepoId,
 ) {
     use repo_graph_code_extractors::{
-        cli, eventbus, graphql, grpc, queues, ts_routes, websocket,
+        cli, data_sources, eventbus, graphql, grpc, queues, ts_routes, websocket,
     };
 
     macro_rules! run {
         ($call:expr) => {{
             let out = $call;
             fp.nodes.extend(out.nodes);
+            merge_nav(&mut fp.nav, out.nav);
+        }};
+    }
+
+    macro_rules! run_with_edges {
+        ($call:expr) => {{
+            let out = $call;
+            fp.nodes.extend(out.nodes);
+            fp.edges.extend(out.edges);
             merge_nav(&mut fp.nav, out.nav);
         }};
     }
@@ -146,6 +155,9 @@ fn apply_cross_cutting_extractors(
     run!(graphql::extract_graphql_operation_nodes(source, module_id, repo));
     run!(graphql::extract_graphql_resolver_nodes(source, module_id, repo));
     run!(grpc::extract_grpc_client_nodes(source, module_id, repo));
+    run_with_edges!(data_sources::extract_data_source_nodes(
+        source, module_id, repo
+    ));
 
     // Language-gated: backend HTTP routes for JS/TS-family files (Express,
     // Koa, Hono, Next.js file-based routing, etc.).
