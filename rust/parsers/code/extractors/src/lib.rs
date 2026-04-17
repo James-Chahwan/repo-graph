@@ -4,5 +4,6 @@ pub mod eventbus;
 pub mod graphql;
 pub mod grpc;
 pub mod queues;
+pub mod react;
 pub mod ts_routes;
 pub mod websocket;

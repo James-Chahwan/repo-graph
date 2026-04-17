@@ -56,6 +56,15 @@ pub mod node_kind {
     pub const BLOB_STORE: NodeKindId = NodeKindId(25);
     pub const SEARCH_INDEX: NodeKindId = NodeKindId(26);
     pub const EMAIL_SERVICE: NodeKindId = NodeKindId(27);
+
+    // v0.4.11a — frontend framework entity kinds (F-react / F-angular / F-vue)
+    pub const COMPONENT: NodeKindId = NodeKindId(28);
+    pub const HOOK: NodeKindId = NodeKindId(29);
+    pub const SERVICE: NodeKindId = NodeKindId(30);
+    pub const DIRECTIVE: NodeKindId = NodeKindId(31);
+    pub const PIPE: NodeKindId = NodeKindId(32);
+    pub const GUARD: NodeKindId = NodeKindId(33);
+    pub const COMPOSABLE: NodeKindId = NodeKindId(34);
 }
 
 // ============================================================================
