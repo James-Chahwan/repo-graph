@@ -36,6 +36,8 @@ pub fn parse_file(
 
     visit_top(root, src, file_rel_path, module_qname, module_id, repo, &mut acc);
 
+    scan_vapor_routes(source, repo, &mut acc);
+
     Ok(FileParse {
         nodes: acc.nodes,
         edges: acc.edges,
@@ -293,6 +295,112 @@ fn text_of<'a>(node: TsNode<'a>, src: &'a [u8]) -> &'a str {
     node.utf8_text(src).unwrap_or("")
 }
 
+fn scan_vapor_routes(source: &str, repo: RepoId, acc: &mut Acc) {
+    let methods: &[(&str, &str)] = &[
+        (".get(", "GET"),
+        (".post(", "POST"),
+        (".put(", "PUT"),
+        (".patch(", "PATCH"),
+        (".delete(", "DELETE"),
+        (".head(", "HEAD"),
+        (".options(", "OPTIONS"),
+    ];
+    let mut seen: std::collections::HashSet<String> = std::collections::HashSet::new();
+    for (needle, method) in methods {
+        let mut search_from = 0;
+        while let Some(rel) = source[search_from..].find(needle) {
+            let start = search_from + rel + needle.len();
+            let end = find_call_end(&source[start..]).unwrap_or(0);
+            if end == 0 {
+                search_from = start;
+                continue;
+            }
+            let args = &source[start..start + end];
+            let path = vapor_path_from_args(args);
+            if !path.is_empty() {
+                let route_name = format!("{method} /{path}");
+                if seen.insert(route_name.clone()) {
+                    emit_vapor_route(method, &format!("/{path}"), repo, acc);
+                }
+            }
+            search_from = start + end + 1;
+        }
+    }
+}
+
+fn find_call_end(s: &str) -> Option<usize> {
+    let bytes = s.as_bytes();
+    let mut depth = 1usize;
+    let mut i = 0;
+    while i < bytes.len() {
+        match bytes[i] {
+            b'(' => depth += 1,
+            b')' => {
+                depth -= 1;
+                if depth == 0 {
+                    return Some(i);
+                }
+            }
+            b'"' => {
+                i += 1;
+                while i < bytes.len() && bytes[i] != b'"' {
+                    if bytes[i] == b'\\' && i + 1 < bytes.len() {
+                        i += 2;
+                    } else {
+                        i += 1;
+                    }
+                }
+            }
+            _ => {}
+        }
+        i += 1;
+    }
+    None
+}
+
+fn vapor_path_from_args(args: &str) -> String {
+    let bytes = args.as_bytes();
+    let mut parts: Vec<String> = Vec::new();
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] == b'"' {
+            let start = i + 1;
+            let mut j = start;
+            while j < bytes.len() && bytes[j] != b'"' {
+                if bytes[j] == b'\\' && j + 1 < bytes.len() {
+                    j += 2;
+                } else {
+                    j += 1;
+                }
+            }
+            if j < bytes.len() {
+                let s = &args[start..j];
+                parts.push(s.trim_start_matches(':').to_string());
+                i = j + 1;
+                continue;
+            }
+        }
+        i += 1;
+    }
+    parts.join("/")
+}
+
+fn emit_vapor_route(method: &str, path: &str, repo: RepoId, acc: &mut Acc) {
+    let route_name = format!("{method} {path}");
+    let route_id = NodeId::from_parts(GRAPH_TYPE, repo, node_kind::ROUTE, &route_name);
+    acc.nodes.push(Node {
+        id: route_id,
+        repo,
+        confidence: Confidence::Medium,
+        cells: vec![Cell {
+            kind: cell_type::ROUTE_METHOD,
+            payload: CellPayload::Text(method.to_string()),
+        }],
+    });
+    acc.nav
+        .record(route_id, &route_name, &route_name, node_kind::ROUTE, None);
+}
+
 fn file_cells(root: &TsNode, src: &[u8], file_rel: &str) -> Vec<Cell> {
     vec![
         Cell {
@@ -373,6 +481,32 @@ enum Color {
         let fp = parse_file(source, "Sources/Types.swift", "Sources::Types", repo()).unwrap();
         assert_eq!(fp.nav.kind_by_id.values().filter(|k| **k == node_kind::INTERFACE).count(), 1);
         assert_eq!(fp.nav.kind_by_id.values().filter(|k| **k == node_kind::ENUM).count(), 1);
+    }
+
+    #[test]
+    fn vapor_routes_basic() {
+        let source = r#"
+import Vapor
+
+func routes(_ app: Application) throws {
+    app.get("users") { req in "list" }
+    app.post("users") { req in "create" }
+    app.get("users", ":id") { req in "show" }
+    app.delete("users", ":id") { req in "destroy" }
+}
+"#;
+        let fp = parse_file(source, "Sources/App/routes.swift", "Sources::App::routes", repo()).unwrap();
+        let route_names: Vec<&str> = fp
+            .nav
+            .name_by_id
+            .iter()
+            .filter(|(id, _)| fp.nav.kind_by_id.get(*id) == Some(&node_kind::ROUTE))
+            .map(|(_, n)| n.as_str())
+            .collect();
+        assert!(route_names.contains(&"GET /users"));
+        assert!(route_names.contains(&"POST /users"));
+        assert!(route_names.contains(&"GET /users/id"));
+        assert!(route_names.contains(&"DELETE /users/id"));
     }
 
     #[test]
