@@ -95,6 +95,8 @@ pub fn parse_file(
         }
     }
 
+    scan_axum_routes(source, repo, &mut acc);
+
     Ok(FileParse {
         nodes: acc.nodes,
         edges: acc.edges,
@@ -299,7 +301,7 @@ fn visit_route_attr(
 ) {
     let text = text_of(node, src);
     // Actix/Rocket: #[get("/path")] or #[post("/path")]
-    let methods = ["get", "post", "put", "delete", "patch"];
+    let methods = ["get", "post", "put", "delete", "patch", "head", "options"];
     for method in &methods {
         let prefix = format!("#[{method}(\"");
         if let Some(rest) = text.strip_prefix(&prefix)
@@ -334,6 +336,117 @@ fn visit_route_attr(
             );
         }
     }
+}
+
+fn scan_axum_routes(source: &str, repo: RepoId, acc: &mut Acc) {
+    // Axum: Router::new().route("/path", get(handler).post(handler2))
+    //                    .route("/users/:id", get(get_user))
+    let mut seen: std::collections::HashSet<String> = std::collections::HashSet::new();
+    let needle = ".route(";
+    let mut search_from = 0;
+    let bytes = source.as_bytes();
+    while let Some(rel) = source[search_from..].find(needle) {
+        let start = search_from + rel + needle.len();
+        let Some(path_end) = source[start..].find('"') else {
+            search_from = start;
+            continue;
+        };
+        let q_start = start + path_end + 1;
+        let mut j = q_start;
+        while j < bytes.len() && bytes[j] != b'"' {
+            if bytes[j] == b'\\' && j + 1 < bytes.len() {
+                j += 2;
+            } else {
+                j += 1;
+            }
+        }
+        if j >= bytes.len() {
+            break;
+        }
+        let path = &source[q_start..j];
+        let Some(call_end) = find_matching_paren(&source[start..]) else {
+            search_from = j + 1;
+            continue;
+        };
+        let args_text = &source[start..start + call_end];
+        for method in ["get", "post", "put", "patch", "delete", "head", "options"] {
+            let pat = format!("{method}(");
+            if contains_method_call(args_text, &pat) {
+                let mu = method.to_ascii_uppercase();
+                let route_name = format!("{mu} {path}");
+                if seen.insert(route_name.clone()) {
+                    emit_axum_route(&mu, path, repo, acc);
+                }
+            }
+        }
+        search_from = start + call_end + 1;
+    }
+}
+
+fn find_matching_paren(s: &str) -> Option<usize> {
+    let bytes = s.as_bytes();
+    let mut depth = 1usize;
+    let mut i = 0;
+    while i < bytes.len() {
+        match bytes[i] {
+            b'(' => depth += 1,
+            b')' => {
+                depth -= 1;
+                if depth == 0 {
+                    return Some(i);
+                }
+            }
+            b'"' => {
+                i += 1;
+                while i < bytes.len() && bytes[i] != b'"' {
+                    if bytes[i] == b'\\' && i + 1 < bytes.len() {
+                        i += 2;
+                    } else {
+                        i += 1;
+                    }
+                }
+            }
+            _ => {}
+        }
+        i += 1;
+    }
+    None
+}
+
+fn contains_method_call(hay: &str, pat: &str) -> bool {
+    // Match `pat` with a preceding non-word char (so `get(` matches, but not `target(`).
+    let bytes = hay.as_bytes();
+    let pat_bytes = pat.as_bytes();
+    let mut i = 0;
+    while i + pat_bytes.len() <= bytes.len() {
+        if &bytes[i..i + pat_bytes.len()] == pat_bytes {
+            let prev_ok = i == 0 || {
+                let p = bytes[i - 1];
+                !(p.is_ascii_alphanumeric() || p == b'_')
+            };
+            if prev_ok {
+                return true;
+            }
+        }
+        i += 1;
+    }
+    false
+}
+
+fn emit_axum_route(method: &str, path: &str, repo: RepoId, acc: &mut Acc) {
+    let route_name = format!("{method} {path}");
+    let route_id = NodeId::from_parts(GRAPH_TYPE, repo, node_kind::ROUTE, &route_name);
+    acc.nodes.push(Node {
+        id: route_id,
+        repo,
+        confidence: Confidence::Medium,
+        cells: vec![Cell {
+            kind: cell_type::ROUTE_METHOD,
+            payload: CellPayload::Text(method.to_string()),
+        }],
+    });
+    acc.nav
+        .record(route_id, &route_name, &route_name, node_kind::ROUTE, None);
 }
 
 fn collect_calls_in(node: TsNode, src: &[u8], from: NodeId, acc: &mut Acc) {
@@ -552,5 +665,31 @@ impl Server {
             .filter(|c| matches!(&c.qualifier, CallQualifier::SelfMethod(_)))
             .collect();
         assert_eq!(self_calls.len(), 2);
+    }
+
+    #[test]
+    fn axum_routes_basic() {
+        let source = r#"
+async fn list_users() {}
+async fn create_user() {}
+async fn get_user() {}
+
+fn app() -> Router {
+    Router::new()
+        .route("/users", get(list_users).post(create_user))
+        .route("/users/:id", get(get_user))
+}
+"#;
+        let fp = parse_file(source, "src/main.rs", "myapp", repo()).unwrap();
+        let route_names: Vec<&str> = fp
+            .nav
+            .name_by_id
+            .iter()
+            .filter(|(id, _)| fp.nav.kind_by_id.get(*id) == Some(&node_kind::ROUTE))
+            .map(|(_, n)| n.as_str())
+            .collect();
+        assert!(route_names.contains(&"GET /users"));
+        assert!(route_names.contains(&"POST /users"));
+        assert!(route_names.contains(&"GET /users/:id"));
     }
 }
