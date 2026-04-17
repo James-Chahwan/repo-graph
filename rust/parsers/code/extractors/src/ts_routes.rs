@@ -72,6 +72,20 @@ pub fn extract_ts_backend_routes(
         }
     }
 
+    // Shape 3: SvelteKit `+server.ts` — path from file path, methods from
+    // named exports (same shape as Next.js App Router).
+    if let Some(route) = sveltekit_route_from_path(path) {
+        for method in nextjs_methods_from_source(source) {
+            add_method(&mut by_path, &route, method);
+        }
+    }
+
+    // Shape 4: NestJS controllers — combine @Controller(prefix) with method
+    // decorators @Get/@Post/...(suffix).
+    for (method, route) in nestjs_routes(source) {
+        add_method(&mut by_path, &route, method);
+    }
+
     let mut nodes = Vec::new();
     let mut nav = CodeNav::default();
     for (route, methods) in by_path {
@@ -181,6 +195,113 @@ fn nextjs_params_to_colon(path: &str) -> String {
     out
 }
 
+/// Extract a SvelteKit route path from `+server.ts`. Example:
+/// `src/routes/api/users/+server.ts` → `/api/users`.
+/// `src/routes/api/users/[id]/+server.ts` → `/api/users/:id`.
+fn sveltekit_route_from_path(path: &str) -> Option<String> {
+    let norm = path.replace('\\', "/");
+    let file = ["+server.ts", "+server.js"]
+        .iter()
+        .find(|ext| norm.ends_with(*ext))?;
+    let idx = norm.find("src/routes/").map(|i| i + "src/routes/".len())
+        .or_else(|| norm.find("routes/").map(|i| i + "routes/".len()))?;
+    let tail = &norm[idx..norm.len() - file.len()];
+    let tail = tail.trim_end_matches('/');
+    let cleaned = sveltekit_params_to_colon(tail);
+    if cleaned.is_empty() {
+        Some("/".to_string())
+    } else {
+        Some(format!("/{}", cleaned))
+    }
+}
+
+fn sveltekit_params_to_colon(path: &str) -> String {
+    // SvelteKit uses `[param]` same as Next.js dynamic segments.
+    nextjs_params_to_colon(path)
+}
+
+/// Scan a TS source for NestJS @Controller + @Get/@Post/... method decorators.
+/// Returns (method, full_path) pairs.
+fn nestjs_routes(source: &str) -> Vec<(&'static str, String)> {
+    let mut out = Vec::new();
+    let mut controller_prefix: Option<String> = None;
+    for line in source.lines() {
+        let t = line.trim();
+        if t.starts_with("@Controller(") {
+            controller_prefix = Some(extract_decorator_string(t).unwrap_or_default());
+            continue;
+        }
+        for (deco, method) in &[
+            ("@Get(", "get"),
+            ("@Post(", "post"),
+            ("@Put(", "put"),
+            ("@Patch(", "patch"),
+            ("@Delete(", "delete"),
+            ("@Head(", "head"),
+            ("@Options(", "options"),
+            ("@All(", "all"),
+        ] {
+            if t.starts_with(deco) {
+                let suffix = extract_decorator_string(t).unwrap_or_default();
+                let full = combine_nest_paths(controller_prefix.as_deref().unwrap_or(""), &suffix);
+                out.push((*method, full));
+                break;
+            }
+        }
+    }
+    out
+}
+
+fn extract_decorator_string(line: &str) -> Option<String> {
+    // Find first quoted literal after the opening paren.
+    let open = line.find('(')?;
+    let rest = &line[open + 1..];
+    let bytes = rest.as_bytes();
+    let mut i = 0;
+    while i < bytes.len() {
+        let c = bytes[i];
+        if c == b'\'' || c == b'"' || c == b'`' {
+            let delim = c;
+            let start = i + 1;
+            let mut j = start;
+            while j < bytes.len() && bytes[j] != delim {
+                if bytes[j] == b'\\' && j + 1 < bytes.len() {
+                    j += 2;
+                } else {
+                    j += 1;
+                }
+            }
+            if j < bytes.len() {
+                return Some(rest[start..j].to_string());
+            }
+            return None;
+        }
+        if c == b')' {
+            return None;
+        }
+        i += 1;
+    }
+    None
+}
+
+fn combine_nest_paths(prefix: &str, suffix: &str) -> String {
+    let prefix = prefix.trim_matches('/');
+    let suffix = suffix.trim_matches('/');
+    let mut out = String::from("/");
+    if !prefix.is_empty() {
+        out.push_str(prefix);
+    }
+    if !suffix.is_empty() {
+        if !out.ends_with('/') {
+            out.push('/');
+        }
+        out.push_str(suffix);
+    }
+    // Convert NestJS :param (already :) or express-style. No transform needed;
+    // both Nest and Express use :param natively.
+    out
+}
+
 fn nextjs_methods_from_source(source: &str) -> Vec<&'static str> {
     let mut methods = Vec::new();
     for method in ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD"] {
@@ -265,6 +386,51 @@ mod tests {
         assert_eq!(r.nodes.len(), 1);
         let qname = r.nav.qname_by_id.values().next().unwrap();
         assert!(qname.contains("/api/users/:id"), "qname={qname}");
+    }
+
+    #[test]
+    fn detects_nestjs_controller_and_methods() {
+        let src = r#"
+@Controller('users')
+export class UsersController {
+  @Get()
+  list() {}
+
+  @Get(':id')
+  getOne() {}
+
+  @Post()
+  create() {}
+
+  @Put(':id')
+  update() {}
+
+  @Delete(':id')
+  destroy() {}
+}
+"#;
+        let r = extract_ts_backend_routes(src, "src/users.controller.ts", module_id(), repo());
+        let qnames: Vec<&str> = r.nav.qname_by_id.values().map(|s| s.as_str()).collect();
+        assert!(qnames.iter().any(|q| *q == "route:/users"));
+        assert!(qnames.iter().any(|q| *q == "route:/users/:id"));
+    }
+
+    #[test]
+    fn detects_sveltekit_plus_server() {
+        let src = "export async function GET() {}\nexport async function POST() {}";
+        let r = extract_ts_backend_routes(src, "src/routes/api/widgets/+server.ts", module_id(), repo());
+        let qnames: Vec<&str> = r.nav.qname_by_id.values().map(|s| s.as_str()).collect();
+        assert!(qnames.iter().any(|q| *q == "route:/api/widgets"));
+        let node = r.nodes.iter().find(|n| n.cells.len() == 2).expect("combined node");
+        assert_eq!(node.cells.len(), 2);
+    }
+
+    #[test]
+    fn sveltekit_dynamic_segment() {
+        let src = "export function GET() {}";
+        let r = extract_ts_backend_routes(src, "src/routes/api/users/[id]/+server.ts", module_id(), repo());
+        let qnames: Vec<&str> = r.nav.qname_by_id.values().map(|s| s.as_str()).collect();
+        assert!(qnames.iter().any(|q| q.contains("/api/users/:id")));
     }
 
     #[test]
