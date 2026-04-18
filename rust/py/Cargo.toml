@@ -1,15 +1,19 @@
 [package]
 name = "repo-graph-py"
-version = "0.4.11"
+version = "0.4.12"
 edition = "2024"
 publish = false
+description = "Native Rust engine for mcp-repo-graph — parses, builds, and stores code graphs."
+license = "MIT"
+repository = "https://github.com/James-Chahwan/repo-graph"
+readme = "README.md"
 
 [lib]
 name = "repo_graph_py"
 crate-type = ["cdylib"]
 
 [dependencies]
-pyo3 = { version = "0.28", features = ["extension-module"] }
+pyo3 = { version = "0.28", features = ["extension-module", "abi3-py311"] }
 repo-graph-core = { path = "../core" }
 repo-graph-code-domain = { path = "../code-domain" }
 repo-graph-graph = { path = "../graph" }

@@ -7,3 +7,11 @@ build/
 .ai/
 .mcpregistry_*
 *.mp4
+
+# Local scratch
+entities.json
+mempalace.yaml
+quokka-output-test/
+dev-notes/0.4.11-sweep/repos-10.txt
+dev-notes/0.4.11-sweep/results-10.jsonl
+dev-notes/0.4.11-sweep/sweep-10.log

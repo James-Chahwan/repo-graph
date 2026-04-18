@@ -4,9 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Is
 
-An MCP server that provides structural navigation, context budgeting, health analysis, and visual graph maps for any codebase. It auto-detects project languages/frameworks, builds a graph of entities and relationships, and exposes tools for tracing feature flows, impact analysis, file hotspot detection, split planning, and ASCII visual maps.
+A thin **Python MCP server** that wraps the **glia** Rust engine (crate `repo-graph-py`, PyPI `repo-graph-py`). It exposes 13 MCP tools for structural navigation, context budgeting, health analysis, and visual graph maps over any codebase.
 
-Supports Go, Rust, TypeScript, React, Angular, Vue, Python, Java/Kotlin, Scala, Clojure, C#/.NET, Ruby, PHP, Swift, C/C++, Dart/Flutter, Elixir/Phoenix, Solidity, Terraform, and SCSS out of the box. New languages are added by creating a single analyzer file.
+The Python side is ~900 lines across 4 files. All parsing, graph building, storage (`.gmap`), and activation happen in Rust. The Python package only hosts the MCP server, the CLI entrypoints, and a thin wrapper over the pyo3 bindings.
 
 ## Commands
 
@@ -17,59 +17,23 @@ pip install -e .
 # Run the MCP server (points at a target repo)
 repo-graph --repo /path/to/target-repo
 
-# Generate graph data for a target repo (CLI)
-repo-graph-generate --repo /path/to/target-repo
-
-# Test on this repo itself
-repo-graph-generate --repo .
+# Initialise a new target repo (writes .mcp.json + CLAUDE.md instructions + first graph)
+repo-graph-init --repo /path/to/target-repo
 ```
 
-There are no tests in this project. Python 3.11+ required. Only dependency: `mcp[cli]>=1.0.0`.
+Python 3.11+ required. Runtime deps: `mcp[cli]>=1.0.0`, `repo-graph-py>=0.4.12`.
 
 ## Architecture
 
-### Module structure
-
 ```
 repo_graph/
-  server.py              MCP server — 13 tools in 4 tiers
-  graph.py               Graph loader + BFS traversal engine
-  generator.py           Orchestrator — discovers analyzers, merges results, writes output
-  analyzers/
-    __init__.py           Registry — discover_analyzers(), get_file_analyzer()
-    base.py               LanguageAnalyzer ABC + Node/Edge/AnalysisResult dataclasses
-    go.py                 Go: packages, functions, HTTP routes, imports
-    rust.py               Rust: crates, modules, structs, traits, routes (Actix/Rocket/Axum)
-    typescript.py         TypeScript: modules, classes, exports, imports
-    react.py              React: components, hooks, context, React Router, fetch/axios calls
-    angular.py            Angular: components, services, guards, DI, HTTP calls
-    vue.py                Vue: SFCs, composables, Vue Router routes, fetch/axios calls
-    python_lang.py        Python: modules, classes, functions, Flask/FastAPI/Django routes
-    java.py               Java/Kotlin: packages, classes, Spring/JAX-RS routes
-    scala.py              Scala: packages, objects/classes/traits, Play/Akka HTTP/http4s routes
-    clojure.py            Clojure: namespaces, defn/defprotocol/defrecord, Compojure/Reitit routes
-    csharp.py             C#/.NET: namespaces, classes, ASP.NET/Minimal API routes
-    ruby.py               Ruby: files, classes, modules, Rails routes
-    php.py                PHP: namespaces, classes, interfaces, Laravel/Symfony routes
-    swift.py              Swift: files, types (class/struct/enum/protocol/actor), Vapor routes
-    c_cpp.py              C/C++: sources, headers, classes, structs, enums, namespaces
-    dart.py               Dart/Flutter: modules, classes, widgets, go_router/shelf routes
-    elixir.py             Elixir: modules, functions, Phoenix router scopes + routes
-    solidity.py           Solidity: contracts, interfaces, libraries, events, inheritance
-    terraform.py          Terraform: modules, resources, variables, outputs, module sources
-    scss.py               SCSS: file-level analysis only (bloat_report, no graph nodes)
-    data_sources.py       Cross-cutting: DB/cache/queue/blob/search/email client detection
-    cli.py                Cross-cutting: CLI entrypoints (Python click, JS commander/yargs, Go cobra, Rust clap)
-    grpc.py               Cross-cutting: gRPC service/method definitions from .proto files
-    queues.py             Cross-cutting: queue consumers (Celery, Dramatiq, BullMQ, Sidekiq, Oban, NATS)
-  test_edges.py            Post-pass: test_file nodes + `tests` edges (Py/JS/TS/Go/Ruby)
-  config.py                Loader for .ai/repo-graph/config.yaml (skip/roots escape hatch)
-  discovery.py             FileIndex — single shared repo walk with ext-indexed lookups
+  server.py   MCP server — 13 tools across 4 tiers, wraps repo-graph-py
+  graph.py    Graph loader — reads .gmap via pyo3, BFS traversal helpers
+  init.py     repo-graph-init CLI — bootstraps a target repo
+  __init__.py empty
 ```
 
-### Data flow
-
-`generator.py` discovers analyzers → each `analyzer.scan()` returns nodes/edges/flows → generator merges & deduplicates → writes `.ai/repo-graph/` → `graph.py` loads it → `server.py` exposes it via MCP tools.
+The Rust engine is a separate workspace under `rust/` and will split into its own repo (`glia`) post-0.4.12. See `rust/CLAUDE.md` for the engine architecture, parser model, `.gmap` format, and activation design.
 
 ### MCP tool tiers
 
@@ -78,52 +42,52 @@ repo_graph/
 - **Budgeting**: `cost`, `hotspots`, `minimal_read`
 - **Health**: `bloat_report`, `split_plan`, `graph_view`, `reload`
 
-### Adding a new language analyzer
+### Python/Rust boundary
 
-1. Create `repo_graph/analyzers/<language>.py`
-2. Subclass `LanguageAnalyzer` from `base.py`
-3. Implement `detect(repo_root)` — check for marker files (e.g., `Cargo.toml`)
-4. Implement `scan()` — return `AnalysisResult` with nodes, edges, flows
-5. Optionally implement `supported_extensions()`, `analyze_file()`, `suggest_splits()`, `format_bloat_report()`, `format_split_plan()` for file-level health tools
-6. Add the class to `_analyzer_classes()` in `analyzers/__init__.py`
+Python calls into `repo_graph_py` (the pyo3 extension module shipped as PyPI package `repo-graph-py`). That module re-exports a small surface: generate, load graph, list nodes/edges, run activation, write `.gmap`. Everything else — parsers, resolvers, store layout, text projection — stays in Rust.
 
-### Key design decisions
-
-- Analyzers use regex heuristics, not AST parsing — keeps dependencies at zero and works across languages with a consistent approach.
-- Multiple analyzers can match one repo (e.g., Go + SCSS in a monorepo). Results are merged and deduplicated by the orchestrator.
-- `graph.py` is fully generic — it only reads `nodes.json`/`edges.json`/`flows/*.yaml`. No language assumptions.
-- Graph singleton in `server.py` is lazy-loaded and reset by `reload`/`generate` tools.
-- The `generate` tool allows Claude to trigger graph rebuilds mid-conversation without restarting the server.
+Do not port Rust logic back to Python. The Python side is intentionally minimal and should stay that way.
 
 ## Publishing & Releases
 
-Package is live on PyPI as `mcp-repo-graph` and on the MCP Registry as `io.github.James-Chahwan/repo-graph`.
+Two packages ship from this repo:
+
+- `repo-graph-py` — pyo3 wheel built by maturin (from `rust/py/`)
+- `mcp-repo-graph` — pure-Python MCP server (from root)
+
+Also registered on the MCP Registry as `io.github.James-Chahwan/repo-graph`.
 
 ### Release process (version bump)
 
 ```bash
-# 1. Update version in BOTH files
-#    - pyproject.toml: version = "X.Y.Z"
-#    - server.json: "version": "X.Y.Z" (appears twice — top-level and in packages)
+# 1. Bump versions
+#    - rust/py/Cargo.toml: version = "X.Y.Z"
+#    - pyproject.toml:     version = "X.Y.Z"; "repo-graph-py>=X.Y.Z"
+#    - server.json:        "version" (top-level + packages[].version)
 
-# 2. Build
+# 2. Build + publish repo-graph-py (linux x86_64 wheel for Glama Docker)
+cd rust/py
+maturin build --release
+twine upload target/wheels/repo_graph_py-*.whl -u __token__ -p <PYPI_TOKEN>
+cd ../..
+
+# 3. Build + publish mcp-repo-graph
 rm -rf dist/ && python -m build
-
-# 3. Upload to PyPI
 twine upload dist/* -u __token__ -p <PYPI_TOKEN>
 
 # 4. Publish to MCP Registry (token expires each session)
 /tmp/mcp-publisher login github
 /tmp/mcp-publisher publish
 
-# 5. Commit and push
-git add pyproject.toml server.json
+# 5. Commit, tag, push both remotes
+git add -A
 git commit -m "chore: bump to X.Y.Z"
+git tag vX.Y.Z
 git push github main && git push gitlab main
+git push github --tags && git push gitlab --tags
 
-# 6. Cut GitHub release + push tag to GitLab
+# 6. Cut GitHub release
 gh release create vX.Y.Z --title "vX.Y.Z" --notes "release notes here"
-git fetch github --tags && git push gitlab --tags
 ```
 
 If `/tmp/mcp-publisher` is missing, re-download:
@@ -134,16 +98,11 @@ curl -sL "https://github.com/modelcontextprotocol/registry/releases/latest/downl
 ### Check stats
 
 ```bash
-# PyPI downloads (takes ~24h for first data)
 pypistats overall mcp-repo-graph
-
-# GitHub traffic (last 14 days, owner only)
 gh api repos/James-Chahwan/repo-graph/traffic/clones
 gh api repos/James-Chahwan/repo-graph/traffic/views
 gh api repos/James-Chahwan/repo-graph --jq '.stargazers_count'
 ```
-
-Web: https://pypistats.org/packages/mcp-repo-graph
 
 ### Remotes
 
@@ -152,19 +111,8 @@ Web: https://pypistats.org/packages/mcp-repo-graph
 
 Always push to both: `git push github main && git push gitlab main`
 
-## 0.2.0 features
-
-- **Config escape hatch** — `.ai/repo-graph/config.yaml` with `skip:` and `roots:` keys. Additive only: config unions with heuristics, never replaces them.
-- **Flow kind field** — flows are tagged `http` / `page` / `cli` / `grpc` / `queue`. Rendered in `status`, `flow`, `graph_view` output.
-- **Confidence tiers** — nodes get `strong` / `medium` / `weak`. Routes with resolved handlers upgrade to strong; test/example/fixture paths downgrade to weak. Icons: ● / · / ⚠.
-- **Entrypoint types** — auto-flow generation now seeds from `route`, `cli_command`, `grpc_method`, `queue_consumer` uniformly.
-- **Test → code edges** — `test_file` nodes + `tests` edges from detected test files (Python, JS/TS, Go, Ruby). Use `impact --include-tests` to see test coverage for a node.
-- **Skills bundle** — `/repo-graph-init`, `/repo-graph-trace`, `/repo-graph-flow`, `/repo-graph-impact`, `/repo-graph-visualise` shipped in `skills/`.
-
 ## Roadmap
 
-Planned features (not yet implemented):
-
-- **Promotion** — share on Reddit (r/ChatGPTPro, r/ClaudeAI, r/MachineLearning), Hacker News, X/Twitter, MCP community channels, Claude Code Discord. Lead with the pitch: "stop wasting LLM context on orientation — give it a map instead"
-- **More analyzers** — Zig, Haskell, OCaml as community requests come in
-- **Smarter flows** — use call graph analysis to build more precise flows instead of BFS from routes
+- **0.4.13** — PyPI wheel matrix via maturin GitHub Actions (linux x86_64/aarch64, macos x86_64/arm64, windows x86_64 × Python 3.11–3.14). Latent-vector hook in candle; SWE-bench Lite N=20–30 run on Runpod 4090 with Qwen 2.5 Coder 7B.
+- **Post-0.4.13** — split `rust/` into its own `glia` repo via `git filter-repo`. This repo stays as the Python MCP wrapper.
+- **0.5.0** — rename this package in lockstep with the glia split maturing into a multi-domain engine (code is first primitive; video/molecules/policy slot in via registries).

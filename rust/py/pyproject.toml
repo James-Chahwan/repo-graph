@@ -1,14 +1,18 @@
+[build-system]
+requires = ["maturin>=1.7,<2.0"]
+build-backend = "maturin"
+
 [project]
-name = "mcp-repo-graph"
+name = "repo-graph-py"
 version = "0.4.12"
-description = "MCP server that gives LLMs a structural map of any codebase — entities, relationships, and flows — so they navigate to the right files without reading everything first."
+description = "Native Rust engine for mcp-repo-graph — parses, builds, and stores code graphs."
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.11"
 authors = [
     {name = "James Chahwan"},
 ]
-keywords = ["mcp", "llm", "codebase", "graph", "navigation", "context", "ai"]
+keywords = ["mcp", "llm", "codebase", "graph", "rust", "pyo3"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
@@ -16,16 +20,8 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Rust",
     "Topic :: Software Development :: Libraries :: Python Modules",
-]
-dependencies = [
-    "mcp[cli]>=1.0.0",
-    "repo-graph-py>=0.4.12",
-]
-
-[project.optional-dependencies]
-dev = [
-    "pytest>=7.0",
 ]
 
 [project.urls]
@@ -33,13 +29,6 @@ Homepage = "https://github.com/James-Chahwan/repo-graph"
 Repository = "https://github.com/James-Chahwan/repo-graph"
 Issues = "https://github.com/James-Chahwan/repo-graph/issues"
 
-[project.scripts]
-repo-graph = "repo_graph.server:main"
-repo-graph-init = "repo_graph.init:main"
-
-[tool.setuptools.packages.find]
-include = ["repo_graph*"]
-
-[build-system]
-requires = ["setuptools>=68.0"]
-build-backend = "setuptools.build_meta"
+[tool.maturin]
+module-name = "repo_graph_py"
+features = ["pyo3/extension-module"]

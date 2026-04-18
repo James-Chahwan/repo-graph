@@ -727,7 +727,7 @@ dependencies = [
 
 [[package]]
 name = "repo-graph-py"
-version = "0.4.11"
+version = "0.4.12"
 dependencies = [
  "pyo3",
  "repo-graph-activation",

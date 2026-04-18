@@ -57,10 +57,10 @@ This is expensive, slow, and gets worse as codebases grow.
 repo-graph scans your codebase once and builds a graph of:
 
 - **Entities**: modules, packages, classes, functions, routes, services, components
-- **Relationships**: imports, calls, handles, defines, contains
+- **Relationships**: imports, calls, handles, defines, contains, cross-stack HTTP
 - **Flows**: end-to-end paths from entry point to data layer
 
-Then it exposes 12 MCP tools that let the LLM:
+Then it exposes 13 MCP tools that let the LLM:
 
 1. **Orient** — "What languages are in this repo? What are the main features?"
 2. **Navigate** — "Trace the login flow from route to database" / "What's the shortest path between UserService and the payments API?"
@@ -75,19 +75,34 @@ The LLM gets structural context in a few hundred tokens instead of reading thous
 |----------|-----------|-----------------|
 | **Go** | `go.mod` | Packages, functions, HTTP routes (gin/echo/chi/stdlib), imports |
 | **Rust** | `Cargo.toml` | Crates, modules, structs, traits, functions, routes (Actix/Rocket/Axum) |
-| **TypeScript** | `tsconfig.json` | Modules, classes, functions, import relationships |
+| **TypeScript** | `tsconfig.json` / `package.json` | Modules, classes, functions, import relationships |
 | **React** | `react` in `package.json` | Components, hooks, context providers, React Router routes, fetch/axios calls, flows |
 | **Angular** | `@angular/core` in `package.json` | Components, services, guards, DI injection, HTTP calls, feature flows |
+| **Vue** | `vue` in `package.json` | SFCs, composables, Vue Router routes, fetch/axios calls |
 | **Python** | `pyproject.toml` / `setup.py` / `requirements.txt` | Packages, modules, classes, functions, routes (Flask/FastAPI/Django) |
-| **Java/Kotlin** | `pom.xml` / `build.gradle` | Packages, classes, routes (Spring/JAX-RS) |
+| **Java/Kotlin** | `pom.xml` / `build.gradle` | Packages, classes, routes (Spring/JAX-RS/Ktor/WebFlux/Micronaut) |
+| **Scala** | `build.sbt` | Packages, objects/classes/traits, routes (Play/Akka HTTP/http4s) |
+| **Clojure** | `project.clj` / `deps.edn` | Namespaces, defn/defprotocol/defrecord, routes (Compojure/Reitit) |
 | **C#/.NET** | `.csproj` / `.sln` | Namespaces, classes, routes (ASP.NET/Minimal API) |
-| **Ruby** | `Gemfile` / `.gemspec` | Files, classes, modules, routes (Rails) |
+| **Ruby** | `Gemfile` / `.gemspec` | Files, classes, modules, Rails routes |
 | **PHP** | `composer.json` | Namespaces, classes, interfaces, routes (Laravel/Symfony) |
-| **Swift** | `Package.swift` / `.xcodeproj` | Files, types (class/struct/enum/protocol/actor), routes (Vapor) |
+| **Swift** | `Package.swift` / `.xcodeproj` | Files, types (class/struct/enum/protocol/actor), Vapor routes |
 | **C/C++** | `CMakeLists.txt` / `Makefile` / `meson.build` | Sources, headers, classes, structs, enums, namespaces, includes |
-| **SCSS** | `.scss` files present | File-level bloat analysis (selector blocks, sizes) |
+| **Dart/Flutter** | `pubspec.yaml` | Modules, classes, widgets, go_router/shelf routes |
+| **Elixir/Phoenix** | `mix.exs` | Modules, functions, Phoenix router scopes + routes |
+| **Solidity** | `.sol` files / `foundry.toml` / `hardhat.config.*` | Contracts, interfaces, libraries, events, inheritance |
+| **Terraform** | `.tf` files | Modules, resources, variables, outputs, module sources |
+| **SCSS** | `.scss` files present | File-level bloat analysis |
 
-Multiple analyzers can match one repo (e.g., Go backend + Angular frontend + SCSS). Each contributes its nodes and edges into a single unified graph.
+Cross-cutting extractors (work across all languages):
+
+- **Data sources** — DB/cache/queue/blob/search/email client detection
+- **CLI entrypoints** — Python click, JS commander/yargs, Go cobra, Rust clap
+- **gRPC** — service/method definitions from `.proto` files
+- **Queue consumers** — Celery, Dramatiq, BullMQ, Sidekiq, Oban, NATS
+- **Cross-stack HTTP** — frontend `fetch`/`axios` calls linked to backend routes
+
+Multiple languages can match one repo (e.g., Go backend + Angular frontend + SCSS). Each contributes its nodes and edges into a single unified graph.
 
 ## Install
 
@@ -95,21 +110,21 @@ Multiple analyzers can match one repo (e.g., Go backend + Angular frontend + SCS
 pip install mcp-repo-graph
 ```
 
-Requires Python 3.11+. Only runtime dependency: `mcp[cli]`.
+Python 3.11+. Installs two packages: `mcp-repo-graph` (the MCP server) and `repo-graph-py` (the Rust engine, as a prebuilt wheel).
 
 ## Quick start
 
-### 1. Generate the graph
+### 1. Initialise the target repo
 
 ```bash
-repo-graph-generate --repo /path/to/your/project
+repo-graph-init --repo /path/to/your/project
 ```
 
-This scans the codebase and writes graph data to `.ai/repo-graph/` inside the target repo.
+This generates the graph, writes `.mcp.json` and CLAUDE.md instructions, and gets your AI assistant ready to use repo-graph.
 
 ### 2. Connect to your AI assistant
 
-Add to your MCP configuration:
+If you skipped `repo-graph-init`, add this to your MCP configuration manually:
 
 **Claude Code** (`~/.claude/claude_code_config.json` or project `.mcp.json`):
 ```json
@@ -137,23 +152,23 @@ Add to your MCP configuration:
 
 ### 3. Use it
 
-The AI assistant now has access to all 12 tools. Example queries it can answer:
+The AI assistant now has access to all 13 tools. Example queries it can answer:
 
-- *"What does this codebase do?"* -> `status` tool
-- *"Trace the checkout flow"* -> `flow` tool
-- *"What would break if I change UserService?"* -> `impact` tool
-- *"What files do I need for this bug?"* -> `minimal_read` tool
-- *"This file is too big, how should I split it?"* -> `split_plan` tool
-- *"Show me the auth flow visually"* -> `graph_view` tool
+- *"What does this codebase do?"* → `status` tool
+- *"Trace the checkout flow"* → `flow` tool
+- *"What would break if I change UserService?"* → `impact` tool
+- *"What files do I need for this bug?"* → `minimal_read` tool
+- *"This file is too big, how should I split it?"* → `split_plan` tool
+- *"Show me the auth flow visually"* → `graph_view` tool
 
 ### 4. Keep it fresh with a git hook (recommended)
 
-Add `repo-graph-generate` to a pre-commit hook so the graph stays up to date automatically — no LLM context spent on regeneration:
+Add a call to `generate` via your MCP client to a pre-commit hook so the graph stays up to date automatically — no LLM context spent on regeneration:
 
 ```bash
 # .git/hooks/pre-commit (or add to your existing hook)
 #!/bin/sh
-repo-graph-generate --repo .
+repo-graph --repo . --regenerate
 git add .ai/repo-graph/
 ```
 
@@ -172,7 +187,7 @@ Every commit keeps the graph current. The LLM always has a fresh map without was
 | Tool | Parameters | Description |
 |------|-----------|-------------|
 | `generate` | *(none)* | Scan the codebase from scratch, rebuild the graph, and reload |
-| `reload` | *(none)* | Reload graph data from disk (after external `repo-graph-generate`) |
+| `reload` | *(none)* | Reload graph data from disk (after external regeneration) |
 
 ### Navigation
 
@@ -202,10 +217,15 @@ Every commit keeps the graph current. The LLM always has a fresh map without was
 
 ## How it works
 
-1. **Detect** — a single shared `FileIndex` walks the repo once; each analyzer queries it for marker files (e.g. `go.mod`, `Cargo.toml`, `package.json`) to locate project roots, including nested monorepo layouts.
-2. **Scan** — matching analyzers extract entities and relationships using regex heuristics. No AST parsing, no external toolchains, no build step required.
-3. **Merge** — all analyzer results merge into a single graph. Nodes deduplicate by ID, edges by (from, to, type).
-4. **Serve** — the MCP server loads the graph into memory and exposes BFS-based traversal tools.
+`mcp-repo-graph` is a thin Python MCP server that wraps **glia**, a Rust engine.
+
+1. **Parse** — per-language tree-sitter parsers extract raw nodes and unresolved references
+2. **Extract** — cross-cutting extractors layer on HTTP routes, data sources, CLI entrypoints, gRPC services, queue consumers
+3. **Resolve** — graph builder resolves intra-repo references; cross-graph resolvers link stacks (frontend HTTP calls → backend routes, etc.)
+4. **Store** — merged graph lands in `.ai/repo-graph/` as a zero-copy `.gmap` (rkyv + mmap) plus JSON projections for portability
+5. **Serve** — the MCP server loads the graph into memory and exposes the 13 tools
+
+The Rust engine will split into its own [`glia`](https://github.com/James-Chahwan/repo-graph) repo post-v0.4.12. `mcp-repo-graph` will remain the MCP-facing thin wrapper.
 
 ## Config (optional escape hatch)
 
@@ -223,56 +243,18 @@ roots:           # explicit roots heuristics miss — added on top of auto-detec
     kind: go
 ```
 
-`kind` values match analyzer names: `go`, `rust`, `python`, `typescript`, `react`, `vue`, `angular`, `java`, `scala`, `clojure`, `csharp`, `ruby`, `php`, `swift`, `c_cpp`, `dart`, `elixir`, `solidity`, `terraform`. `config.json` works too if you prefer.
+`kind` values: `go`, `rust`, `python`, `typescript`, `react`, `vue`, `angular`, `java`, `scala`, `clojure`, `csharp`, `ruby`, `php`, `swift`, `c_cpp`, `dart`, `elixir`, `solidity`, `terraform`. `config.json` works too if you prefer.
 
 ## Graph data format
 
 Generated files live in `.ai/repo-graph/` inside the target repo:
 
-- **`nodes.json`** — `[{id, type, name, file_path}, ...]`
+- **`nodes.json`** — `[{id, type, name, file_path, confidence, ...}, ...]`
 - **`edges.json`** — `[{from, to, type}, ...]`
-- **`flows/*.yaml`** — named feature flows with ordered step sequences
+- **`flows/*.yaml`** — named feature flows with ordered step sequences and `kind` (`http`/`page`/`cli`/`grpc`/`queue`)
 - **`state.md`** — human-readable snapshot for quick orientation
 
-Edge types: `imports`, `defines`, `contains`, `uses`, `calls`, `handles`, `handled_by`, `exports`, `includes`.
-
-## Adding a new analyzer
-
-Create `repo_graph/analyzers/<language>.py`:
-
-```python
-from .base import AnalysisResult, Edge, LanguageAnalyzer, Node, rel_path, read_safe
-
-class MyLangAnalyzer(LanguageAnalyzer):
-
-    @staticmethod
-    def detect(index):
-        # Check for language marker files anywhere in the repo
-        return bool(index.roots_for("mylang", "my-marker"))
-
-    def scan(self):
-        nodes, edges = [], []
-        # ... scan files, extract entities, build relationships ...
-        return AnalysisResult(
-            nodes=nodes,
-            edges=edges,
-            state_sections={"MyLang": f"{len(nodes)} entities\n"},
-        )
-
-    # Optional: file-level analysis for bloat_report / split_plan
-    def supported_extensions(self):
-        return {".mylang"}
-
-    def analyze_file(self, file_path):
-        # Return dict with function/method sizes, class counts, etc.
-        pass
-
-    def format_bloat_report(self, analysis):
-        # Format the analysis dict into a human-readable string
-        pass
-```
-
-Register it in `analyzers/__init__.py` by adding it to `_analyzer_classes()`.
+Common edge types: `imports`, `defines`, `contains`, `uses`, `calls`, `handles`, `handled_by`, `exports`, `includes`, `tests`, cross-stack HTTP links.
 
 ## License
 
