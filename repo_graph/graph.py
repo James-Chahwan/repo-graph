@@ -17,6 +17,11 @@ KIND_NAMES = {
     11: "grpc_service", 12: "grpc_client", 13: "queue_consumer", 14: "queue_producer",
     15: "graphql_resolver", 16: "graphql_operation", 17: "ws_handler", 18: "ws_client",
     19: "event_handler", 20: "event_emitter", 21: "cli_command", 22: "cli_invocation",
+    23: "database", 24: "cache", 25: "blob_store", 26: "search_index", 27: "email_service",
+    28: "component", 29: "hook", 30: "service", 31: "directive",
+    32: "pipe", 33: "guard", 34: "composable",
+    35: "attribute",
+    36: "data_entity", 37: "cron_job", 38: "config_key", 39: "infra_resource", 40: "package_dep",
 }
 
 CATEGORY_NAMES = {
@@ -25,9 +30,15 @@ CATEGORY_NAMES = {
     9: "handled_by", 10: "http_calls",
     11: "grpc_calls", 12: "queue_flows", 13: "graphql_calls", 14: "ws_connects",
     15: "event_flows", 16: "shares_schema", 17: "cli_invokes",
+    18: "accesses_data", 19: "has_attribute", 20: "inherits_from", 21: "returns_type",
+    22: "shares_data_entity",
+    23: "schedules", 24: "shares_cron_schedule",
+    25: "reads_config", 26: "defines_config", 27: "shares_config",
+    28: "infra_references", 29: "shares_infra_ref",
+    30: "depends_on", 31: "shares_dependency",
 }
 
-ENTRY_KINDS = {5, 11, 13, 15, 17, 19, 21}  # route, grpc_service, queue_consumer, graphql_resolver, ws_handler, event_handler, cli_command
+ENTRY_KINDS = {5, 11, 13, 15, 17, 19, 21, 37}  # route, grpc_service, queue_consumer, graphql_resolver, ws_handler, event_handler, cli_command, cron_job
 
 
 class RustGraph:

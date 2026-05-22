@@ -1,6 +1,6 @@
 [package]
 name = "repo-graph-py"
-version = "0.4.12"
+version = "0.4.14"
 edition = "2024"
 publish = false
 description = "Native Rust engine for mcp-repo-graph — parses, builds, and stores code graphs."

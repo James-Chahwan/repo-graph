@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Is
 
-A thin **Python MCP server** that wraps the **glia** Rust engine (crate `repo-graph-py`, PyPI `repo-graph-py`). It exposes 13 MCP tools for structural navigation, context budgeting, health analysis, and visual graph maps over any codebase.
+A thin **Python MCP server** that wraps the **glia** Rust engine (crate `repo-graph-py`, PyPI `repo-graph-py`). It exposes **11 MCP tools** across four tiers — generation, navigation, activation & context, health & admin — over any codebase.
 
 The Python side is ~900 lines across 4 files. All parsing, graph building, storage (`.gmap`), and activation happen in Rust. The Python package only hosts the MCP server, the CLI entrypoints, and a thin wrapper over the pyo3 bindings.
 
@@ -21,26 +21,54 @@ repo-graph --repo /path/to/target-repo
 repo-graph-init --repo /path/to/target-repo
 ```
 
-Python 3.11+ required. Runtime deps: `mcp[cli]>=1.0.0`, `repo-graph-py>=0.4.12`.
+Python 3.11+ required. Runtime deps: `mcp[cli]>=1.0.0`, `repo-graph-py>=0.4.14`.
+
+### Cache reuse on cold start
+
+Since engine v0.4.14 the wrapper caches the graph at `<repo>/.ai/repo-graph/` (sharded `.gmap` files). On every server start `get_graph()` checks `is_stale(gmap_dir, repo_path)`:
+
+- **Fresh cache** → `load_from_gmap()` (≈10× faster than re-scanning; a 22k-node repo loads in ~250ms instead of ~2.8s).
+- **Stale or missing** → `generate()` + `save_to_default()` so the next cold start is fast.
+
+Cache writes are best-effort: a read-only filesystem or perms error doesn't break the live graph. The `generate` MCP tool always writes the cache after a successful scan; the `reload` tool re-enters the same path. Source-tree change detection is mtime-based and skips `.git`, `target`, `node_modules`, `.venv`, `__pycache__`, `.ai/`.
+
+### Testing
+
+```bash
+pip install -e ".[dev]"          # installs pytest + pytest-asyncio
+pytest                           # full suite (52 tests in ~9s, incl. e2e subprocess)
+pytest -m "not e2e"              # fast loop — skip MCP subprocess spin-up
+pytest -m perf                   # opt-in performance gates
+pytest -m e2e                    # only MCP-over-stdio end-to-end tests
+```
+
+Four test layers:
+- `test_mcp_tools.py` — in-process @mcp.tool function calls (22 tests)
+- `test_mcp_e2e.py` — spawn `repo-graph` subprocess, talk MCP/JSON-RPC over stdio (14 tests)
+- `test_cache.py` — `.gmap` cache reuse roundtrip (5 tests)
+- `test_init.py` — `repo-graph-init` bootstrap CLI (5 tests)
+- `test_perf.py` — generate/dense_text/activate budgets (6 tests)
 
 ## Architecture
 
 ```
 repo_graph/
-  server.py   MCP server — 13 tools across 4 tiers, wraps repo-graph-py
+  server.py   MCP server — 11 tools across 4 tiers, wraps repo-graph-py
   graph.py    Graph loader — reads .gmap via pyo3, BFS traversal helpers
   init.py     repo-graph-init CLI — bootstraps a target repo
   __init__.py empty
 ```
 
-The Rust engine is a separate workspace under `rust/` and will split into its own repo (`glia`) post-0.4.12. See `rust/CLAUDE.md` for the engine architecture, parser model, `.gmap` format, and activation design.
+The Rust engine lives in a separate repo (`glia` at `/home/ivy/Code/glia`) as of 2026-05-09. The `rust/` subtree in this repo is a stale snapshot — engine source-of-truth is in glia.
 
 ### MCP tool tiers
 
 - **Generation**: `generate` — scan codebase and (re)build graph
 - **Navigation**: `status`, `flow`, `trace`, `impact`, `neighbours`
-- **Budgeting**: `cost`, `hotspots`, `minimal_read`
-- **Health**: `bloat_report`, `split_plan`, `graph_view`, `reload`
+- **Activation & Context**: `activate`, `find`, `dense_text`
+- **Health & Admin**: `graph_view`, `reload`
+
+Lock: the public tool surface is asserted by `tests/test_mcp_tools.py::test_eleven_tools_decorated`. Adding or removing a tool must update both `server.py` and this list.
 
 ### Python/Rust boundary
 
@@ -59,7 +87,13 @@ Also registered on the MCP Registry as `io.github.James-Chahwan/repo-graph`.
 
 ### Release process (version bump)
 
+**Release gate: `pytest` must be green before any publish step.** All 52 tests across the five layers (cache, init, e2e, mcp_tools, perf) are the contract. No PyPI upload, no MCP Registry publish, no tag, no GitHub release without this. If a test is broken, fix the test or fix the code — never skip past it.
+
 ```bash
+# 0. Release gate — non-negotiable
+pytest                             # full suite, must be all green
+pytest -m perf                     # perf gates must pass
+
 # 1. Bump versions
 #    - rust/py/Cargo.toml: version = "X.Y.Z"
 #    - pyproject.toml:     version = "X.Y.Z"; "repo-graph-py>=X.Y.Z"

@@ -36,10 +36,35 @@ _graph: RustGraph | None = None
 
 
 def get_graph() -> RustGraph:
+    """Return the in-memory graph, lazy-loading on first access.
+
+    Load order: cached `.gmap` if fresh → fresh `generate()` otherwise. The
+    cache-load path is opt-in via the `default_gmap_dir` convention introduced
+    in repo-graph-py 0.4.14; older wheels fall through to plain `generate()`.
+    """
     global _graph
-    if _graph is None:
-        pg = repo_graph_py.generate(REPO_PATH)
-        _graph = RustGraph(pg, REPO_PATH)
+    if _graph is not None:
+        return _graph
+
+    if hasattr(repo_graph_py, "load_from_gmap") and hasattr(repo_graph_py, "is_stale"):
+        gmap_dir = repo_graph_py.default_gmap_dir(REPO_PATH)
+        if not repo_graph_py.is_stale(gmap_dir, REPO_PATH):
+            try:
+                pg = repo_graph_py.load_from_gmap(gmap_dir)
+                _graph = RustGraph(pg, REPO_PATH)
+                return _graph
+            except Exception:
+                # Stale or unreadable cache — fall through to fresh generate.
+                pass
+
+    pg = repo_graph_py.generate(REPO_PATH)
+    if hasattr(pg, "save_to_default"):
+        try:
+            pg.save_to_default(REPO_PATH)
+        except Exception:
+            # Best-effort: read-only fs / perms shouldn't break the live graph.
+            pass
+    _graph = RustGraph(pg, REPO_PATH)
     return _graph
 
 
@@ -59,6 +84,12 @@ def generate(
         pg = repo_graph_py.generate(target)
     except Exception as e:
         return f"Generation failed: {e}"
+
+    if hasattr(pg, "save_to_default"):
+        try:
+            pg.save_to_default(target)
+        except Exception:
+            pass
 
     global _graph
     _graph = RustGraph(pg, target)
@@ -353,11 +384,15 @@ def reload() -> str:
 # ─────────────────────────────────────────────────────────────────────────────
 
 _ENTRY_KINDS = {"route", "grpc_service", "queue_consumer", "graphql_resolver",
-                "ws_handler", "event_handler", "cli_command"}
+                "ws_handler", "event_handler", "cli_command", "cron_job"}
 _SERVICE_KINDS = {"module", "package"}
-_HANDLER_KINDS = {"function", "method", "class", "struct", "interface", "enum"}
+_HANDLER_KINDS = {"function", "method", "class", "struct", "interface", "enum",
+                  "component", "hook", "service", "directive", "pipe", "guard",
+                  "composable", "attribute"}
 _DATA_KINDS = {"endpoint", "grpc_client", "queue_producer", "graphql_operation",
-               "ws_client", "event_emitter", "cli_invocation"}
+               "ws_client", "event_emitter", "cli_invocation",
+               "database", "cache", "blob_store", "search_index", "email_service",
+               "data_entity", "config_key", "infra_resource", "package_dep"}
 
 
 def _classify_tier(kind: str) -> str:
@@ -381,6 +416,14 @@ def _kind_icon(kind: str) -> str:
         "ws_handler": "⟁", "ws_client": "↗",
         "event_handler": "⟁", "event_emitter": "↗",
         "cli_command": "⟁", "cli_invocation": "↗",
+        "cron_job": "⏲",
+        "database": "⊟", "cache": "⊠", "blob_store": "⬢",
+        "search_index": "⊙", "email_service": "✉",
+        "component": "⬡", "hook": "⤴", "service": "⚙",
+        "directive": "▾", "pipe": "▸", "guard": "⛊", "composable": "◉",
+        "attribute": "⌗",
+        "data_entity": "⊞", "config_key": "⚿",
+        "infra_resource": "☁", "package_dep": "⊕",
     }
     return icons.get(kind, "●")
 
