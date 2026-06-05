@@ -1,0 +1,54 @@
+{
+  "name": "repo-graph",
+  "displayName": "repo-graph — structural codebase map for AI",
+  "description": "Zero-config MCP server that gives AI coding assistants a structural graph of your workspace — navigate by structure, not grep.",
+  "version": "0.4.16",
+  "publisher": "JamesChahwan",
+  "license": "MIT",
+  "icon": "media/icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/James-Chahwan/repo-graph.git"
+  },
+  "homepage": "https://github.com/James-Chahwan/repo-graph#readme",
+  "bugs": {
+    "url": "https://github.com/James-Chahwan/repo-graph/issues"
+  },
+  "engines": {
+    "vscode": "^1.101.0"
+  },
+  "categories": [
+    "AI",
+    "Other"
+  ],
+  "keywords": [
+    "mcp",
+    "ai",
+    "codebase",
+    "graph",
+    "code navigation",
+    "context"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "mcpServerDefinitionProviders": [
+      {
+        "id": "repoGraph",
+        "label": "repo-graph"
+      }
+    ]
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "vscode:prepublish": "npm run compile"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.101.0",
+    "typescript": "^5.4.0"
+  }
+}
