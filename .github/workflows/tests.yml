@@ -1,0 +1,28 @@
+name: tests
+
+# Runs the pytest gate on every push/PR — gives Glama a CI-status signal and
+# catches regressions in the MCP tool surface. Linux x86_64 only for now (that's
+# where repo-graph-py ships a wheel); add macos/windows once their wheels are
+# confirmed on PyPI.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: pip install -e ".[dev]"
+      - run: pytest -m "not perf"
