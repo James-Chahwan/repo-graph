@@ -6,15 +6,35 @@
     "url": "https://github.com/James-Chahwan/repo-graph.git",
     "source": "github"
   },
-  "version": "0.4.13",
+  "version": "0.4.15",
   "packages": [
     {
       "registryType": "pypi",
       "identifier": "mcp-repo-graph",
-      "version": "0.4.13",
+      "version": "0.4.15",
+      "runtimeHint": "uvx",
       "transport": {
         "type": "stdio"
-      }
+      },
+      "packageArguments": [
+        {
+          "type": "named",
+          "name": "--repo",
+          "description": "Path to the target repository to map. Defaults to the working directory the client launches the server in.",
+          "format": "filepath",
+          "isRequired": false,
+          "placeholder": "/path/to/your/project"
+        }
+      ],
+      "environmentVariables": [
+        {
+          "name": "REPO_GRAPH_REPO",
+          "description": "Path to the target repository to map. Alternative to --repo; takes effect when --repo is not passed.",
+          "format": "filepath",
+          "isRequired": false,
+          "placeholder": "/path/to/your/project"
+        }
+      ]
     }
   ]
 }

@@ -1,6 +1,6 @@
 [project]
 name = "mcp-repo-graph"
-version = "0.4.13"
+version = "0.4.15"
 description = "MCP server that gives LLMs a structural map of any codebase — entities, relationships, and flows — so they navigate to the right files without reading everything first."
 readme = "README.md"
 license = "MIT"
@@ -35,6 +35,11 @@ Repository = "https://github.com/James-Chahwan/repo-graph"
 Issues = "https://github.com/James-Chahwan/repo-graph/issues"
 
 [project.scripts]
+# `mcp-repo-graph` mirrors the PyPI package name so `uvx mcp-repo-graph` and
+# marketplace one-click installs (VS Code, Cursor, Claude registry) resolve a
+# launchable command. `repo-graph` is the historical name kept for existing
+# .mcp.json configs.
+mcp-repo-graph = "repo_graph.server:main"
 repo-graph = "repo_graph.server:main"
 repo-graph-init = "repo_graph.init:main"
 

@@ -36,17 +36,18 @@ Cache writes are best-effort: a read-only filesystem or perms error doesn't brea
 
 ```bash
 pip install -e ".[dev]"          # installs pytest + pytest-asyncio
-pytest                           # full suite (52 tests in ~9s, incl. e2e subprocess)
+pytest                           # full suite (55 tests in ~9s, incl. e2e subprocess)
 pytest -m "not e2e"              # fast loop — skip MCP subprocess spin-up
 pytest -m perf                   # opt-in performance gates
 pytest -m e2e                    # only MCP-over-stdio end-to-end tests
 ```
 
-Four test layers:
+Six test layers:
 - `test_mcp_tools.py` — in-process @mcp.tool function calls (22 tests)
 - `test_mcp_e2e.py` — spawn `repo-graph` subprocess, talk MCP/JSON-RPC over stdio (14 tests)
 - `test_cache.py` — `.gmap` cache reuse roundtrip (5 tests)
 - `test_init.py` — `repo-graph-init` bootstrap CLI (5 tests)
+- `test_packaging.py` — install surface: `uvx`-runnable console script + server.json sync (3 tests)
 - `test_perf.py` — generate/dense_text/activate budgets (6 tests)
 
 ## Architecture
@@ -87,7 +88,7 @@ Also registered on the MCP Registry as `io.github.James-Chahwan/repo-graph`.
 
 ### Release process (version bump)
 
-**Release gate: `pytest` must be green before any publish step.** All 52 tests across the five layers (cache, init, e2e, mcp_tools, perf) are the contract. No PyPI upload, no MCP Registry publish, no tag, no GitHub release without this. If a test is broken, fix the test or fix the code — never skip past it.
+**Release gate: `pytest` must be green before any publish step.** All 55 tests across the six layers (cache, init, e2e, mcp_tools, packaging, perf) are the contract. No PyPI upload, no MCP Registry publish, no tag, no GitHub release without this. If a test is broken, fix the test or fix the code — never skip past it.
 
 ```bash
 # 0. Release gate — non-negotiable
@@ -95,15 +96,22 @@ pytest                             # full suite, must be all green
 pytest -m perf                     # perf gates must pass
 
 # 1. Bump versions
-#    - rust/py/Cargo.toml: version = "X.Y.Z"
-#    - pyproject.toml:     version = "X.Y.Z"; "repo-graph-py>=X.Y.Z"
-#    - server.json:        "version" (top-level + packages[].version)
+#    - glia/py/Cargo.toml:    version = "X.Y.Z"   (engine — source of truth is the glia repo)
+#    - glia/py/pyproject.toml: version = "X.Y.Z"
+#    - pyproject.toml:        version = "X.Y.Z"; "repo-graph-py>=X.Y.Z"
+#    - server.json:           "version" (top-level + packages[].version)
 
-# 2. Build + publish repo-graph-py (linux x86_64 wheel for Glama Docker)
-cd rust/py
-maturin build --release
-twine upload target/wheels/repo_graph_py-*.whl -u __token__ -p <PYPI_TOKEN>
-cd ../..
+# 2. Build + publish repo-graph-py — ALL platforms via CI, not a local single-platform build.
+#    A local `maturin build` only produces the host wheel (linux x86_64); publishing just
+#    that breaks `pip install` on macOS / Windows / aarch64. Drive the full matrix from glia:
+#      git -C ../glia tag vX.Y.Z && git -C ../glia push origin vX.Y.Z   # → wheels-py.yml publishes 5 wheels + sdist
+#    Or, to backfill missing-platform wheels for the CURRENT version without a new tag:
+#      gh workflow run wheels-py.yml -R James-Chahwan/glia                # skip-existing leaves uploaded files alone
+#    Publishing uses PyPI OIDC trusted publishing (no token). One-time setup: add GitHub
+#    Actions (owner James-Chahwan, repo glia, workflow wheels-py.yml) as a trusted publisher
+#    at https://pypi.org/manage/project/repo-graph-py/settings/publishing/
+#    Verify the matrix landed before continuing:
+#      curl -s https://pypi.org/pypi/repo-graph-py/json | python -c "import sys,json;[print(f['filename']) for f in json.load(sys.stdin)['urls']]"
 
 # 3. Build + publish mcp-repo-graph
 rm -rf dist/ && python -m build

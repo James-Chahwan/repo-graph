@@ -106,69 +106,88 @@ Multiple languages can match one repo (e.g., Go backend + Angular frontend + SCS
 
 ## Install
 
+The package name **is** the run command — `uvx mcp-repo-graph` just works. No prior
+`pip install`, nothing to keep on `PATH`. This is the same command VS Code, Cursor,
+and the MCP registry use under the hood.
+
+**Requirements:** Python 3.11+, and [`uv`](https://docs.astral.sh/uv/) if you use the
+`uvx` path. Prebuilt wheels ship for the Rust engine on Linux (x86_64, aarch64),
+macOS (Intel + Apple Silicon), and Windows (x86_64) — no Rust toolchain needed.
+
+### Claude Code
+
 ```bash
-pip install mcp-repo-graph
+claude mcp add repo-graph -- uvx mcp-repo-graph --repo .
 ```
 
-Python 3.11+. Installs two packages: `mcp-repo-graph` (the MCP server) and `repo-graph-py` (the Rust engine, as a prebuilt wheel).
+(`--repo .` points the graph at the current project; use an absolute path to pin it.)
+
+### VS Code
+
+One command — adds the server to your user config:
+
+```bash
+code --add-mcp '{"name":"repo-graph","command":"uvx","args":["mcp-repo-graph","--repo","${workspaceFolder}"]}'
+```
+
+Or click **Install** on the [MCP gallery](https://code.visualstudio.com/mcp) entry,
+or add it to `.vscode/mcp.json` manually (see below).
+
+### Cursor / any MCP client — manual config
+
+Add this to your client's MCP config (`.mcp.json`, `.cursor/mcp.json`,
+`.vscode/mcp.json`, or `~/.claude.json`):
+
+```json
+{
+  "mcpServers": {
+    "repo-graph": {
+      "command": "uvx",
+      "args": ["mcp-repo-graph", "--repo", "/path/to/your/project"]
+    }
+  }
+}
+```
+
+Prefer a persistent install? `pip install mcp-repo-graph` (or `uv tool install
+mcp-repo-graph`) puts a `mcp-repo-graph` / `repo-graph` command on your `PATH`; then
+use `"command": "mcp-repo-graph"` in the config above.
 
 ## Quick start
 
-### 1. Initialise the target repo
+### 1. Initialise the target repo (optional)
 
 ```bash
-repo-graph-init --repo /path/to/your/project
+uvx --from mcp-repo-graph repo-graph-init --repo /path/to/your/project
+# or, if installed:  repo-graph-init --repo /path/to/your/project
 ```
 
-This generates the graph, writes `.mcp.json` and CLAUDE.md instructions, and gets your AI assistant ready to use repo-graph.
+This generates the graph, writes `.mcp.json` and CLAUDE.md instructions, and gets your
+AI assistant ready to use repo-graph. If you used the one-liners above, you can skip
+this — the server builds the graph on first connect.
 
-### 2. Connect to your AI assistant
+### 2. Use it
 
-If you skipped `repo-graph-init`, add this to your MCP configuration manually:
-
-**Claude Code** (`~/.claude/claude_code_config.json` or project `.mcp.json`):
-```json
-{
-  "mcpServers": {
-    "repo-graph": {
-      "command": "repo-graph",
-      "args": ["--repo", "/path/to/your/project"]
-    }
-  }
-}
-```
-
-**With environment variable:**
-```json
-{
-  "mcpServers": {
-    "repo-graph": {
-      "command": "repo-graph",
-      "env": { "REPO_GRAPH_REPO": "/path/to/your/project" }
-    }
-  }
-}
-```
-
-### 3. Use it
-
-The AI assistant now has access to all 13 tools. Example queries it can answer:
+The AI assistant now has access to all 11 tools. Example queries it can answer:
 
 - *"What does this codebase do?"* → `status` tool
 - *"Trace the checkout flow"* → `flow` tool
 - *"What would break if I change UserService?"* → `impact` tool
-- *"What files do I need for this bug?"* → `minimal_read` tool
-- *"This file is too big, how should I split it?"* → `split_plan` tool
+- *"Which nodes are relevant to this bug?"* → `activate` / `find` tools
+- *"Give me the full graph context cheaply"* → `dense_text` tool
 - *"Show me the auth flow visually"* → `graph_view` tool
 
-### 4. Keep it fresh with a git hook (recommended)
+### 3. Keep it fresh with a git hook (recommended)
 
-Add a call to `generate` via your MCP client to a pre-commit hook so the graph stays up to date automatically — no LLM context spent on regeneration:
+The graph auto-refreshes on cold start whenever the source tree has changed since the
+cached `.gmap` was written, so it's never stale when your assistant connects. To
+pre-warm the cache on every commit instead — so even the first query is instant — add
+a pre-commit hook:
 
 ```bash
 # .git/hooks/pre-commit (or add to your existing hook)
 #!/bin/sh
-repo-graph --repo . --regenerate
+uvx --from mcp-repo-graph repo-graph-init --repo .   # or: repo-graph-init --repo .
 git add .ai/repo-graph/
 ```
 
