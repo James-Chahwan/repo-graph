@@ -9,6 +9,12 @@ Usage:
 """
 
 import os
+import re
+import sys
+import shutil
+import hashlib
+import tempfile
+import subprocess
 from collections import Counter
 from typing import Annotated
 
@@ -35,6 +41,42 @@ mcp = FastMCP(
 _graph: RustGraph | None = None
 
 
+_GIT_URL_RE = re.compile(r"^(https?://|git@|ssh://|git\+)", re.IGNORECASE)
+
+
+def _looks_like_git_url(spec: str) -> bool:
+    """True if `spec` is a git remote URL rather than a local path."""
+    return bool(_GIT_URL_RE.match(spec)) or spec.endswith(".git")
+
+
+def _resolve_repo(spec: str) -> str:
+    """Resolve a ``--repo`` / ``REPO_GRAPH_REPO`` value to a local directory.
+
+    A local path is returned unchanged. A git URL is shallow-cloned once (cached
+    under the temp dir, keyed by URL) and the checkout path is returned — so
+    ``--repo https://github.com/org/repo`` works locally, and the hosted deploy
+    (``REPO_GRAPH_REPO`` set to a git URL) maps a real repo with no manual clone.
+    Requires ``git`` on PATH.
+    """
+    if not _looks_like_git_url(spec):
+        return spec
+    url = spec[4:] if spec.lower().startswith("git+") else spec
+    cache_root = os.path.join(tempfile.gettempdir(), "repo-graph-clones")
+    os.makedirs(cache_root, exist_ok=True)
+    dest = os.path.join(cache_root, hashlib.sha256(spec.encode()).hexdigest()[:16])
+    if os.path.isdir(dest) and os.listdir(dest):
+        return dest  # reuse cached clone
+    print(f"repo-graph: cloning {url} ...", file=sys.stderr)
+    res = subprocess.run(
+        ["git", "clone", "--depth", "1", url, dest],
+        capture_output=True, text=True,
+    )
+    if res.returncode != 0:
+        shutil.rmtree(dest, ignore_errors=True)
+        raise RuntimeError(f"git clone failed for {url}: {res.stderr.strip()[:300]}")
+    return dest
+
+
 def get_graph() -> RustGraph:
     """Return the in-memory graph, lazy-loading on first access.
 
@@ -42,9 +84,11 @@ def get_graph() -> RustGraph:
     cache-load path is opt-in via the `default_gmap_dir` convention introduced
     in repo-graph-py 0.4.14; older wheels fall through to plain `generate()`.
     """
-    global _graph
+    global _graph, REPO_PATH
     if _graph is not None:
         return _graph
+
+    REPO_PATH = _resolve_repo(REPO_PATH)
 
     if hasattr(repo_graph_py, "load_from_gmap") and hasattr(repo_graph_py, "is_stale"):
         gmap_dir = repo_graph_py.default_gmap_dir(REPO_PATH)
@@ -591,13 +635,15 @@ def main():
     parser.add_argument(
         "--repo",
         default=os.environ.get("REPO_GRAPH_REPO", os.getcwd()),
-        help="Path to the target repository",
+        help="Path to the target repository, or a git URL to clone and map",
     )
     args = parser.parse_args()
 
     global REPO_PATH
-    REPO_PATH = args.repo
-    os.environ["REPO_GRAPH_REPO"] = args.repo
+    # Resolve a git URL to a local clone once at startup, so every tool (generate,
+    # status, reload, ...) sees a real directory — not just the lazy get_graph path.
+    REPO_PATH = _resolve_repo(args.repo)
+    os.environ["REPO_GRAPH_REPO"] = REPO_PATH
     mcp.run()
 
 

@@ -14,6 +14,8 @@ import tomllib
 from importlib.metadata import entry_points
 from pathlib import Path
 
+import repo_graph.server as srv
+
 ROOT = Path(__file__).resolve().parent.parent
 
 
@@ -53,3 +55,28 @@ def test_server_json_synced_and_runnable():
     # uvx-runnable command — which is exactly what test_uvx_command_exists locks.
     assert pkg["runtimeHint"] == "uvx"
     assert pkg["transport"]["type"] == "stdio"
+
+
+# ── git-URL repo resolution (--repo accepts a local path OR a git project) ────
+
+
+def test_git_urls_detected():
+    for u in [
+        "https://github.com/org/repo",
+        "https://github.com/org/repo.git",
+        "http://example.com/x.git",
+        "git@github.com:org/repo.git",
+        "ssh://git@host/org/repo.git",
+        "git+https://github.com/org/repo",
+    ]:
+        assert srv._looks_like_git_url(u), u
+
+
+def test_local_paths_not_git_urls():
+    for p in ["/home/ivy/Code/repo", "./rel", "../up", "plain_dir", "/tmp/x"]:
+        assert not srv._looks_like_git_url(p), p
+
+
+def test_resolve_passes_through_local_path(tmp_path):
+    # a local path must be returned untouched (no clone attempted)
+    assert srv._resolve_repo(str(tmp_path)) == str(tmp_path)

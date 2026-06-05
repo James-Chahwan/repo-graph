@@ -153,6 +153,13 @@ Prefer a persistent install? `pip install mcp-repo-graph` (or `uv tool install
 mcp-repo-graph`) puts a `mcp-repo-graph` / `repo-graph` command on your `PATH`; then
 use `"command": "mcp-repo-graph"` in the config above.
 
+**`--repo` also accepts a git URL.** Point it at any public repo without cloning
+first — it shallow-clones and maps it (requires `git`):
+
+```bash
+uvx mcp-repo-graph --repo https://github.com/org/repo
+```
+
 ## Quick start
 
 ### 1. Initialise the target repo (optional)
