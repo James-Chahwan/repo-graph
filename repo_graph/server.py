@@ -164,8 +164,13 @@ def status() -> str:
 
 
 # Cap dense_text so a large monorepo's full dump can't blow past MCP-client
-# tool-result limits (e.g. Claude's 25k tokens). ~50k chars stays well under it.
-DENSE_TEXT_MAX_CHARS = 50_000
+# tool-result limits (e.g. Claude Desktop's 25k tokens). Default ~50k chars stays
+# well under it; override with REPO_GRAPH_DENSE_MAX_CHARS (0 = uncapped) for clients
+# with bigger context budgets.
+try:
+    DENSE_TEXT_MAX_CHARS = int(os.environ.get("REPO_GRAPH_DENSE_MAX_CHARS", "50000"))
+except ValueError:
+    DENSE_TEXT_MAX_CHARS = 50_000
 
 
 @mcp.tool(annotations=ToolAnnotations(title="Dense Graph Text", readOnlyHint=True))
@@ -173,7 +178,7 @@ def dense_text() -> str:
     """Full structural graph in dense sigil notation — the complete map of entities, relationships, and scopes. This is the primary context tool: feed it to the LLM so it can navigate without reading files. Large graphs are truncated; scope with `find`/`activate`/`flow`."""
     g = get_graph()
     text = g.pygraph.dense_text()
-    if len(text) <= DENSE_TEXT_MAX_CHARS:
+    if DENSE_TEXT_MAX_CHARS <= 0 or len(text) <= DENSE_TEXT_MAX_CHARS:
         return text
     cut = text.rfind("\n", 0, DENSE_TEXT_MAX_CHARS)
     if cut <= 0:
