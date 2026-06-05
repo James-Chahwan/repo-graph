@@ -1,0 +1,14 @@
+{
+  "name": "james-chahwan",
+  "owner": {
+    "name": "James Chahwan",
+    "url": "https://github.com/James-Chahwan"
+  },
+  "plugins": [
+    {
+      "name": "repo-graph",
+      "source": "./claude-plugin",
+      "description": "Structural graph memory for AI coding assistants — navigate any codebase by structure, not guesswork."
+    }
+  ]
+}
