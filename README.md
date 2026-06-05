@@ -208,38 +208,38 @@ Every commit keeps the graph current. The LLM always has a fresh map without was
 
 ## MCP tools reference
 
+repo-graph exposes **11 tools** across four tiers.
+
 ### Generation
 
 | Tool | Parameters | Description |
 |------|-----------|-------------|
-| `generate` | *(none)* | Scan the codebase from scratch, rebuild the graph, and reload |
-| `reload` | *(none)* | Reload graph data from disk (after external regeneration) |
+| `generate` | `repo_path` *(optional)* | Scan the codebase with tree-sitter, rebuild the graph, run cross-stack resolvers, and cache it |
 
 ### Navigation
 
 | Tool | Parameters | Description |
 |------|-----------|-------------|
-| `status` | *(none)* | Repo overview: git state, detected languages, entity counts, available flows |
-| `flow` | `feature` | End-to-end flow for a feature — from entry point through service layer to data |
-| `trace` | `from_id`, `to_id` | Shortest path between any two nodes in the graph |
-| `impact` | `node_id`, `direction` (`upstream`/`downstream`), `depth` | Fan out from a node to see what it affects or depends on |
-| `neighbours` | `node_id` | All direct connections to and from a node |
+| `status` | *(none)* | Repo overview: node/edge counts, detected kinds, entry points, dense preview. Call this first to orient |
+| `flow` | `feature` | End-to-end flow for a feature — entry point → service layer → data store, in layered tiers |
+| `trace` | `from_node`, `to_node` | Shortest path between two nodes, hop by hop with tier transitions |
+| `impact` | `node`, `direction` (`downstream`/`upstream`), `depth` | Blast radius — what a node affects (downstream) or depends on (upstream) |
+| `neighbours` | `node` | All direct connections to and from a node, one hop each way |
 
-### Context budgeting
-
-| Tool | Parameters | Description |
-|------|-----------|-------------|
-| `cost` | `feature` | Total line count for all files in a feature's flow |
-| `hotspots` | `top_n` | Files ranked by `size * connections` — maintenance risk indicators |
-| `minimal_read` | `feature`, `task_hint` | Smallest file set needed for a specific task within a feature |
-
-### Health analysis
+### Activation & context
 
 | Tool | Parameters | Description |
 |------|-----------|-------------|
-| `bloat_report` | `file_path` | Internal structure of a file: functions/methods ranked by size, type counts |
-| `split_plan` | `file_path` | Concrete suggestions for splitting an oversized file, grouped by responsibility |
-| `graph_view` | `feature` or `node`, `depth` | Visual ASCII map of a feature flow, node neighbourhood, or full graph overview |
+| `activate` | `seeds`, `top_k` | Spreading activation (Personalized PageRank) from seed nodes — the most relevant nodes to your seeds |
+| `find` | `query` | Find nodes by name or qualified-name pattern |
+| `dense_text` | *(none)* | The full graph in dense sigil notation — the primary context tool; feed it to the LLM to navigate without reading files |
+
+### Health & admin
+
+| Tool | Parameters | Description |
+|------|-----------|-------------|
+| `graph_view` | `node` *(optional)*, `depth` | Visual ASCII map — a node's tree/neighbourhood, or the full overview |
+| `reload` | *(none)* | Re-generate the graph from source after code changes |
 
 ## How it works
 
@@ -249,9 +249,9 @@ Every commit keeps the graph current. The LLM always has a fresh map without was
 2. **Extract** — cross-cutting extractors layer on HTTP routes, data sources, CLI entrypoints, gRPC services, queue consumers
 3. **Resolve** — graph builder resolves intra-repo references; cross-graph resolvers link stacks (frontend HTTP calls → backend routes, etc.)
 4. **Store** — merged graph lands in `.ai/repo-graph/` as a zero-copy `.gmap` (rkyv + mmap) plus JSON projections for portability
-5. **Serve** — the MCP server loads the graph into memory and exposes the 13 tools
+5. **Serve** — the MCP server loads the graph into memory and exposes the 11 tools
 
-The Rust engine will split into its own [`glia`](https://github.com/James-Chahwan/repo-graph) repo post-v0.4.12. `mcp-repo-graph` will remain the MCP-facing thin wrapper.
+The Rust engine lives in its own [`glia`](https://github.com/James-Chahwan/glia) repo; `mcp-repo-graph` is the MCP-facing thin wrapper.
 
 ## Config (optional escape hatch)
 
