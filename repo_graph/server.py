@@ -20,6 +20,7 @@ from typing import Annotated
 
 from pydantic import Field
 from mcp.server.fastmcp import FastMCP
+from mcp.types import ToolAnnotations
 
 import repo_graph_py
 
@@ -117,7 +118,7 @@ def get_graph() -> RustGraph:
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-@mcp.tool()
+@mcp.tool(annotations=ToolAnnotations(title="Generate Graph", readOnlyHint=False, openWorldHint=True))
 def generate(
     repo_path: Annotated[str, Field(description="Absolute path to the repository to scan. Defaults to the repo the server was started with.", default="")] = "",
 ) -> str:
@@ -155,21 +156,37 @@ def generate(
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-@mcp.tool()
+@mcp.tool(annotations=ToolAnnotations(title="Repo Status", readOnlyHint=True))
 def status() -> str:
     """Repo overview: node/edge counts, detected kinds, entry points, and a dense text preview. Call this first to orient before using other tools."""
     g = get_graph()
     return _render_overview(g)
 
 
-@mcp.tool()
+# Cap dense_text so a large monorepo's full dump can't blow past MCP-client
+# tool-result limits (e.g. Claude's 25k tokens). ~50k chars stays well under it.
+DENSE_TEXT_MAX_CHARS = 50_000
+
+
+@mcp.tool(annotations=ToolAnnotations(title="Dense Graph Text", readOnlyHint=True))
 def dense_text() -> str:
-    """Full structural graph in dense sigil notation — the complete map of entities, relationships, and scopes. This is the primary context tool: feed it to the LLM so it can navigate without reading files."""
+    """Full structural graph in dense sigil notation — the complete map of entities, relationships, and scopes. This is the primary context tool: feed it to the LLM so it can navigate without reading files. Large graphs are truncated; scope with `find`/`activate`/`flow`."""
     g = get_graph()
-    return g.pygraph.dense_text()
+    text = g.pygraph.dense_text()
+    if len(text) <= DENSE_TEXT_MAX_CHARS:
+        return text
+    cut = text.rfind("\n", 0, DENSE_TEXT_MAX_CHARS)
+    if cut <= 0:
+        cut = DENSE_TEXT_MAX_CHARS
+    return (
+        text[:cut]
+        + f"\n\n[... dense_text truncated: {len(text) - cut} of {len(text)} chars omitted to "
+          f"stay under client tool-result limits. This graph is large — scope it with `find`, "
+          f"`activate`, or `flow` instead of dumping the whole map.]"
+    )
 
 
-@mcp.tool()
+@mcp.tool(annotations=ToolAnnotations(title="Feature Flow", readOnlyHint=True))
 def flow(
     feature: Annotated[str, Field(description="Feature name or keyword to match against entry points. Case-insensitive, supports partial matching.")],
 ) -> str:
@@ -185,7 +202,7 @@ def flow(
     return _render_nodes_layered(feature, flow_nodes[:30], g)
 
 
-@mcp.tool()
+@mcp.tool(annotations=ToolAnnotations(title="Trace Path", readOnlyHint=True))
 def trace(
     from_node: Annotated[str, Field(description="Starting node name or qname pattern.")],
     to_node: Annotated[str, Field(description="Target node name or qname pattern.")],
@@ -226,7 +243,7 @@ def trace(
     return "\n".join(lines)
 
 
-@mcp.tool()
+@mcp.tool(annotations=ToolAnnotations(title="Impact Analysis", readOnlyHint=True))
 def impact(
     node: Annotated[str, Field(description="Node name or qname pattern to analyze.")],
     direction: Annotated[str, Field(description="'downstream' or 'upstream'.", default="downstream")] = "downstream",
@@ -276,7 +293,7 @@ def impact(
     return "\n".join(lines)
 
 
-@mcp.tool()
+@mcp.tool(annotations=ToolAnnotations(title="Node Neighbours", readOnlyHint=True))
 def neighbours(
     node: Annotated[str, Field(description="Node name or qname pattern to inspect.")],
 ) -> str:
@@ -324,7 +341,7 @@ def neighbours(
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-@mcp.tool()
+@mcp.tool(annotations=ToolAnnotations(title="Spreading Activation", readOnlyHint=True))
 def activate(
     seeds: Annotated[str, Field(description="Comma-separated node names or qname patterns to seed activation from.")],
     top_k: Annotated[int, Field(description="Number of top results to return. Default 20.", default=20, ge=1, le=100)] = 20,
@@ -365,7 +382,7 @@ def activate(
     return "\n".join(lines)
 
 
-@mcp.tool()
+@mcp.tool(annotations=ToolAnnotations(title="Find Nodes", readOnlyHint=True))
 def find(
     query: Annotated[str, Field(description="Node name or qname pattern to search for. Supports partial matching.")],
 ) -> str:
@@ -398,7 +415,7 @@ def find(
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-@mcp.tool()
+@mcp.tool(annotations=ToolAnnotations(title="Graph View", readOnlyHint=True))
 def graph_view(
     node: Annotated[str, Field(description="Node name or qname to render as a tree. Leave blank for full overview.", default="")] = "",
     depth: Annotated[int, Field(description="Tree depth. Default 2.", default=2, ge=1, le=5)] = 2,
@@ -411,7 +428,7 @@ def graph_view(
     return _render_overview(g)
 
 
-@mcp.tool()
+@mcp.tool(annotations=ToolAnnotations(title="Reload Graph", readOnlyHint=False))
 def reload() -> str:
     """Re-generate the graph from source. Call after code changes."""
     global _graph

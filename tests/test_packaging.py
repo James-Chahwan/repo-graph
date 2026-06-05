@@ -80,3 +80,17 @@ def test_local_paths_not_git_urls():
 def test_resolve_passes_through_local_path(tmp_path):
     # a local path must be returned untouched (no clone attempted)
     assert srv._resolve_repo(str(tmp_path)) == str(tmp_path)
+
+
+# ── Claude submission contract: every tool needs title + a read/destructive hint ──
+
+
+async def test_all_tools_have_submission_annotations():
+    tools = await srv.mcp.list_tools()
+    assert len(tools) == 11
+    for t in tools:
+        ann = t.annotations
+        assert ann is not None and ann.title, f"{t.name} missing annotations.title"
+        assert (ann.readOnlyHint is not None) or (ann.destructiveHint is not None), (
+            f"{t.name} needs readOnlyHint or destructiveHint"
+        )

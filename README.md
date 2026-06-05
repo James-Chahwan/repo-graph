@@ -282,6 +282,19 @@ Generated files live in `.ai/repo-graph/` inside the target repo:
 
 Common edge types: `imports`, `defines`, `contains`, `uses`, `calls`, `handles`, `handled_by`, `exports`, `includes`, `tests`, cross-stack HTTP links.
 
+## Privacy Policy
+
+repo-graph runs on your machine and is built to keep your code there. Full text: [PRIVACY.md](PRIVACY.md).
+
+- **Telemetry / analytics:** None. No tracking, no update checks, no phone-home.
+- **Data collection & sharing:** None. Your source code and graph data are never sent to repo-graph, its author, or any third party.
+- **Local processing & storage:** Scanning and graph-building happen locally; the graph is cached in your project's `.ai/repo-graph/` directory and stays on your device.
+- **Network access — only two cases, both user-initiated:**
+  1. *Installation* — `uvx`/`pip` downloads the package and its prebuilt engine wheel from PyPI.
+  2. *Git-URL targets* — if you pass a git URL to `--repo`, repo-graph runs `git clone` against the URL **you** specified; nothing is sent to repo-graph or its author. A local `--repo` path (the default) makes zero network calls.
+- **Data retention:** The local cache persists until you delete it — fully under your control.
+- **Contact:** [GitHub issues](https://github.com/James-Chahwan/repo-graph/issues)
+
 ## License
 
 MIT
