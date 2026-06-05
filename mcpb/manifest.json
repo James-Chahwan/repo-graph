@@ -1,0 +1,56 @@
+{
+  "manifest_version": "0.2",
+  "name": "repo-graph",
+  "display_name": "repo-graph — structural codebase map for AI",
+  "version": "0.4.17",
+  "description": "Structural graph memory for AI coding assistants — navigate any codebase by structure, not guesswork.",
+  "long_description": "repo-graph gives the assistant a structural map of your codebase — entities, relationships, and feature flows — so it navigates straight to the files that matter instead of grepping. It runs locally via uvx; nothing leaves your machine except a user-initiated git clone when you point it at a git URL.",
+  "author": {
+    "name": "James Chahwan",
+    "url": "https://github.com/James-Chahwan"
+  },
+  "homepage": "https://github.com/James-Chahwan/repo-graph",
+  "documentation": "https://github.com/James-Chahwan/repo-graph#readme",
+  "license": "MIT",
+  "icon": "icon.png",
+  "keywords": ["mcp", "codebase", "graph", "code-navigation", "ai", "context"],
+  "privacy_policies": [
+    "https://github.com/James-Chahwan/repo-graph#privacy-policy"
+  ],
+  "server": {
+    "type": "python",
+    "entry_point": "server/main.py",
+    "mcp_config": {
+      "command": "uvx",
+      "args": ["mcp-repo-graph", "--repo", "${user_config.workspace_directory}"]
+    }
+  },
+  "tools": [
+    { "name": "generate", "description": "Scan the codebase and (re)build the structural graph" },
+    { "name": "status", "description": "Repo overview: counts, kinds, entry points" },
+    { "name": "flow", "description": "End-to-end flow for a feature, entry point to data" },
+    { "name": "trace", "description": "Shortest path between two nodes" },
+    { "name": "impact", "description": "Blast radius: what a node affects or depends on" },
+    { "name": "neighbours", "description": "Direct connections to and from a node" },
+    { "name": "activate", "description": "Spreading activation (PPR) from seed nodes" },
+    { "name": "find", "description": "Find nodes by name or qualified-name pattern" },
+    { "name": "dense_text", "description": "Full graph in dense sigil notation" },
+    { "name": "graph_view", "description": "Visual ASCII map of a node or the overview" },
+    { "name": "reload", "description": "Re-generate the graph from source" }
+  ],
+  "user_config": {
+    "workspace_directory": {
+      "type": "directory",
+      "title": "Project directory",
+      "description": "The codebase repo-graph should map.",
+      "required": true
+    }
+  },
+  "compatibility": {
+    "claude_desktop": ">=0.10.0",
+    "platforms": ["darwin", "win32", "linux"],
+    "runtimes": {
+      "python": ">=3.11.0 <4"
+    }
+  }
+}

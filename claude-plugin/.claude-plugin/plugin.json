@@ -1,0 +1,15 @@
+{
+  "name": "repo-graph",
+  "displayName": "repo-graph",
+  "version": "0.4.17",
+  "description": "Structural graph memory for AI coding assistants — navigate any codebase by structure, not guesswork.",
+  "author": {
+    "name": "James Chahwan",
+    "url": "https://github.com/James-Chahwan"
+  },
+  "homepage": "https://github.com/James-Chahwan/repo-graph",
+  "repository": "https://github.com/James-Chahwan/repo-graph",
+  "license": "MIT",
+  "keywords": ["mcp", "codebase", "graph", "code-navigation", "ai", "context"],
+  "mcpServers": "./.mcp.json"
+}
