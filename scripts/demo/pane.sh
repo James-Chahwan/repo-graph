@@ -13,6 +13,13 @@ C_DIM=$'\033[2m'; C_RED=$'\033[31m'; C_GRN=$'\033[32m'; C_YEL=$'\033[33m'
 C_CYN=$'\033[36m'; C_MAG=$'\033[35m'; C_B=$'\033[1m'; C_R=$'\033[0m'
 
 TOK=0; FILES=0; CALLS=0
+SIDE="${1:-left}"; OTHER=$([ "$SIDE" = "left" ] && echo right || echo left)
+SYNC="${DEMO_SYNC:-}"   # shared dir for left/right lockstep in 'all' mode
+declare -A TITLES=([1]="Token Race" [2]="Files Opened" [3]="Cross-Stack Trace" [4]="Context Window" [5]="Blast Radius")
+barrier(){ [ -n "$SYNC" ] || return 0; touch "$SYNC/$1.$SIDE" 2>/dev/null; local t=0
+  while [ ! -e "$SYNC/$1.$OTHER" ]; do sleep 0.1; t=$((t+1)); [ "$t" -gt 1800 ] && break; done; }
+titlecard(){ printf '\n\n\n   %s%s●  DEMO %s — %s%s\n\n   %ssame model · same prompt · only difference: repo-graph%s\n' \
+  "$C_B" "$C_MAG" "$1" "${TITLES[$1]}" "$C_R" "$C_DIM" "$C_R"; pace 1.8; }
 
 pace(){ awk "BEGIN{system(\"sleep \" $1*$SPEED)}" 2>/dev/null || sleep "$1"; }
 commafy(){ printf "%s" "$1" | sed -E ':a;s/([0-9])([0-9]{3})($|[^0-9])/\1,\2\3/;ta'; }
@@ -20,8 +27,13 @@ cmd(){ printf "%s$ %s" "$C_DIM" "$C_R"; local s="$1" i; for ((i=0;i<${#s};i++));
 note(){ printf "%s%s%s\n" "$C_DIM" "$1" "$C_R"; }
 hdr(){ printf "%s%s  %s%s\n%s%s%s\n\n" "$C_B" "$1" "$2" "$C_R" "$C_DIM" "$3" "$C_R"; }
 prompt(){ printf "%s┃ prompt: %s%s\n\n" "$C_CYN" "$1" "$C_R"; pace 0.5; }
-tally_l(){ printf "   %s▸ %s files read · ~%s tokens%s\n" "$C_YEL" "$FILES" "$(commafy "$TOK")" "$C_R"; }
-tally_r(){ printf "   %s▸ %s call · ~%s tokens%s\n" "$C_GRN" "$CALLS" "$(commafy "$TOK")" "$C_R"; }
+T0=$SECONDS; elapsed(){ echo $(( SECONDS - T0 )); }
+# identical status-line format on BOTH panes → instant visual comparison
+statln(){ printf "   %s⏱ %2ss  ·  ~%s tokens  ·  %s%s\n" "${2:-$C_DIM}" "$(elapsed)" "$(commafy "$TOK")" "$1" "$C_R"; }
+tally_l(){ statln "$FILES files read" "$C_YEL"; }
+tally_r(){ statln "$CALLS tool call(s)" "$C_GRN"; }
+finalcard(){ local n lbl; if [ "$SIDE" = "left" ]; then n=$FILES; lbl="files"; else n=$CALLS; lbl="call"; fi
+  card "$1" "~$(commafy "$TOK") tokens   ·   $n $lbl   ·   $(elapsed)s" "$2"; }
 card(){ local c="$1" rule="━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   printf "\n%s%s%s\n" "$c" "$rule" "$C_R"
   printf "  %s%s%s%s\n" "$C_B" "$c" "$2" "$C_R"
@@ -63,37 +75,49 @@ P5="What breaks if I change GroupsComponent?"
 
 left1(){  hdr "$C_RED" "✗ without repo-graph" "grep → read → grep → read…"; prompt "$P1"
   grep_show "isGroupOpen"; grep_show "closed"; read_matches "GroupsComponent" 4; read_matches "group" 6
-  card "$C_RED" "~$(commafy "$TOK") tokens" "$FILES files read — still hunting"; }
+  finalcard "$C_RED" "still hunting"; }
 right1(){ hdr "$C_GRN" "✓ with repo-graph" "one structural lookup"; prompt "$P1"
   rg flow groups
-  card "$C_GRN" "~$(commafy "$TOK") tokens" "1 call → the exact handler flow"; }
+  finalcard "$C_GRN" "1 call → the exact handler flow"; }
 
 left2(){  left1; }                                  # same scenario, framed on FILES
 right2(){ right1; }
 left3(){  hdr "$C_RED" "✗ without repo-graph" "guessing the frontend↔backend link"; prompt "$P3"
   grep_show "groups"; read_matches "GroupsComponent" 3; grep_show "group" ; read_matches "Controller" 3
-  card "$C_RED" "~$(commafy "$TOK") tokens" "FE→BE link still unconfirmed"; }
+  finalcard "$C_RED" "FE→BE link still unconfirmed"; }
 right3(){ hdr "$C_GRN" "✓ with repo-graph" "cross-stack path in one hop"; prompt "$P3"
   rg trace GroupsComponent /groups
-  card "$C_GRN" "~$(commafy "$TOK") tokens" "frontend → backend, linked"; }
+  finalcard "$C_GRN" "frontend → backend, linked"; }
 
 left4(){  hdr "$C_RED" "✗ without repo-graph" "load files until you 'get it'"; prompt "$P4"
   read_biggest 16
-  card "$C_RED" "~$(commafy "$TOK") tokens" "$FILES files — context near full"; }
+  finalcard "$C_RED" "context near full"; }
 right4(){ hdr "$C_GRN" "✓ with repo-graph" "the whole map, capped"; prompt "$P4"
   rg dense_text
-  card "$C_GRN" "~$(commafy "$TOK") tokens" "whole-repo structure, 1 call"; }
+  finalcard "$C_GRN" "whole-repo structure, 1 call"; }
 
 left5(){  hdr "$C_RED" "✗ without repo-graph" "grep finds direct refs only"; prompt "$P5"
   grep_show "GroupsComponent"; read_matches "GroupsComponent" 3
-  card "$C_RED" "~$(commafy "$TOK") tokens" "direct refs only — transitive missed"; }
+  finalcard "$C_RED" "direct refs only — transitive missed"; }
 right5(){ hdr "$C_GRN" "✓ with repo-graph" "full blast radius by tier"; prompt "$P5"
   rg impact GroupsComponent
-  card "$C_GRN" "~$(commafy "$TOK") tokens" "complete downstream graph"; }
+  finalcard "$C_GRN" "complete downstream graph"; }
 
 ready(){ printf "\n%s%s● repo-graph demo · %s side%s\n" "$C_B" "$C_MAG" "$1" "$C_R"
   for i in 3 2 1; do printf "  starting in %s…\r" "$i"; sleep 1; done; printf "                    \n\n"; }
 
-ready "$1"
-"${1}${2}"   # e.g. left1 / right3
-printf "\n"; pace 2.0   # hold the freeze card as the final frame
+ready "$SIDE"
+if [ "${2:-}" = "all" ]; then
+  for n in 1 2 3 4 5; do
+    printf '\033[2J\033[3J\033[H'      # clean frame per demo
+    titlecard "$n"
+    barrier "start-$n"                 # both panes begin demo n together
+    TOK=0; FILES=0; CALLS=0; T0=$SECONDS
+    "${SIDE}${n}"
+    barrier "end-$n"                   # both hold the freeze card together
+    pace 1.2
+  done
+  printf '\033[2J\033[H\n\n   %s%s✓  repo-graph — all five.%s\n' "$C_B" "$C_GRN" "$C_R"; pace 2
+else
+  T0=$SECONDS; "${SIDE}${2}"; printf "\n"; pace 2.0
+fi
