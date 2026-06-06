@@ -116,6 +116,7 @@ right5(){ hdr "$C_GRN" "✓ with repo-graph" "full blast radius by tier"; prompt
 ready(){ printf "\n%s%s● repo-graph demo · %s side%s\n" "$C_B" "$C_MAG" "$1" "$C_R"
   for i in 3 2 1; do printf "  starting in %s…\r" "$i"; sleep 1; done; printf "                    \n\n"; }
 
+printf '\033[2J\033[3J\033[H'   # wipe the echoed launch command for a clean top
 ready "$SIDE"
 if [ "${2:-}" = "all" ]; then
   for n in 1 2 3 4 5; do
