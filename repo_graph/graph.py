@@ -22,6 +22,7 @@ KIND_NAMES = {
     32: "pipe", 33: "guard", 34: "composable",
     35: "attribute",
     36: "data_entity", 37: "cron_job", 38: "config_key", 39: "infra_resource", 40: "package_dep",
+    41: "region", 42: "doc_section", 43: "state_var",
 }
 
 CATEGORY_NAMES = {
