@@ -29,19 +29,19 @@ tmux new-session -d -s "$S" -x 232 -y 54
 tmux set -t "$S" status on
 tmux set -t "$S" status-position top
 tmux set -t "$S" status-interval 1
-tmux set -t "$S" status-style "bg=colour233,fg=colour213,bold"
+tmux set -t "$S" status-style "bg=colour0,fg=colour7,bold"
 tmux set -t "$S" status-justify centre
 tmux set -t "$S" status-left-length 70
 tmux set -t "$S" status-right-length 70
-tmux set -t "$S" status-left  "#[fg=colour203,bold] ✗ WITHOUT #[fg=colour252,nobold]#(cat $SYNC/left.stat 2>/dev/null)  "
-tmux set -t "$S" status-right "  #[fg=colour252,nobold]#(cat $SYNC/right.stat 2>/dev/null)#[fg=colour120,bold] WITH ✓ "
-tmux set -t "$S" window-status-format         "#[fg=colour213,bold]#W"
-tmux set -t "$S" window-status-current-format "#[fg=colour213,bold]#W"
+tmux set -t "$S" status-left  "#[fg=colour1,bold] ✗ WITHOUT #[fg=colour7,nobold]#(cat $SYNC/left.stat 2>/dev/null)  "
+tmux set -t "$S" status-right "  #[fg=colour7,nobold]#(cat $SYNC/right.stat 2>/dev/null)#[fg=colour2,bold] WITH ✓ "
+tmux set -t "$S" window-status-format         "#[fg=colour15,bold]#W"
+tmux set -t "$S" window-status-current-format "#[fg=colour15,bold]#W"
 tmux rename-window -t "$S" "◆ repo-graph — navigate code by structure (humans + LLMs) ◆"
 # labeled pane borders
 tmux set -t "$S" pane-border-status top
 tmux set -t "$S" pane-border-format " #{pane_title} "
-tmux set -t "$S" pane-border-style "fg=colour237"; tmux set -t "$S" pane-active-border-style "fg=colour237"
+tmux set -t "$S" pane-border-style "fg=colour8"; tmux set -t "$S" pane-active-border-style "fg=colour8"
 
 L="DEMO_REPO='$DEMO_REPO' DEMO_SPEED='$DEMO_SPEED' DEMO_SYNC='$SYNC' bash '$HERE/pane.sh'"
 tmux send-keys -t "$S" "clear; $L left $N" C-m
