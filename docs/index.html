@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<!-- The unique, namespace-safe string is the PyPI name. Optimise the page for it. -->
+<title>mcp-repo-graph — structural map for AI coding | repo-graph MCP server</title>
+<meta name="description" content="repo-graph (PyPI: mcp-repo-graph) is an MCP server that gives Claude, Cursor, VS Code and any MCP client a structural graph of your codebase — so the model reads only what matters. pip install mcp-repo-graph.">
+<meta name="keywords" content="mcp-repo-graph, repo-graph, MCP server, code graph, codebase map, Claude Code, MCP code navigation, tree-sitter, context window, AI coding">
+<link rel="canonical" href="https://repo-graph.com/">
+<meta name="theme-color" content="#0a0a0a">
+
+<!-- Open Graph / social -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="repo-graph">
+<meta property="og:title" content="mcp-repo-graph — structural map for AI coding">
+<meta property="og:description" content="Give your AI assistant a map of your codebase. The model navigates to the right files instead of reading everything. pip install mcp-repo-graph.">
+<meta property="og:url" content="https://repo-graph.com/">
+<meta property="og:image" content="https://repo-graph.com/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="mcp-repo-graph — structural map for AI coding">
+<meta name="twitter:description" content="Give your AI assistant a map of your codebase. pip install mcp-repo-graph.">
+<meta name="twitter:image" content="https://repo-graph.com/og.png">
+
+<!-- Structured data — helps rich results / search understanding -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "repo-graph",
+  "alternateName": "mcp-repo-graph",
+  "applicationCategory": "DeveloperApplication",
+  "operatingSystem": "macOS, Windows, Linux",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+  "url": "https://repo-graph.com/",
+  "downloadUrl": "https://pypi.org/project/mcp-repo-graph/",
+  "softwareHelp": "https://github.com/James-Chahwan/repo-graph",
+  "description": "An MCP server that gives AI coding assistants a structural graph of your codebase — entities, relationships and flows — so the model reads only the files that matter."
+}
+</script>
+
+<style>
+  :root{
+    --bg:#0a0a0a; --panel:#101311; --line:#1c241e; --fg:#cfe6d2; --dim:#7e9384;
+    --grn:#8effc0; --grn2:#a8ffd0; --red:#e88a8a;
+    --mono:"SFMono-Regular",ui-monospace,"JetBrains Mono","Source Code Pro",Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--mono);
+       line-height:1.6;-webkit-font-smoothing:antialiased}
+  a{color:var(--grn);text-decoration:none}
+  a:hover{text-decoration:underline}
+  .wrap{max-width:920px;margin:0 auto;padding:0 24px}
+  .muted{color:var(--dim)}
+  section{padding:64px 0;border-top:1px solid var(--line)}
+  h2{font-size:14px;letter-spacing:.18em;text-transform:uppercase;color:var(--grn);margin:0 0 24px;font-weight:600}
+  h3{margin:0 0 6px;font-size:16px}
+
+  /* hero */
+  header{padding:84px 0 64px;text-align:center}
+  .word{font-size:clamp(34px,7vw,64px);font-weight:700;letter-spacing:-.01em;margin:0}
+  .word b{color:var(--grn)}
+  .tag{font-size:clamp(15px,2.4vw,20px);margin:14px auto 0;max-width:640px;color:var(--fg)}
+  .sub{margin:10px auto 0;max-width:600px;color:var(--dim);font-size:14px}
+  .proof{margin:26px auto 0;max-width:640px;color:var(--dim);font-size:13px;
+         border:1px dashed var(--line);border-radius:10px;padding:12px 16px}
+  .proof b{color:var(--grn2)}
+
+  /* copyable command */
+  .cmd{display:flex;align-items:center;gap:12px;background:var(--panel);border:1px solid var(--line);
+       border-radius:12px;padding:14px 16px;margin:22px auto 0;max-width:560px;text-align:left}
+  .cmd code{flex:1;font-size:clamp(14px,2.2vw,18px);color:var(--fg);white-space:nowrap;overflow:auto}
+  .cmd .pfx{color:var(--grn)}
+  .copy{cursor:pointer;background:transparent;border:1px solid var(--line);color:var(--dim);
+        border-radius:8px;padding:6px 12px;font-family:var(--mono);font-size:12px;white-space:nowrap}
+  .copy:hover{border-color:var(--grn);color:var(--grn)}
+  .copy.ok{color:var(--grn);border-color:var(--grn)}
+
+  .btns{margin:22px 0 0;display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+  .btn{border:1px solid var(--line);border-radius:10px;padding:10px 18px;color:var(--fg);font-size:14px}
+  .btn:hover{border-color:var(--grn);text-decoration:none}
+  .btn.primary{background:var(--grn);color:#06140d;border-color:var(--grn);font-weight:600}
+
+  /* install switcher */
+  .tabs{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px}
+  .tab{cursor:pointer;border:1px solid var(--line);background:transparent;color:var(--dim);
+       border-radius:999px;padding:7px 15px;font-family:var(--mono);font-size:13px}
+  .tab[aria-selected="true"]{border-color:var(--grn);color:var(--grn);background:#0e1712}
+  .panel{display:none;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:4px 18px 18px}
+  .panel.on{display:block}
+  .panel p{color:var(--dim);font-size:14px}
+  pre{position:relative;background:#0c0f0d;border:1px solid var(--line);border-radius:10px;
+      padding:14px 16px;overflow:auto;font-size:13.5px;color:var(--fg);margin:14px 0 0}
+  pre .copy{position:absolute;top:8px;right:8px}
+
+  /* tiers + examples grids */
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px}
+  .card .k{color:var(--grn);font-size:12px;letter-spacing:.1em;text-transform:uppercase}
+  .card code{color:var(--fg);font-size:13px}
+  .tools{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .pill{border:1px solid var(--line);border-radius:7px;padding:3px 9px;font-size:12.5px;color:var(--fg)}
+
+  /* demo */
+  .demo-poster{display:flex;align-items:center;gap:18px;background:var(--panel);border:1px solid var(--line);
+    border-radius:14px;padding:26px;color:var(--fg)}
+  .demo-poster:hover{border-color:var(--grn);text-decoration:none}
+  .demo-poster .play{flex:0 0 auto;width:54px;height:54px;border-radius:50%;background:var(--grn);color:#06140d;
+    display:flex;align-items:center;justify-content:center;font-size:20px}
+  .demo-cap{font-size:15px}
+  .video{position:relative;padding-bottom:56.25%;height:0;border-radius:14px;overflow:hidden;border:1px solid var(--line)}
+  .video iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+
+  footer{padding:48px 0 72px;border-top:1px solid var(--line);text-align:center;color:var(--dim);font-size:13px}
+  .flinks{display:flex;gap:18px;justify-content:center;flex-wrap:wrap;margin-bottom:16px}
+  .search{font-size:13px}.search b{color:var(--grn)}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <h1 class="word"><b>repo</b>-graph</h1>
+    <p class="tag">A structural map of your codebase for AI coding assistants.</p>
+    <p class="sub">The model navigates to the right files by structure — instead of reading your whole repo or guessing. Works in any MCP client.</p>
+
+    <div class="cmd">
+      <code><span class="pfx">$ </span>pip install mcp-repo-graph</code>
+      <button class="copy" data-copy="pip install mcp-repo-graph">copy</button>
+    </div>
+
+    <div class="btns">
+      <a class="btn primary" href="#install">Install</a>
+      <a class="btn" href="https://github.com/James-Chahwan/repo-graph">GitHub</a>
+      <a class="btn" href="https://pypi.org/project/mcp-repo-graph/">PyPI</a>
+    </div>
+
+    <p class="proof">Same bug, same model, same prompt — <b>the only difference is whether repo-graph is installed.</b></p>
+  </div>
+</header>
+
+<section id="demo">
+  <div class="wrap">
+    <h2>Watch — same model, same prompt</h2>
+    <!-- When the video is on YouTube, replace the <a> below with:
+         <div class="video"><iframe src="https://www.youtube.com/embed/VIDEO_ID"
+           title="repo-graph demo" allowfullscreen loading="lazy"></iframe></div> -->
+    <a class="demo-poster" href="https://github.com/James-Chahwan/repo-graph#demo" aria-label="Watch the repo-graph demo">
+      <span class="play">▶</span>
+      <span class="demo-cap">The same bug, fixed two ways — with and without repo-graph.<br><b class="muted">~10× less context, every task.</b></span>
+    </a>
+  </div>
+</section>
+
+<section id="install">
+  <div class="wrap">
+    <h2>Install — pick your client</h2>
+    <div class="tabs" role="tablist">
+      <button class="tab" role="tab" aria-selected="true"  data-t="cc">Claude Code</button>
+      <button class="tab" role="tab" aria-selected="false" data-t="vscode">VS Code</button>
+      <button class="tab" role="tab" aria-selected="false" data-t="cursor">Cursor / Windsurf</button>
+      <button class="tab" role="tab" aria-selected="false" data-t="desktop">Claude Desktop</button>
+      <button class="tab" role="tab" aria-selected="false" data-t="mcp">Any MCP client</button>
+      <button class="tab" role="tab" aria-selected="false" data-t="pip">pip / uvx</button>
+    </div>
+
+    <div class="panel on" data-p="cc">
+      <p>One command — registers the server for the current project:</p>
+      <pre><code>claude mcp add repo-graph -- uvx mcp-repo-graph --repo .</code><button class="copy" data-copy="claude mcp add repo-graph -- uvx mcp-repo-graph --repo .">copy</button></pre>
+      <p>Or install as a plugin (bundles config + usage instructions):</p>
+      <pre><code>claude plugin marketplace add James-Chahwan/repo-graph
+claude plugin install repo-graph@james-chahwan</code><button class="copy" data-copy="claude plugin marketplace add James-Chahwan/repo-graph
+claude plugin install repo-graph@james-chahwan">copy</button></pre>
+    </div>
+
+    <div class="panel" data-p="vscode">
+      <p>Install the extension (it wraps the MCP server and works in Chat):</p>
+      <pre><code>code --install-extension james-chahwan.repo-graph</code><button class="copy" data-copy="code --install-extension james-chahwan.repo-graph">copy</button></pre>
+      <p>Or search <b>repo-graph</b> in the Extensions marketplace.</p>
+    </div>
+
+    <div class="panel" data-p="cursor">
+      <p>Add to your MCP config (<code>~/.cursor/mcp.json</code> or Windsurf's MCP settings):</p>
+      <pre><code>{
+  "mcpServers": {
+    "repo-graph": {
+      "command": "uvx",
+      "args": ["mcp-repo-graph", "--repo", "."]
+    }
+  }
+}</code><button class="copy" data-copy='{
+  "mcpServers": {
+    "repo-graph": {
+      "command": "uvx",
+      "args": ["mcp-repo-graph", "--repo", "."]
+    }
+  }
+}'>copy</button></pre>
+    </div>
+
+    <div class="panel" data-p="desktop">
+      <p>Download the desktop extension and open it with Claude Desktop:</p>
+      <pre><code>github.com/James-Chahwan/repo-graph → mcpb/repo-graph-*.mcpb</code><button class="copy" data-copy="https://github.com/James-Chahwan/repo-graph/tree/main/mcpb">copy</button></pre>
+      <p>Or add the same <code>mcpServers</code> block (see “Any MCP client”) to your Claude Desktop config.</p>
+    </div>
+
+    <div class="panel" data-p="mcp">
+      <p>repo-graph speaks standard MCP over stdio. Point any client at:</p>
+      <pre><code>{
+  "mcpServers": {
+    "repo-graph": {
+      "command": "uvx",
+      "args": ["mcp-repo-graph", "--repo", "."]
+    }
+  }
+}</code><button class="copy" data-copy='{
+  "mcpServers": {
+    "repo-graph": {
+      "command": "uvx",
+      "args": ["mcp-repo-graph", "--repo", "."]
+    }
+  }
+}'>copy</button></pre>
+      <p>Listed on the MCP Registry as <code>io.github.James-Chahwan/repo-graph</code>.</p>
+    </div>
+
+    <div class="panel" data-p="pip">
+      <p>Zero-install run (recommended):</p>
+      <pre><code>uvx mcp-repo-graph --repo /path/to/your/repo</code><button class="copy" data-copy="uvx mcp-repo-graph --repo /path/to/your/repo">copy</button></pre>
+      <p>Or install, then run the server pointed at a repo:</p>
+      <pre><code>pip install mcp-repo-graph
+repo-graph --repo /path/to/your/repo</code><button class="copy" data-copy="pip install mcp-repo-graph
+repo-graph --repo /path/to/your/repo">copy</button></pre>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>What it does</h2>
+    <p class="muted" style="max-width:680px">
+      repo-graph parses your codebase with tree-sitter and builds a lightweight graph of what exists,
+      how things connect, and where the entry points are — across 20+ languages and frameworks, frontend to backend.
+      Your assistant queries the graph, finds the minimal set of files it needs, and reads only those.
+      Less context burned, fewer wrong guesses, faster answers — for you and the model.
+    </p>
+    <div class="grid" style="margin-top:22px">
+      <div class="card"><div class="k">Generation</div><div class="tools"><span class="pill">generate</span></div></div>
+      <div class="card"><div class="k">Navigation</div><div class="tools"><span class="pill">status</span><span class="pill">flow</span><span class="pill">trace</span><span class="pill">impact</span><span class="pill">neighbours</span></div></div>
+      <div class="card"><div class="k">Activation &amp; Context</div><div class="tools"><span class="pill">activate</span><span class="pill">find</span><span class="pill">dense_text</span></div></div>
+      <div class="card"><div class="k">Health &amp; Admin</div><div class="tools"><span class="pill">graph_view</span><span class="pill">reload</span></div></div>
+    </div>
+  </div>
+</section>
+
+<section id="workflows">
+  <div class="wrap">
+    <h2>What you can ask</h2>
+    <p class="muted" style="max-width:680px">Say it in plain language to your assistant — repo-graph answers structurally, in one lookup, instead of grepping and reading files.</p>
+    <div class="grid" style="margin-top:22px">
+      <div class="card"><h3 class="muted">“Where does this frontend action end up in the backend?”</h3><div class="tools"><span class="pill">trace</span></div><p class="muted">Cross-stack path in one hop — grep can’t link stacks.</p></div>
+      <div class="card"><h3 class="muted">“What breaks if I change this component?”</h3><div class="tools"><span class="pill">impact</span></div><p class="muted">Full downstream blast radius by tier, including transitive.</p></div>
+      <div class="card"><h3 class="muted">“Show me how the login feature flows.”</h3><div class="tools"><span class="pill">flow</span></div><p class="muted">Entry point → handlers, mapped — not a keyword guess.</p></div>
+      <div class="card"><h3 class="muted">“Get enough context to work in this repo.”</h3><div class="tools"><span class="pill">dense_text</span></div><p class="muted">Whole-repo structural map, capped to fit the context window.</p></div>
+      <div class="card"><h3 class="muted">“Find everything related to billing.”</h3><div class="tools"><span class="pill">activate</span><span class="pill">find</span></div><p class="muted">Graph activation from seed terms — the relevant cluster, ranked.</p></div>
+      <div class="card"><h3 class="muted">“What’s connected to this file?”</h3><div class="tools"><span class="pill">neighbours</span></div><p class="muted">Immediate callers, callees and siblings around a node.</p></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>See it on real repos</h2>
+    <p class="muted">Graph output for popular frameworks — what your assistant gets before it reads a single file.</p>
+    <div class="grid" style="margin-top:20px">
+      <a class="card" href="https://github.com/James-Chahwan/repo-graph/tree/main/examples/fastapi"><h3>FastAPI</h3><span class="muted">Python · routes → handlers</span></a>
+      <a class="card" href="https://github.com/James-Chahwan/repo-graph/tree/main/examples/gin"><h3>Gin</h3><span class="muted">Go · HTTP routing</span></a>
+      <a class="card" href="https://github.com/James-Chahwan/repo-graph/tree/main/examples/hono"><h3>Hono</h3><span class="muted">TypeScript · edge routes</span></a>
+      <a class="card" href="https://github.com/James-Chahwan/repo-graph/tree/main/examples/nestjs"><h3>NestJS</h3><span class="muted">TypeScript · modules/DI</span></a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="flinks">
+      <a href="https://github.com/James-Chahwan/repo-graph">GitHub</a>
+      <a href="https://pypi.org/project/mcp-repo-graph/">PyPI</a>
+      <a href="https://marketplace.visualstudio.com/items?itemName=james-chahwan.repo-graph">VS Code</a>
+      <a href="https://glama.ai/mcp/servers/James-Chahwan/repo-graph">Glama</a>
+      <a href="https://github.com/James-Chahwan/repo-graph/blob/main/LICENSE">License</a>
+    </div>
+    <p class="search">search&nbsp; <b>mcp-repo-graph</b> &nbsp;·&nbsp; the name installs everywhere</p>
+  </div>
+</footer>
+
+<script>
+  // copy buttons
+  document.querySelectorAll('.copy').forEach(function(b){
+    b.addEventListener('click', function(){
+      navigator.clipboard.writeText(b.dataset.copy || b.previousElementSibling.innerText).then(function(){
+        var t=b.textContent; b.textContent='copied'; b.classList.add('ok');
+        setTimeout(function(){b.textContent=t;b.classList.remove('ok');},1400);
+      });
+    });
+  });
+  // install switcher
+  document.querySelectorAll('.tab').forEach(function(t){
+    t.addEventListener('click', function(){
+      document.querySelectorAll('.tab').forEach(function(x){x.setAttribute('aria-selected','false')});
+      t.setAttribute('aria-selected','true');
+      document.querySelectorAll('.panel').forEach(function(p){p.classList.toggle('on', p.dataset.p===t.dataset.t)});
+    });
+  });
+</script>
+</body>
+</html>
