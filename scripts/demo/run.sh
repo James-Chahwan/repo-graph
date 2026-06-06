@@ -37,7 +37,7 @@ tmux set -t "$S" status-left  "#[fg=colour1,bold] ✗ WITHOUT #[fg=colour7,nobol
 tmux set -t "$S" status-right "  #[fg=colour7,nobold]#(cat $SYNC/right.stat 2>/dev/null)#[fg=colour2,bold] WITH ✓ "
 tmux set -t "$S" window-status-format         "#[fg=colour15,bold]#W"
 tmux set -t "$S" window-status-current-format "#[fg=colour15,bold]#W"
-tmux rename-window -t "$S" "◆ repo-graph — navigate code by structure (humans + LLMs) ◆"
+tmux rename-window -t "$S" "mcp-repo-graph · navigate code by structure (humans + LLMs)"
 # labeled pane borders
 tmux set -t "$S" pane-border-status top
 tmux set -t "$S" pane-border-format " #{pane_title} "

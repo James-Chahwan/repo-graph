@@ -28,7 +28,7 @@ declare -A BENEFIT=(
   [4]="whole-repo understanding without filling the context window"
   [5]="see everything a change touches before you edit")
 setbar(){ [ "$SIDE" = "left" ] && [ -n "${TMUX:-}" ] && \
-  tmux rename-window "◆ DEMO $1 — ${BENEFIT[$1]} ◆" 2>/dev/null; return 0; }
+  tmux rename-window "mcp-repo-graph · ${BENEFIT[$1]}" 2>/dev/null; return 0; }
 
 pace(){ awk "BEGIN{system(\"sleep \" $1*$SPEED)}" 2>/dev/null || sleep "$1"; }
 commafy(){ printf "%s" "$1" | sed -E ':a;s/([0-9])([0-9]{3})($|[^0-9])/\1,\2\3/;ta'; }
@@ -49,6 +49,41 @@ card(){ local c="$1" rule="━━━━━━━━━━━━━━━━━�
   printf "  %s%s%s%s\n" "$C_B" "$c" "$2" "$C_R"
   [ $# -ge 3 ] && printf "  %s%s%s\n" "$C_DIM" "$3" "$C_R"
   printf "%s%s%s\n" "$c" "$rule" "$C_R"; }
+
+# ── end cards (shown after `all`) ───────────────────────────────────────────────
+# LEFT: the 5-demo WITHOUT-vs-WITH stat table + the headline multiplier.
+summary_card(){ local n lt lf lc rt rf rc tw=0 tr=0
+  printf '\n\n   %s%s5 demos · side by side%s\n' "$C_B" "$C_GRN" "$C_R"
+  printf '   %ssame model · same prompt · only difference: repo-graph%s\n\n' "$C_DIM" "$C_R"
+  printf '   %s%-20s %12s    %-12s%s\n' "$C_DIM" "demo" "WITHOUT" "WITH" "$C_R"
+  printf '   %s────────────────────────────────────────────────%s\n' "$C_DIM" "$C_R"
+  for n in 1 2 3 4 5; do
+    read -r lt lf lc < "$SYNC/left.d$n"  2>/dev/null || { lt=0; lf=0; lc=0; }
+    read -r rt rf rc < "$SYNC/right.d$n" 2>/dev/null || { rt=0; rf=0; rc=0; }
+    tw=$((tw+lt)); tr=$((tr+rt))
+    printf '   %-20s %s%8s tok%s    %s%8s tok%s\n' \
+      "${TITLES[$n]}" "$C_RED" "$(commafy "$lt")" "$C_R" "$C_GRN" "$(commafy "$rt")" "$C_R"
+  done
+  printf '   %s────────────────────────────────────────────────%s\n' "$C_DIM" "$C_R"
+  printf '   %s%-20s %s%8s tok%s    %s%8s tok%s\n' \
+    "$C_B" "total" "$C_RED" "$(commafy "$tw")" "$C_R$C_B" "$C_GRN" "$(commafy "$tr")" "$C_R"
+  local mult=0; [ "$tr" -gt 0 ] && mult=$(( (tw + tr/2) / tr ))
+  printf '\n   %s%s→ ~%s× less context, every task%s\n' "$C_B" "$C_GRN" "$mult" "$C_R"; }
+
+# RIGHT: the package NAME big (the searchable string that survives phone→desktop)
+# + the literal install command, large and held. No QR — devs install at a terminal,
+# not by scanning their own screen; the retainable thing is the name.
+outro_card(){
+  printf '\n\n\n'
+  printf '   %s%s╭───────────────────────────────────────╮%s\n' "$C_B" "$C_GRN" "$C_R"
+  printf '   %s%s│   p i p   i n s t a l l               │%s\n' "$C_B" "$C_GRN" "$C_R"
+  printf '   %s%s│   m c p - r e p o - g r a p h         │%s\n' "$C_B" "$C_GRN" "$C_R"
+  printf '   %s%s╰───────────────────────────────────────╯%s\n' "$C_B" "$C_GRN" "$C_R"
+  printf '\n   %sstructural map for AI coding — any MCP client%s\n\n\n' "$C_DIM" "$C_R"
+  printf '   %szero-install%s   %suvx mcp-repo-graph --repo .%s\n' "$C_DIM" "$C_R" "$C_B" "$C_R"
+  printf '   %sClaude Code %s   %sclaude mcp add repo-graph -- uvx mcp-repo-graph --repo .%s\n\n\n' "$C_DIM" "$C_R" "$C_DIM" "$C_R"
+  printf '   %ssearch%s  %s%smcp-repo-graph%s    %s·  github.com/James-Chahwan/repo-graph%s\n' \
+    "$C_DIM" "$C_R" "$C_B" "$C_GRN" "$C_R" "$C_DIM" "$C_R"; }
 
 grep_show(){ cmd "grep -rn \"$1\" ."
   local n; n=$(grep -rIn "$1" "$DEMO_REPO" --include=*.go --include=*.ts 2>/dev/null | grep -vc node_modules)
@@ -116,6 +151,7 @@ right5(){ hdr "$C_GRN" "✓ with repo-graph" "full blast radius by tier"; prompt
 ready(){ printf "\n%s%s● repo-graph demo · %s side%s\n" "$C_B" "$C_MAG" "$1" "$C_R"
   for i in 3 2 1; do printf "  starting in %s…\r" "$i"; sleep 1; done; printf "                    \n\n"; }
 
+[ -n "${RGDEMO_NOEXEC:-}" ] && return 0 2>/dev/null   # test hook: source funcs without running
 printf '\033[2J\033[3J\033[H'   # wipe the echoed launch command for a clean top
 ready "$SIDE"
 if [ "${2:-}" = "all" ]; then
@@ -126,10 +162,16 @@ if [ "${2:-}" = "all" ]; then
     TOK=0; FILES=0; CALLS=0; T0=$SECONDS
     setbar "$n"; [ -n "$SYNC" ] && : > "$SYNC/$SIDE.stat"
     "${SIDE}${n}"
+    [ -n "$SYNC" ] && printf '%s %s %s\n' "$TOK" "$FILES" "$CALLS" > "$SYNC/$SIDE.d$n"  # for the summary card
     barrier "end-$n"                   # both hold the freeze card together
     pace 1.2
   done
-  printf '\033[2J\033[H\n\n   %s%s✓  repo-graph — all five.%s\n' "$C_B" "$C_GRN" "$C_R"; pace 2
+  [ "$SIDE" = left ] && [ -n "${TMUX:-}" ] && \
+    tmux rename-window "mcp-repo-graph · pip install mcp-repo-graph" 2>/dev/null
+  barrier "endcard"                    # both panes reveal their end card together
+  printf '\033[2J\033[3J\033[H'
+  if [ "$SIDE" = "left" ]; then summary_card; else outro_card; fi
+  pace 4
 else
   setbar "$2"; [ -n "$SYNC" ] && : > "$SYNC/$SIDE.stat"
   T0=$SECONDS; "${SIDE}${2}"; printf "\n"; pace 2.0
