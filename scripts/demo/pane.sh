@@ -20,6 +20,15 @@ barrier(){ [ -n "$SYNC" ] || return 0; touch "$SYNC/$1.$SIDE" 2>/dev/null; local
   while [ ! -e "$SYNC/$1.$OTHER" ]; do sleep 0.1; t=$((t+1)); [ "$t" -gt 1800 ] && break; done; }
 titlecard(){ printf '\n\n\n   %s%s●  DEMO %s — %s%s\n\n   %ssame model · same prompt · only difference: repo-graph%s\n' \
   "$C_B" "$C_MAG" "$1" "${TITLES[$1]}" "$C_R" "$C_DIM" "$C_R"; pace 1.8; }
+# benefit framed for real human + LLM coding workflows (shown in the top comparison bar)
+declare -A BENEFIT=(
+  [1]="less context burned — cheaper & faster for you and the model"
+  [2]="the model reads 1 file, not 15 — your context stays clean"
+  [3]="frontend → backend in one hop — grep can't link stacks"
+  [4]="whole-repo understanding without filling the context window"
+  [5]="see everything a change touches before you edit")
+setbar(){ [ "$SIDE" = "left" ] && [ -n "${TMUX:-}" ] && \
+  tmux rename-window "◆ DEMO $1 — ${BENEFIT[$1]} ◆" 2>/dev/null; return 0; }
 
 pace(){ awk "BEGIN{system(\"sleep \" $1*$SPEED)}" 2>/dev/null || sleep "$1"; }
 commafy(){ printf "%s" "$1" | sed -E ':a;s/([0-9])([0-9]{3})($|[^0-9])/\1,\2\3/;ta'; }
@@ -29,7 +38,8 @@ hdr(){ printf "%s%s  %s%s\n%s%s%s\n\n" "$C_B" "$1" "$2" "$C_R" "$C_DIM" "$3" "$C
 prompt(){ printf "%s┃ prompt: %s%s\n\n" "$C_CYN" "$1" "$C_R"; pace 0.5; }
 T0=$SECONDS; elapsed(){ echo $(( SECONDS - T0 )); }
 # identical status-line format on BOTH panes → instant visual comparison
-statln(){ printf "   %s⏱ %2ss  ·  ~%s tokens  ·  %s%s\n" "${2:-$C_DIM}" "$(elapsed)" "$(commafy "$TOK")" "$1" "$C_R"; }
+statln(){ printf "   %s⏱ %2ss  ·  ~%s tokens  ·  %s%s\n" "${2:-$C_DIM}" "$(elapsed)" "$(commafy "$TOK")" "$1" "$C_R"
+  [ -n "$SYNC" ] && printf '~%s tok · %s · %ss' "$(commafy "$TOK")" "$1" "$(elapsed)" > "$SYNC/$SIDE.stat" 2>/dev/null; return 0; }
 tally_l(){ statln "$FILES files read" "$C_YEL"; }
 tally_r(){ statln "$CALLS tool call(s)" "$C_GRN"; }
 finalcard(){ local n lbl; if [ "$SIDE" = "left" ]; then n=$FILES; lbl="files"; else n=$CALLS; lbl="call"; fi
@@ -113,11 +123,13 @@ if [ "${2:-}" = "all" ]; then
     titlecard "$n"
     barrier "start-$n"                 # both panes begin demo n together
     TOK=0; FILES=0; CALLS=0; T0=$SECONDS
+    setbar "$n"; [ -n "$SYNC" ] && : > "$SYNC/$SIDE.stat"
     "${SIDE}${n}"
     barrier "end-$n"                   # both hold the freeze card together
     pace 1.2
   done
   printf '\033[2J\033[H\n\n   %s%s✓  repo-graph — all five.%s\n' "$C_B" "$C_GRN" "$C_R"; pace 2
 else
+  setbar "$2"; [ -n "$SYNC" ] && : > "$SYNC/$SIDE.stat"
   T0=$SECONDS; "${SIDE}${2}"; printf "\n"; pace 2.0
 fi
