@@ -25,7 +25,7 @@ DEMO_REPO="$DEMO_REPO" python3 "$HERE/rg.py" status >/dev/null 2>&1 || \
 
 tmux kill-session -t "$S" 2>/dev/null || true
 # layout: side = horizontal columns (16:9) · stack = vertical rows (9:16 portrait)
-if [ "$LAYOUT" = "stack" ]; then NX=135; NY=101; SPLIT=-v; else NX=232; NY=54; SPLIT=-h; fi
+if [ "$LAYOUT" = "stack" ]; then NX=95; NY=72; SPLIT=-v; else NX=232; NY=54; SPLIT=-h; fi
 tmux new-session -d -s "$S" -x "$NX" -y "$NY"
 
 # ── top comparison bar ────────────────────────────────────────────────────────

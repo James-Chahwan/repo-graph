@@ -15,12 +15,16 @@ LAYOUT="${DEMO_LAYOUT:-side}"
 if [ "${1:-}" = "shorts" ] || [ "${1:-}" = "stack" ]; then LAYOUT="stack"; N="${2:-all}"; fi
 command -v kitty >/dev/null || { echo "kitty not found — open any terminal and run: DEMO_LAYOUT=$LAYOUT $HERE/run.sh $N" >&2; exit 1; }
 
-if [ "$LAYOUT" = "stack" ]; then CONF="$HERE/recording-shorts.kitty.conf"; DIM="1080×1920 portrait · Shorts/Reels (WITH on top)"
+if [ "$LAYOUT" = "stack" ]; then CONF="$HERE/recording-shorts.kitty.conf"; DIM="765×1360 portrait 9:16 · Shorts/Reels (WITH on top)"
 else                            CONF="$HERE/recording.kitty.conf";        DIM="1920×1080 landscape · side-by-side"; fi
 
 kitty --config "$CONF" --title "repo-graph demo · recording ($LAYOUT)" \
   zsh -d -f -c "clear; DEMO_LAYOUT=$LAYOUT '$HERE/run.sh' $N; print -P '\n%F{120}✓ done — close this window%f'; exec zsh -d -f" &
 disown || true
 echo "▶ Opened a $DIM recording window (calm black + pastel-green). Demo: $N"
-echo "  A fixed-size terminal you can record or overlay as a background video."
 echo "  Reversible — close the window when done; nothing permanent changed."
+if [ "$LAYOUT" = "stack" ]; then
+  echo "  Record THIS window (window capture = no desktop bleed), then scale to the"
+  echo "  1080×1920 Shorts standard — exact 9:16, so a straight scale, no pad/crop:"
+  echo "    ffmpeg -i in.mp4 -vf scale=1080:1920:flags=lanczos -c:a copy demo-vertical-1080x1920.mp4"
+fi
