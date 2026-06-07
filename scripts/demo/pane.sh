@@ -79,10 +79,19 @@ outro_card(){
   printf '   %s%s│   p i p   i n s t a l l               │%s\n' "$C_B" "$C_GRN" "$C_R"
   printf '   %s%s│   m c p - r e p o - g r a p h         │%s\n' "$C_B" "$C_GRN" "$C_R"
   printf '   %s%s╰───────────────────────────────────────╯%s\n' "$C_B" "$C_GRN" "$C_R"
-  printf '\n   %sstructural map for AI coding — any MCP client%s\n\n\n' "$C_DIM" "$C_R"
-  printf '   %szero-install%s   %suvx mcp-repo-graph --repo .%s\n' "$C_DIM" "$C_R" "$C_B" "$C_R"
-  printf '   %sClaude Code %s   %sclaude mcp add repo-graph -- uvx mcp-repo-graph --repo .%s\n\n\n' "$C_DIM" "$C_R" "$C_DIM" "$C_R"
-  printf '   %ssearch%s  %s%smcp-repo-graph%s    %s·  github.com/James-Chahwan/repo-graph%s\n' \
+  printf '\n   %sone structural map · works in every AI client%s\n\n' "$C_DIM" "$C_R"
+  surf(){ printf '   %s%-15s%s %s%s%s\n' "$C_GRN" "$1" "$C_R" "$C_B" "$2" "$C_R"; }
+  surf "pip"             "pip install mcp-repo-graph"
+  surf "uvx"             "uvx mcp-repo-graph --repo ."
+  surf "Claude Code"     "claude mcp add repo-graph -- uvx mcp-repo-graph --repo ."
+  surf "OpenAI Codex"    "codex mcp add repo-graph -- uvx mcp-repo-graph --repo ."
+  surf "Gemini CLI"      "gemini mcp add repo-graph uvx mcp-repo-graph --repo ."
+  surf "Cursor/Windsurf" "mcpServers  ·  uvx mcp-repo-graph"
+  surf "VS Code"         "code --install-extension james-chahwan.repo-graph"
+  surf "Antigravity"     "mcp_config.json  ·  uvx mcp-repo-graph"
+  surf "Claude Desktop"  ".mcpb desktop extension"
+  surf "any MCP client"  "mcpServers JSON  ·  command: uvx"
+  printf '\n   %ssearch%s %s%smcp-repo-graph%s   %s·  github.com/James-Chahwan/repo-graph  ·  repo-graph.com%s\n' \
     "$C_DIM" "$C_R" "$C_B" "$C_GRN" "$C_R" "$C_DIM" "$C_R"; }
 
 grep_show(){ cmd "grep -rn \"$1\" ."
