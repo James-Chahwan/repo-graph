@@ -91,6 +91,8 @@ outro_card(){
   surf "Antigravity"     "mcp_config.json  ·  uvx mcp-repo-graph"
   surf "Claude Desktop"  ".mcpb desktop extension"
   surf "any MCP client"  "mcpServers JSON  ·  command: uvx"
+  printf '\n   %sruns on%s   🍎 %smacOS%s     🪟 %sWindows%s     🐧 %sLinux%s\n' \
+    "$C_DIM" "$C_R" "$C_B" "$C_R" "$C_B" "$C_R" "$C_B" "$C_R"
   printf '\n   %ssearch%s %s%smcp-repo-graph%s   %s·  github.com/James-Chahwan/repo-graph  ·  repo-graph.com%s\n' \
     "$C_DIM" "$C_R" "$C_B" "$C_GRN" "$C_R" "$C_DIM" "$C_R"; }
 
