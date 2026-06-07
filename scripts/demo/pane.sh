@@ -152,7 +152,7 @@ ready(){ printf "\n%s%s● repo-graph demo · %s side%s\n" "$C_B" "$C_MAG" "$1" 
   for i in 3 2 1; do printf "  starting in %s…\r" "$i"; sleep 1; done; printf "                    \n\n"; }
 
 [ -n "${RGDEMO_NOEXEC:-}" ] && return 0 2>/dev/null   # test hook: source funcs without running
-printf '\033[2J\033[3J\033[H'   # wipe the echoed launch command for a clean top
+clear 2>/dev/null; printf '\033[3J\033[2J\033[H'   # wipe scrollback + echoed launch command for a clean top
 ready "$SIDE"
 if [ "${2:-}" = "all" ]; then
   for n in 1 2 3 4 5; do

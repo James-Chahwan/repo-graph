@@ -25,21 +25,18 @@ DEMO_REPO="$DEMO_REPO" python3 "$HERE/rg.py" status >/dev/null 2>&1 || \
 
 tmux kill-session -t "$S" 2>/dev/null || true
 # layout: side = horizontal columns (16:9) · stack = vertical rows (9:16 portrait)
-if [ "$LAYOUT" = "stack" ]; then NX=129; NY=97; SPLIT=-v; LBAR=52; else NX=232; NY=54; SPLIT=-h; LBAR=70; fi
+if [ "$LAYOUT" = "stack" ]; then NX=129; NY=97; SPLIT=-v; else NX=232; NY=54; SPLIT=-h; fi
 tmux new-session -d -s "$S" -x "$NX" -y "$NY"
 
 # ── top comparison bar ────────────────────────────────────────────────────────
 tmux set -t "$S" status on
 tmux set -t "$S" status-position top
+tmux set -t "$S" status 2                  # two rows so nothing truncates
 tmux set -t "$S" status-interval 1
 tmux set -t "$S" status-style "bg=colour0,fg=colour7,bold"
-tmux set -t "$S" status-justify centre
-tmux set -t "$S" status-left-length "$LBAR"
-tmux set -t "$S" status-right-length "$LBAR"
-tmux set -t "$S" status-left  "#[fg=colour1,bold] ✗ WITHOUT #[fg=colour7,nobold]#(cat $SYNC/left.stat 2>/dev/null)  "
-tmux set -t "$S" status-right "  #[fg=colour7,nobold]#(cat $SYNC/right.stat 2>/dev/null)#[fg=colour2,bold] WITH ✓ "
-tmux set -t "$S" window-status-format         "#[fg=colour15,bold]#W"
-tmux set -t "$S" window-status-current-format "#[fg=colour15,bold]#W"
+# row 0: brand + benefit, centred full-width  ·  row 1: WITHOUT (left) ⟷ WITH (right)
+tmux set -t "$S" "status-format[0]" "#[align=centre,bg=colour0,fg=colour15,bold] #W "
+tmux set -t "$S" "status-format[1]" "#[align=left,bg=colour0,fg=colour1,bold] ✗ WITHOUT #[fg=colour7,nobold]#(cat $SYNC/left.stat 2>/dev/null)#[align=right,fg=colour7,nobold]#(cat $SYNC/right.stat 2>/dev/null)#[fg=colour2,bold] WITH ✓ "
 tmux rename-window -t "$S" "mcp-repo-graph · navigate code by structure (humans + LLMs)"
 # labeled pane borders
 tmux set -t "$S" pane-border-status top
