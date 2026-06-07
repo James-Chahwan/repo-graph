@@ -161,6 +161,9 @@
       <button class="tab" role="tab" aria-selected="true"  data-t="cc">Claude Code</button>
       <button class="tab" role="tab" aria-selected="false" data-t="vscode">VS Code</button>
       <button class="tab" role="tab" aria-selected="false" data-t="cursor">Cursor / Windsurf</button>
+      <button class="tab" role="tab" aria-selected="false" data-t="codex">OpenAI Codex</button>
+      <button class="tab" role="tab" aria-selected="false" data-t="gemini">Gemini CLI</button>
+      <button class="tab" role="tab" aria-selected="false" data-t="antigravity">Antigravity</button>
       <button class="tab" role="tab" aria-selected="false" data-t="desktop">Claude Desktop</button>
       <button class="tab" role="tab" aria-selected="false" data-t="mcp">Any MCP client</button>
       <button class="tab" role="tab" aria-selected="false" data-t="pip">pip / uvx</button>
@@ -198,6 +201,60 @@ claude plugin install repo-graph@james-chahwan">copy</button></pre>
     }
   }
 }'>copy</button></pre>
+    </div>
+
+    <div class="panel" data-p="codex">
+      <p>One command:</p>
+      <pre><code>codex mcp add repo-graph -- uvx mcp-repo-graph --repo .</code><button class="copy" data-copy="codex mcp add repo-graph -- uvx mcp-repo-graph --repo .">copy</button></pre>
+      <p>Or add to <code>~/.codex/config.toml</code>:</p>
+      <pre><code>[mcp_servers.repo-graph]
+command = "uvx"
+args = ["mcp-repo-graph", "--repo", "."]</code><button class="copy" data-copy='[mcp_servers.repo-graph]
+command = "uvx"
+args = ["mcp-repo-graph", "--repo", "."]'>copy</button></pre>
+      <p>Verify with <code>/mcp</code> in the Codex TUI.</p>
+    </div>
+
+    <div class="panel" data-p="gemini">
+      <p>One command:</p>
+      <pre><code>gemini mcp add repo-graph uvx mcp-repo-graph --repo .</code><button class="copy" data-copy="gemini mcp add repo-graph uvx mcp-repo-graph --repo .">copy</button></pre>
+      <p>Or add to <code>~/.gemini/settings.json</code>:</p>
+      <pre><code>{
+  "mcpServers": {
+    "repo-graph": {
+      "command": "uvx",
+      "args": ["mcp-repo-graph", "--repo", "."]
+    }
+  }
+}</code><button class="copy" data-copy='{
+  "mcpServers": {
+    "repo-graph": {
+      "command": "uvx",
+      "args": ["mcp-repo-graph", "--repo", "."]
+    }
+  }
+}'>copy</button></pre>
+      <p>Restart Gemini CLI; check with <code>/mcp</code>.</p>
+    </div>
+
+    <div class="panel" data-p="antigravity">
+      <p>In the editor: agent panel → <b>…</b> → <b>Manage MCP Servers</b> → <b>View raw config</b>, then add to <code>mcp_config.json</code>:</p>
+      <pre><code>{
+  "mcpServers": {
+    "repo-graph": {
+      "command": "uvx",
+      "args": ["mcp-repo-graph", "--repo", "."]
+    }
+  }
+}</code><button class="copy" data-copy='{
+  "mcpServers": {
+    "repo-graph": {
+      "command": "uvx",
+      "args": ["mcp-repo-graph", "--repo", "."]
+    }
+  }
+}'>copy</button></pre>
+      <p>Save, then refresh under Installed MCP Servers. (Remote servers use <code>serverUrl</code>; a local one like this uses <code>command</code>/<code>args</code>.)</p>
     </div>
 
     <div class="panel" data-p="desktop">
