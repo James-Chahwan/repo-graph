@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Install repo-graph in any AI client · repo-graph</title>
+<meta name="description" content="A 60-second setup that gives your AI coding assistant a structural map of any codebase. Exact command per client, plus how to confirm it loaded.">
+<link rel="canonical" href="https://repo-graph.com/guides/install">
+<meta name="theme-color" content="#0a0a0a">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="repo-graph">
+<meta property="og:title" content="Install repo-graph in any AI client">
+<meta property="og:description" content="A 60-second setup that gives your AI coding assistant a structural map of any codebase. Exact command per client, plus how to confirm it loaded.">
+<meta property="og:url" content="https://repo-graph.com/guides/install">
+<meta property="og:image" content="https://repo-graph.com/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<style>
+  :root{--bg:#0a0a0a;--panel:#101311;--line:#1c241e;--fg:#cfe6d2;--dim:#7e9384;
+        --grn:#8effc0;--grn2:#a8ffd0;--red:#e88a8a;
+        --mono:"SFMono-Regular",ui-monospace,"JetBrains Mono","Source Code Pro",Menlo,Consolas,monospace;}
+  *{box-sizing:border-box} html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--mono);line-height:1.65;
+       -webkit-font-smoothing:antialiased;font-size:15px}
+  a{color:var(--grn);text-decoration:none} a:hover{text-decoration:underline}
+  .wrap{max-width:760px;margin:0 auto;padding:0 24px}
+  .top{border-bottom:1px solid var(--line)}
+  .top .wrap{display:flex;align-items:center;justify-content:space-between;height:56px}
+  .brand{font-weight:700;color:var(--fg)} .brand b{color:var(--grn)}
+  .top nav a{color:var(--dim);margin-left:18px;font-size:14px}
+  .top nav a:hover{color:var(--grn)}
+  article{padding:48px 0 24px}
+  .eyebrow{color:var(--dim);font-size:12px;letter-spacing:.16em;text-transform:uppercase;margin:0 0 12px}
+  h1{font-size:clamp(26px,4.5vw,38px);line-height:1.2;margin:0 0 14px;letter-spacing:-.01em}
+  .lede{color:var(--dim);font-size:17px;margin:0 0 28px}
+  h2{font-size:20px;margin:34px 0 10px;color:var(--grn)}
+  h3{font-size:16px;margin:24px 0 8px}
+  p{margin:0 0 14px} ul,ol{margin:0 0 14px;padding-left:22px} li{margin:4px 0}
+  strong{color:var(--grn2)}
+  code{background:#0c0f0d;border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-size:13.5px}
+  pre{background:#0c0f0d;border:1px solid var(--line);border-radius:10px;padding:14px 16px;overflow:auto;margin:14px 0}
+  pre code{background:none;border:0;padding:0;font-size:13.5px;color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:14px 0;font-size:14px}
+  th,td{border:1px solid var(--line);padding:8px 12px;text-align:left}
+  th{color:var(--grn);font-weight:600}
+  blockquote{border-left:2px solid var(--line);margin:14px 0;padding:2px 16px;color:var(--dim)}
+  hr{border:0;border-top:1px solid var(--line);margin:28px 0}
+  footer{border-top:1px solid var(--line);padding:28px 0 64px;color:var(--dim);font-size:13px}
+  footer .cmd{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin:0 0 14px;color:var(--fg)}
+  footer .cmd b{color:var(--grn)}
+  .cards{display:grid;gap:14px;margin:18px 0}
+  .card{display:block;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px;color:var(--fg)}
+  .card:hover{border-color:var(--grn);text-decoration:none}
+  .card h3{margin:0 0 4px;color:var(--fg)} .card p{margin:0;color:var(--dim);font-size:14px}
+  .sec{color:var(--grn);font-size:12px;letter-spacing:.16em;text-transform:uppercase;margin:28px 0 4px}
+</style>
+</head>
+<body>
+<div class="top"><div class="wrap"><a class="brand" href="/"><b>repo</b>-graph</a><nav><a href="/guides/">Guides</a><a href="/#install">Install</a><a href="https://github.com/James-Chahwan/repo-graph">GitHub</a></nav></div></div>
+<article><div class="wrap">
+<p class="eyebrow">Setup guide</p>
+<h1>Install repo-graph in any AI client</h1>
+<p class="lede">A 60-second setup that gives your AI coding assistant a structural map of any codebase. Exact command per client, plus how to confirm it loaded.</p>
+<p>repo-graph is an MCP server that hands your AI assistant a structural graph of a codebase: entities, relationships, and feature flows. Instead of grepping and reading files until it finds the right one, the model navigates straight to it. Less context burned, fewer wrong guesses, faster answers.</p>
+<p>It works across 20+ languages and frameworks, frontend to backend, including cross-stack links. The engine (<code>repo-graph-py</code>) is Rust plus tree-sitter.</p>
+<h2>Pick your client</h2>
+<p>Each line below installs the server pointed at the current directory (<code>--repo .</code>). <code>uvx</code> runs it with zero install.</p>
+<p><strong>Claude Code</strong></p>
+<pre><code class="language-bash">claude mcp add repo-graph -- uvx mcp-repo-graph --repo .
+</code></pre>
+<p><strong>OpenAI Codex</strong></p>
+<pre><code class="language-bash">codex mcp add repo-graph -- uvx mcp-repo-graph --repo .
+</code></pre>
+<p><strong>Gemini CLI</strong></p>
+<pre><code class="language-bash">gemini mcp add repo-graph uvx mcp-repo-graph --repo .
+</code></pre>
+<p><strong>Cursor / Windsurf / Antigravity / any MCP client</strong> — drop this in your <code>mcpServers</code> config:</p>
+<pre><code class="language-json">{
+  &quot;mcpServers&quot;: {
+    &quot;repo-graph&quot;: {
+      &quot;command&quot;: &quot;uvx&quot;,
+      &quot;args&quot;: [&quot;mcp-repo-graph&quot;, &quot;--repo&quot;, &quot;.&quot;]
+    }
+  }
+}
+</code></pre>
+<p><strong>VS Code</strong></p>
+<pre><code class="language-bash">code --install-extension james-chahwan.repo-graph
+</code></pre>
+<p><strong>Claude Desktop</strong> — install the <code>.mcpb</code> desktop extension.</p>
+<p>Prefer a pinned install over <code>uvx</code>? <code>pip install mcp-repo-graph</code>.</p>
+<h2>Confirm it loaded</h2>
+<p>Build the graph, then orient. Tell your assistant:</p>
+<blockquote>
+<p>Generate the repo-graph, then call status.</p>
+</blockquote>
+<p><code>generate</code> scans the repo and builds the graph. It also takes a git URL if you want to point at a remote repo. <code>status</code> reports what it found. If you get a summary back, you're set.</p>
+<h2>How you actually use it</h2>
+<p>The pattern: before grepping or reading files, ask the model to call <code>status</code> to orient, then <code>dense_text</code> for full context, or <code>activate</code> / <code>find</code> / <code>flow</code> to scope in. Some prompts and the tool that answers them:</p>
+<ul>
+<li>"Where does the groups action hit the backend?" → <code>trace</code> (shortest path between two nodes)</li>
+<li>"Walk me through the checkout feature." → <code>flow</code> (entry → service → data)</li>
+<li>"What breaks if I change this handler?" → <code>impact</code> (downstream/upstream blast radius)</li>
+<li>"What's directly wired to this node?" → <code>neighbours</code> (one-hop connections)</li>
+<li>"Find the auth middleware." → <code>find</code> (match by name or qname)</li>
+<li>"Give me an ASCII overview." → <code>graph_view</code></li>
+</ul>
+<p>After you change code, <code>reload</code> rebuilds the graph.</p>
+<h2>What it changes</h2>
+<p>A run on quokka-stack, a Go + Angular monorepo (~566 nodes / 620 edges), fixing a reversed comparison operator. Same bug, same model, same prompt both times:</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Tokens</th>
+<th>Time</th>
+<th>Files touched</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Without repo-graph</td>
+<td>75,308</td>
+<td>4m36s</td>
+<td>~15 (grep, read, grep, read...)</td>
+</tr>
+<tr>
+<td>With repo-graph</td>
+<td>29,838</td>
+<td>~30s</td>
+<td>2 (a flow lookup + the handler)</td>
+</tr>
+</tbody>
+</table>
+<p>The only difference is whether repo-graph is installed.</p>
+<h2>Try it</h2>
+<pre><code class="language-bash">uvx mcp-repo-graph --repo .
+</code></pre>
+<p>More at <a href="https://repo-graph.com">repo-graph.com</a>.</p>
+</div></article>
+<footer><div class="wrap"><div class="cmd">$ <b>pip install mcp-repo-graph</b></div><a href="/guides/">‹ All guides</a> &nbsp;·&nbsp; <a href="https://github.com/James-Chahwan/repo-graph">GitHub</a> &nbsp;·&nbsp; repo-graph.com</div></footer>
+</body>
+</html>

@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Know what breaks before you change it · repo-graph</title>
+<meta name="description" content="See the downstream blast radius of a change before editing, grouped by tier, using repo-graph's impact and neighbours tools.">
+<link rel="canonical" href="https://repo-graph.com/guides/impact-before-refactor">
+<meta name="theme-color" content="#0a0a0a">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="repo-graph">
+<meta property="og:title" content="Know what breaks before you change it">
+<meta property="og:description" content="See the downstream blast radius of a change before editing, grouped by tier, using repo-graph's impact and neighbours tools.">
+<meta property="og:url" content="https://repo-graph.com/guides/impact-before-refactor">
+<meta property="og:image" content="https://repo-graph.com/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<style>
+  :root{--bg:#0a0a0a;--panel:#101311;--line:#1c241e;--fg:#cfe6d2;--dim:#7e9384;
+        --grn:#8effc0;--grn2:#a8ffd0;--red:#e88a8a;
+        --mono:"SFMono-Regular",ui-monospace,"JetBrains Mono","Source Code Pro",Menlo,Consolas,monospace;}
+  *{box-sizing:border-box} html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--mono);line-height:1.65;
+       -webkit-font-smoothing:antialiased;font-size:15px}
+  a{color:var(--grn);text-decoration:none} a:hover{text-decoration:underline}
+  .wrap{max-width:760px;margin:0 auto;padding:0 24px}
+  .top{border-bottom:1px solid var(--line)}
+  .top .wrap{display:flex;align-items:center;justify-content:space-between;height:56px}
+  .brand{font-weight:700;color:var(--fg)} .brand b{color:var(--grn)}
+  .top nav a{color:var(--dim);margin-left:18px;font-size:14px}
+  .top nav a:hover{color:var(--grn)}
+  article{padding:48px 0 24px}
+  .eyebrow{color:var(--dim);font-size:12px;letter-spacing:.16em;text-transform:uppercase;margin:0 0 12px}
+  h1{font-size:clamp(26px,4.5vw,38px);line-height:1.2;margin:0 0 14px;letter-spacing:-.01em}
+  .lede{color:var(--dim);font-size:17px;margin:0 0 28px}
+  h2{font-size:20px;margin:34px 0 10px;color:var(--grn)}
+  h3{font-size:16px;margin:24px 0 8px}
+  p{margin:0 0 14px} ul,ol{margin:0 0 14px;padding-left:22px} li{margin:4px 0}
+  strong{color:var(--grn2)}
+  code{background:#0c0f0d;border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-size:13.5px}
+  pre{background:#0c0f0d;border:1px solid var(--line);border-radius:10px;padding:14px 16px;overflow:auto;margin:14px 0}
+  pre code{background:none;border:0;padding:0;font-size:13.5px;color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:14px 0;font-size:14px}
+  th,td{border:1px solid var(--line);padding:8px 12px;text-align:left}
+  th{color:var(--grn);font-weight:600}
+  blockquote{border-left:2px solid var(--line);margin:14px 0;padding:2px 16px;color:var(--dim)}
+  hr{border:0;border-top:1px solid var(--line);margin:28px 0}
+  footer{border-top:1px solid var(--line);padding:28px 0 64px;color:var(--dim);font-size:13px}
+  footer .cmd{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin:0 0 14px;color:var(--fg)}
+  footer .cmd b{color:var(--grn)}
+  .cards{display:grid;gap:14px;margin:18px 0}
+  .card{display:block;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px;color:var(--fg)}
+  .card:hover{border-color:var(--grn);text-decoration:none}
+  .card h3{margin:0 0 4px;color:var(--fg)} .card p{margin:0;color:var(--dim);font-size:14px}
+  .sec{color:var(--grn);font-size:12px;letter-spacing:.16em;text-transform:uppercase;margin:28px 0 4px}
+</style>
+</head>
+<body>
+<div class="top"><div class="wrap"><a class="brand" href="/"><b>repo</b>-graph</a><nav><a href="/guides/">Guides</a><a href="/#install">Install</a><a href="https://github.com/James-Chahwan/repo-graph">GitHub</a></nav></div></div>
+<article><div class="wrap">
+<p class="eyebrow">How-to guide</p>
+<h1>Know what breaks before you change it</h1>
+<p class="lede">See the downstream blast radius of a change before editing, grouped by tier, using repo-graph's impact and neighbours tools.</p>
+<p>Changing a function is easy. Knowing what else moves when you change it is the hard part. Without a map, your AI assistant greps for the symbol, reads a file, greps again, reads another, burning context and still missing call sites it never thought to search for.</p>
+<p>repo-graph gives your assistant a structural graph of the codebase, so it reads the blast radius off the graph instead of guessing. Two tools do the work here:</p>
+<ul>
+<li><strong>impact</strong> — the downstream (and upstream) blast radius of a node, grouped by tier.</li>
+<li><strong>neighbours</strong> — the direct one-hop connections, when you only need the immediate ring.</li>
+</ul>
+<h2>The pattern</h2>
+<p>Orient first, then scope. Before any edit, point your assistant at the thing you're about to touch.</p>
+<pre><code>You: I want to change the signature of validateSession. What breaks?
+</code></pre>
+<p>The assistant calls <strong>status</strong> to orient, then <strong>impact</strong> on <code>validateSession</code>. It comes back with every downstream node — handlers, middleware, the routes that hang off them — grouped by tier (entry, service, data). Now it knows the edit isn't local. It's a fan-out.</p>
+<p>If you only care about what sits one hop away — say you're renaming a field and want the direct readers, not the whole transitive tail — ask for that instead:</p>
+<pre><code>You: Who calls getUserRole directly?
+</code></pre>
+<p>That's <strong>neighbours</strong>: the immediate ring, no transitive walk.</p>
+<h2>A real example</h2>
+<p>Take quokka-stack, a Go + Angular monorepo (~566 nodes / 620 edges). The bug: a reversed comparison operator in a permissions check.</p>
+<p>Without repo-graph, the assistant explored ~15 files (grep, read, grep, read), burned <strong>75,308 tokens</strong>, and took <strong>4m36s</strong>.</p>
+<p>With repo-graph, same bug, same model, same prompt: a flow lookup plus the handler file. <strong>2 files</strong>, <strong>29,838 tokens</strong>, ~<strong>30s</strong>.</p>
+<p>The difference wasn't a smarter model. It was the model reading only what mattered.</p>
+<p>For a change instead of a read, the impact-first version looks like this:</p>
+<pre><code>You: Before I touch isGroupOpen, show me everything downstream of it.
+</code></pre>
+<p>The assistant runs <strong>impact</strong> on <code>isGroupOpen</code>, gets the tiered fan-out, and edits with the call sites already in hand. No blind grep sweep.</p>
+<h2>Prompts that map to tools</h2>
+<p>You don't name the tools. You ask the question; the assistant picks the tool.</p>
+<table>
+<thead>
+<tr>
+<th>You ask</th>
+<th>Tool it uses</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>"What breaks if I change this?"</td>
+<td><strong>impact</strong></td>
+</tr>
+<tr>
+<td>"Who calls this directly?"</td>
+<td><strong>neighbours</strong></td>
+</tr>
+<tr>
+<td>"Where do I even start?"</td>
+<td><strong>status</strong></td>
+</tr>
+<tr>
+<td>"Where does the groups action hit the backend?"</td>
+<td><strong>trace</strong></td>
+</tr>
+<tr>
+<td>"Walk me through the login feature."</td>
+<td><strong>flow</strong></td>
+</tr>
+</tbody>
+</table>
+<p>The graph is cross-stack and covers 20+ languages, so impact on a backend handler can surface the frontend caller that hits it — the one a call-site grep would miss.</p>
+<p>After you've made the change, run <strong>reload</strong> so the graph reflects the new code before the next question.</p>
+<h2>Try it</h2>
+<pre><code class="language-bash">claude mcp add repo-graph -- uvx mcp-repo-graph --repo .
+</code></pre>
+<p>More at <a href="https://repo-graph.com">repo-graph.com</a>.</p>
+</div></article>
+<footer><div class="wrap"><div class="cmd">$ <b>pip install mcp-repo-graph</b></div><a href="/guides/">‹ All guides</a> &nbsp;·&nbsp; <a href="https://github.com/James-Chahwan/repo-graph">GitHub</a> &nbsp;·&nbsp; repo-graph.com</div></footer>
+</body>
+</html>

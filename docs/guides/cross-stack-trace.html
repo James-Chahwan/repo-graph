@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trace a frontend action to its backend handler · repo-graph</title>
+<meta name="description" content="Follow a feature across the stack with repo-graph trace, flow, and find instead of grepping both sides and guessing the link.">
+<link rel="canonical" href="https://repo-graph.com/guides/cross-stack-trace">
+<meta name="theme-color" content="#0a0a0a">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="repo-graph">
+<meta property="og:title" content="Trace a frontend action to its backend handler">
+<meta property="og:description" content="Follow a feature across the stack with repo-graph trace, flow, and find instead of grepping both sides and guessing the link.">
+<meta property="og:url" content="https://repo-graph.com/guides/cross-stack-trace">
+<meta property="og:image" content="https://repo-graph.com/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<style>
+  :root{--bg:#0a0a0a;--panel:#101311;--line:#1c241e;--fg:#cfe6d2;--dim:#7e9384;
+        --grn:#8effc0;--grn2:#a8ffd0;--red:#e88a8a;
+        --mono:"SFMono-Regular",ui-monospace,"JetBrains Mono","Source Code Pro",Menlo,Consolas,monospace;}
+  *{box-sizing:border-box} html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--mono);line-height:1.65;
+       -webkit-font-smoothing:antialiased;font-size:15px}
+  a{color:var(--grn);text-decoration:none} a:hover{text-decoration:underline}
+  .wrap{max-width:760px;margin:0 auto;padding:0 24px}
+  .top{border-bottom:1px solid var(--line)}
+  .top .wrap{display:flex;align-items:center;justify-content:space-between;height:56px}
+  .brand{font-weight:700;color:var(--fg)} .brand b{color:var(--grn)}
+  .top nav a{color:var(--dim);margin-left:18px;font-size:14px}
+  .top nav a:hover{color:var(--grn)}
+  article{padding:48px 0 24px}
+  .eyebrow{color:var(--dim);font-size:12px;letter-spacing:.16em;text-transform:uppercase;margin:0 0 12px}
+  h1{font-size:clamp(26px,4.5vw,38px);line-height:1.2;margin:0 0 14px;letter-spacing:-.01em}
+  .lede{color:var(--dim);font-size:17px;margin:0 0 28px}
+  h2{font-size:20px;margin:34px 0 10px;color:var(--grn)}
+  h3{font-size:16px;margin:24px 0 8px}
+  p{margin:0 0 14px} ul,ol{margin:0 0 14px;padding-left:22px} li{margin:4px 0}
+  strong{color:var(--grn2)}
+  code{background:#0c0f0d;border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-size:13.5px}
+  pre{background:#0c0f0d;border:1px solid var(--line);border-radius:10px;padding:14px 16px;overflow:auto;margin:14px 0}
+  pre code{background:none;border:0;padding:0;font-size:13.5px;color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:14px 0;font-size:14px}
+  th,td{border:1px solid var(--line);padding:8px 12px;text-align:left}
+  th{color:var(--grn);font-weight:600}
+  blockquote{border-left:2px solid var(--line);margin:14px 0;padding:2px 16px;color:var(--dim)}
+  hr{border:0;border-top:1px solid var(--line);margin:28px 0}
+  footer{border-top:1px solid var(--line);padding:28px 0 64px;color:var(--dim);font-size:13px}
+  footer .cmd{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin:0 0 14px;color:var(--fg)}
+  footer .cmd b{color:var(--grn)}
+  .cards{display:grid;gap:14px;margin:18px 0}
+  .card{display:block;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px;color:var(--fg)}
+  .card:hover{border-color:var(--grn);text-decoration:none}
+  .card h3{margin:0 0 4px;color:var(--fg)} .card p{margin:0;color:var(--dim);font-size:14px}
+  .sec{color:var(--grn);font-size:12px;letter-spacing:.16em;text-transform:uppercase;margin:28px 0 4px}
+</style>
+</head>
+<body>
+<div class="top"><div class="wrap"><a class="brand" href="/"><b>repo</b>-graph</a><nav><a href="/guides/">Guides</a><a href="/#install">Install</a><a href="https://github.com/James-Chahwan/repo-graph">GitHub</a></nav></div></div>
+<article><div class="wrap">
+<p class="eyebrow">How-to guide</p>
+<h1>Trace a frontend action to its backend handler</h1>
+<p class="lede">Follow a feature across the stack with repo-graph trace, flow, and find instead of grepping both sides and guessing the link.</p>
+<p>A button gets clicked in the UI. Somewhere on the backend a route handles it. Between those two points sit an HTTP call, a router definition, a controller, maybe a service. The usual way to find the handler: grep the frontend, read a file, grep the backend, read another, then squint at the path string to guess the link. That burns context and time.</p>
+<p>repo-graph already knows the link. It builds a structural graph of the codebase across 20+ languages and frameworks, frontend to backend, and <code>trace</code> returns the shortest path between two nodes. Your AI assistant calls the tool instead of reading half the repo.</p>
+<h2>The pattern</h2>
+<ol>
+<li><strong>Orient.</strong> Before grepping anything, the model calls <code>status</code> to see the shape of the codebase: tiers, languages, entry points.</li>
+<li><strong>Find the ends.</strong> Use <code>find</code> to match the frontend node (the component or action) and the backend node (the route or handler) by name.</li>
+<li><strong>Connect them.</strong> <code>trace</code> returns the shortest path between the two nodes. That path is the answer.</li>
+</ol>
+<p>If you don't know the backend end yet, <code>flow</code> does the legwork: give it a feature and it returns entry -&gt; service -&gt; data in order.</p>
+<h2>Worked example</h2>
+<p>Say you're chasing a bug in a Go + Angular monorepo. The groups list shows the wrong open/closed state. You suspect a backend comparison.</p>
+<p>You type to your assistant:</p>
+<blockquote>
+<p>Where does the groups action in the UI hit the backend?</p>
+</blockquote>
+<p>The model runs <code>find</code> to pin the Angular action and the Go route, then <code>trace</code> between them. It comes back with the path: the component, the service call, the route, the handler. No grepping.</p>
+<p>Follow up:</p>
+<blockquote>
+<p>Show me the full flow for the groups feature.</p>
+</blockquote>
+<p>That's <code>flow</code> — entry component, the HTTP service, the route, the handler, the data layer, in order. You open the handler, spot the reversed comparison operator, fix it.</p>
+<p>On quokka-stack (~566 nodes / 620 edges) that exact bug, same model and same prompt both runs:</p>
+<ul>
+<li><strong>Without repo-graph:</strong> 75,308 tokens, 4m36s, ~15 files explored (grep, read, grep, read).</li>
+<li><strong>With repo-graph:</strong> 29,838 tokens, ~30s, 2 files — a flow lookup and the handler file.</li>
+</ul>
+<p>Same bug, same model, same prompt. The only difference is whether repo-graph is installed.</p>
+<h2>Prompts and the tool that answers</h2>
+<ul>
+<li>"Where does the groups action hit the backend?" -&gt; <code>trace</code></li>
+<li>"Show me the full flow for the groups feature." -&gt; <code>flow</code></li>
+<li>"What's the route node for the groups endpoint?" -&gt; <code>find</code></li>
+<li>"What's the layout of this repo?" -&gt; <code>status</code></li>
+<li>"What breaks if I change this handler?" -&gt; <code>impact</code></li>
+</ul>
+<p>You don't name the tools yourself. You ask the question in plain English; the assistant picks the tool from the graph.</p>
+<h2>Set up the graph</h2>
+<p>Point repo-graph at your repo and let it scan:</p>
+<pre><code class="language-bash">claude mcp add repo-graph -- uvx mcp-repo-graph --repo .
+</code></pre>
+<p>Or run it zero-install in any session:</p>
+<pre><code class="language-bash">uvx mcp-repo-graph --repo .
+</code></pre>
+<p>After you change code, ask the model to <code>reload</code> so the graph reflects the new source.</p>
+<p>More at <a href="https://repo-graph.com">repo-graph.com</a>.</p>
+</div></article>
+<footer><div class="wrap"><div class="cmd">$ <b>pip install mcp-repo-graph</b></div><a href="/guides/">‹ All guides</a> &nbsp;·&nbsp; <a href="https://github.com/James-Chahwan/repo-graph">GitHub</a> &nbsp;·&nbsp; repo-graph.com</div></footer>
+</body>
+</html>

@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Make your AI assistant navigate by structure · repo-graph</title>
+<meta name="description" content="Teach Claude Code, Cursor, and Codex to call status before grepping, scope with the right repo-graph tool, and trust the graph.">
+<link rel="canonical" href="https://repo-graph.com/guides/daily-driver">
+<meta name="theme-color" content="#0a0a0a">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="repo-graph">
+<meta property="og:title" content="Make your AI assistant navigate by structure">
+<meta property="og:description" content="Teach Claude Code, Cursor, and Codex to call status before grepping, scope with the right repo-graph tool, and trust the graph.">
+<meta property="og:url" content="https://repo-graph.com/guides/daily-driver">
+<meta property="og:image" content="https://repo-graph.com/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<style>
+  :root{--bg:#0a0a0a;--panel:#101311;--line:#1c241e;--fg:#cfe6d2;--dim:#7e9384;
+        --grn:#8effc0;--grn2:#a8ffd0;--red:#e88a8a;
+        --mono:"SFMono-Regular",ui-monospace,"JetBrains Mono","Source Code Pro",Menlo,Consolas,monospace;}
+  *{box-sizing:border-box} html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--mono);line-height:1.65;
+       -webkit-font-smoothing:antialiased;font-size:15px}
+  a{color:var(--grn);text-decoration:none} a:hover{text-decoration:underline}
+  .wrap{max-width:760px;margin:0 auto;padding:0 24px}
+  .top{border-bottom:1px solid var(--line)}
+  .top .wrap{display:flex;align-items:center;justify-content:space-between;height:56px}
+  .brand{font-weight:700;color:var(--fg)} .brand b{color:var(--grn)}
+  .top nav a{color:var(--dim);margin-left:18px;font-size:14px}
+  .top nav a:hover{color:var(--grn)}
+  article{padding:48px 0 24px}
+  .eyebrow{color:var(--dim);font-size:12px;letter-spacing:.16em;text-transform:uppercase;margin:0 0 12px}
+  h1{font-size:clamp(26px,4.5vw,38px);line-height:1.2;margin:0 0 14px;letter-spacing:-.01em}
+  .lede{color:var(--dim);font-size:17px;margin:0 0 28px}
+  h2{font-size:20px;margin:34px 0 10px;color:var(--grn)}
+  h3{font-size:16px;margin:24px 0 8px}
+  p{margin:0 0 14px} ul,ol{margin:0 0 14px;padding-left:22px} li{margin:4px 0}
+  strong{color:var(--grn2)}
+  code{background:#0c0f0d;border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-size:13.5px}
+  pre{background:#0c0f0d;border:1px solid var(--line);border-radius:10px;padding:14px 16px;overflow:auto;margin:14px 0}
+  pre code{background:none;border:0;padding:0;font-size:13.5px;color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:14px 0;font-size:14px}
+  th,td{border:1px solid var(--line);padding:8px 12px;text-align:left}
+  th{color:var(--grn);font-weight:600}
+  blockquote{border-left:2px solid var(--line);margin:14px 0;padding:2px 16px;color:var(--dim)}
+  hr{border:0;border-top:1px solid var(--line);margin:28px 0}
+  footer{border-top:1px solid var(--line);padding:28px 0 64px;color:var(--dim);font-size:13px}
+  footer .cmd{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin:0 0 14px;color:var(--fg)}
+  footer .cmd b{color:var(--grn)}
+  .cards{display:grid;gap:14px;margin:18px 0}
+  .card{display:block;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px;color:var(--fg)}
+  .card:hover{border-color:var(--grn);text-decoration:none}
+  .card h3{margin:0 0 4px;color:var(--fg)} .card p{margin:0;color:var(--dim);font-size:14px}
+  .sec{color:var(--grn);font-size:12px;letter-spacing:.16em;text-transform:uppercase;margin:28px 0 4px}
+</style>
+</head>
+<body>
+<div class="top"><div class="wrap"><a class="brand" href="/"><b>repo</b>-graph</a><nav><a href="/guides/">Guides</a><a href="/#install">Install</a><a href="https://github.com/James-Chahwan/repo-graph">GitHub</a></nav></div></div>
+<article><div class="wrap">
+<p class="eyebrow">How-to guide</p>
+<h1>Make your AI assistant navigate by structure</h1>
+<p class="lede">Teach Claude Code, Cursor, and Codex to call status before grepping, scope with the right repo-graph tool, and trust the graph.</p>
+<p>Out of the box, an AI assistant explores a codebase the slow way: grep, read, grep, read, until it stumbles onto the right file. repo-graph hands it a structural map up front: entities, relationships, and feature flows across 20+ languages, frontend to backend. The model goes straight to what matters.</p>
+<p>The habit to build: <strong>call <code>status</code> before grepping.</strong> Orient first, then scope, then read only the files the graph points at.</p>
+<h2>The tools you'll lean on</h2>
+<p><code>status</code> orients you. It's the first call in any session, showing the shape of the repo: how many nodes, the main tiers, where things live.</p>
+<p><code>flow</code> traces a feature end to end, from entry point through service to data layer. Ask "how does login work?" and <code>flow</code> returns the path instead of fifteen file reads.</p>
+<p><code>trace</code> finds the shortest path between two nodes. Ask "where does the groups action hit the backend?" and <code>trace</code> connects the frontend call to the handler.</p>
+<p><code>impact</code> shows the blast radius. Ask "what breaks if I change the user model?" and <code>impact</code> lists downstream and upstream by tier before you touch anything.</p>
+<p><code>activate</code> runs spreading activation (Personalized PageRank) from seed nodes. Good when you half-know the area: seed a couple of names and it surfaces the related cluster.</p>
+<p>Round it out with <code>find</code> (match nodes by name or qname), <code>dense_text</code> (the full graph as one context dump), and <code>neighbours</code> (direct one-hop links).</p>
+<h2>What to type, which tool answers</h2>
+<ul>
+<li>"Give me the lay of the land." → <code>status</code></li>
+<li>"How does checkout work, front to back?" → <code>flow</code></li>
+<li>"Where does the groups action hit the backend?" → <code>trace</code></li>
+<li>"What depends on <code>AuthService</code>?" → <code>impact</code></li>
+<li>"Find everything near the billing code." → <code>activate</code></li>
+<li>"Load the full picture, then we'll dig in." → <code>dense_text</code></li>
+</ul>
+<h2>Trust the result</h2>
+<p>The point of the graph is to stop re-exploring. When <code>flow</code> returns three files, those are the three files. Read them, don't grep around to double-check. Re-reading defeats the purpose and burns the context you just saved.</p>
+<h2>One real run</h2>
+<p>quokka-stack is a Go + Angular monorepo: ~566 nodes, 620 edges. The bug was a reversed comparison operator. Same model, same prompt, two runs.</p>
+<p><strong>Without repo-graph:</strong> 75,308 tokens, 4m36s, ~15 files explored. Grep, read, grep, read.</p>
+<p><strong>With repo-graph:</strong> 29,838 tokens, ~30s, 2 files. A <code>flow</code> lookup pointed at the handler, then the handler file itself.</p>
+<p>Same bug, same model, same prompt. The only difference is whether repo-graph was installed.</p>
+<h2>Install</h2>
+<pre><code class="language-bash"># Claude Code
+claude mcp add repo-graph -- uvx mcp-repo-graph --repo .
+
+# OpenAI Codex
+codex mcp add repo-graph -- uvx mcp-repo-graph --repo .
+
+# Gemini CLI
+gemini mcp add repo-graph uvx mcp-repo-graph --repo .
+</code></pre>
+<p>Cursor, Windsurf, Antigravity, or any MCP client: add an <code>mcpServers</code> block.</p>
+<pre><code class="language-json">{
+  &quot;mcpServers&quot;: {
+    &quot;repo-graph&quot;: {
+      &quot;command&quot;: &quot;uvx&quot;,
+      &quot;args&quot;: [&quot;mcp-repo-graph&quot;, &quot;--repo&quot;, &quot;.&quot;]
+    }
+  }
+}
+</code></pre>
+<p>VS Code: <code>code --install-extension james-chahwan.repo-graph</code>. Claude Desktop: the <code>.mcpb</code> desktop extension.</p>
+<p>After your assistant edits code, call <code>reload</code> to rebuild the graph.</p>
+<p><strong>Try it:</strong> <code>uvx mcp-repo-graph --repo .</code> — more at <a href="https://repo-graph.com">repo-graph.com</a></p>
+</div></article>
+<footer><div class="wrap"><div class="cmd">$ <b>pip install mcp-repo-graph</b></div><a href="/guides/">‹ All guides</a> &nbsp;·&nbsp; <a href="https://github.com/James-Chahwan/repo-graph">GitHub</a> &nbsp;·&nbsp; repo-graph.com</div></footer>
+</body>
+</html>

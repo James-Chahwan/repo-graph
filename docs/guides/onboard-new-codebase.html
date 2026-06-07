@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Understand a new repo before you touch it · repo-graph</title>
+<meta name="description" content="Onboard to an unfamiliar codebase without reading every file. Use repo-graph's status, dense_text, flow, and graph_view to orient and drill in.">
+<link rel="canonical" href="https://repo-graph.com/guides/onboard-new-codebase">
+<meta name="theme-color" content="#0a0a0a">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="repo-graph">
+<meta property="og:title" content="Understand a new repo before you touch it">
+<meta property="og:description" content="Onboard to an unfamiliar codebase without reading every file. Use repo-graph's status, dense_text, flow, and graph_view to orient and drill in.">
+<meta property="og:url" content="https://repo-graph.com/guides/onboard-new-codebase">
+<meta property="og:image" content="https://repo-graph.com/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<style>
+  :root{--bg:#0a0a0a;--panel:#101311;--line:#1c241e;--fg:#cfe6d2;--dim:#7e9384;
+        --grn:#8effc0;--grn2:#a8ffd0;--red:#e88a8a;
+        --mono:"SFMono-Regular",ui-monospace,"JetBrains Mono","Source Code Pro",Menlo,Consolas,monospace;}
+  *{box-sizing:border-box} html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--mono);line-height:1.65;
+       -webkit-font-smoothing:antialiased;font-size:15px}
+  a{color:var(--grn);text-decoration:none} a:hover{text-decoration:underline}
+  .wrap{max-width:760px;margin:0 auto;padding:0 24px}
+  .top{border-bottom:1px solid var(--line)}
+  .top .wrap{display:flex;align-items:center;justify-content:space-between;height:56px}
+  .brand{font-weight:700;color:var(--fg)} .brand b{color:var(--grn)}
+  .top nav a{color:var(--dim);margin-left:18px;font-size:14px}
+  .top nav a:hover{color:var(--grn)}
+  article{padding:48px 0 24px}
+  .eyebrow{color:var(--dim);font-size:12px;letter-spacing:.16em;text-transform:uppercase;margin:0 0 12px}
+  h1{font-size:clamp(26px,4.5vw,38px);line-height:1.2;margin:0 0 14px;letter-spacing:-.01em}
+  .lede{color:var(--dim);font-size:17px;margin:0 0 28px}
+  h2{font-size:20px;margin:34px 0 10px;color:var(--grn)}
+  h3{font-size:16px;margin:24px 0 8px}
+  p{margin:0 0 14px} ul,ol{margin:0 0 14px;padding-left:22px} li{margin:4px 0}
+  strong{color:var(--grn2)}
+  code{background:#0c0f0d;border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-size:13.5px}
+  pre{background:#0c0f0d;border:1px solid var(--line);border-radius:10px;padding:14px 16px;overflow:auto;margin:14px 0}
+  pre code{background:none;border:0;padding:0;font-size:13.5px;color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:14px 0;font-size:14px}
+  th,td{border:1px solid var(--line);padding:8px 12px;text-align:left}
+  th{color:var(--grn);font-weight:600}
+  blockquote{border-left:2px solid var(--line);margin:14px 0;padding:2px 16px;color:var(--dim)}
+  hr{border:0;border-top:1px solid var(--line);margin:28px 0}
+  footer{border-top:1px solid var(--line);padding:28px 0 64px;color:var(--dim);font-size:13px}
+  footer .cmd{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin:0 0 14px;color:var(--fg)}
+  footer .cmd b{color:var(--grn)}
+  .cards{display:grid;gap:14px;margin:18px 0}
+  .card{display:block;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px;color:var(--fg)}
+  .card:hover{border-color:var(--grn);text-decoration:none}
+  .card h3{margin:0 0 4px;color:var(--fg)} .card p{margin:0;color:var(--dim);font-size:14px}
+  .sec{color:var(--grn);font-size:12px;letter-spacing:.16em;text-transform:uppercase;margin:28px 0 4px}
+</style>
+</head>
+<body>
+<div class="top"><div class="wrap"><a class="brand" href="/"><b>repo</b>-graph</a><nav><a href="/guides/">Guides</a><a href="/#install">Install</a><a href="https://github.com/James-Chahwan/repo-graph">GitHub</a></nav></div></div>
+<article><div class="wrap">
+<p class="eyebrow">How-to guide</p>
+<h1>Understand a new repo before you touch it</h1>
+<p class="lede">Onboard to an unfamiliar codebase without reading every file. Use repo-graph's status, dense_text, flow, and graph_view to orient and drill in.</p>
+<p>You've cloned a repo you've never seen. The usual move is grep, read, grep, read, until you've burned an hour and most of your context window guessing at structure. repo-graph skips that. It hands your AI assistant a structural map of the codebase (entities, relationships, feature flows) so the model goes to the right files instead of reading everything first. Works across 20+ languages and frameworks, frontend to backend.</p>
+<p>Here's the order that works.</p>
+<h2>1. status — orient first</h2>
+<p>Before any grepping, ask your assistant to call <code>status</code>. You get a read on the graph: what's there, the shape of it, where the weight sits. It's the "where am I" step.</p>
+<blockquote>
+<p>"What does this codebase look like? Run status."</p>
+</blockquote>
+<h2>2. dense_text — the whole-repo map</h2>
+<p><code>dense_text</code> is the primary context dump: the full graph as dense text. One call gives the model the structure of the repo without it opening a single source file. This is the move that saves the most context.</p>
+<blockquote>
+<p>"Give me the full map of this repo."</p>
+</blockquote>
+<p>The model now knows the entities and how they connect. It can answer architecture questions straight away.</p>
+<h2>3. flow — drill into one feature</h2>
+<p>Once you're oriented, scope down. <code>flow</code> traces a feature from entry to service to data, so you can follow one path without reading the files it touches.</p>
+<blockquote>
+<p>"Show me the flow for user authentication."</p>
+</blockquote>
+<p>You get the entry point, the services it calls, the data it hits. That's the feature, end to end.</p>
+<h2>4. graph_view — a tree when you want one</h2>
+<p><code>graph_view</code> gives an ASCII overview or a node tree. Handy when you want to eyeball the hierarchy under a node rather than read prose.</p>
+<blockquote>
+<p>"Show me a tree view of the payments module."</p>
+</blockquote>
+<h2>A real example</h2>
+<p>A Go + Angular monorepo, quokka-stack: ~566 nodes, 620 edges. The bug was a reversed comparison operator in a backend handler.</p>
+<p>The question you'd actually type:</p>
+<blockquote>
+<p>"Where does the groups action hit the backend?"</p>
+</blockquote>
+<p>That's a <code>trace</code> — the shortest path between two nodes. It lands the model on the handler file, which it reads. Two files, not fifteen.</p>
+<p>The numbers, same bug, same model, same prompt:</p>
+<ul>
+<li><strong>Without repo-graph:</strong> 75,308 tokens, 4m36s, ~15 files explored.</li>
+<li><strong>With repo-graph:</strong> 29,838 tokens, ~30s, 2 files.</li>
+</ul>
+<p>The only difference between the two runs is whether repo-graph is installed.</p>
+<h2>The other tools, briefly</h2>
+<p>You've got 11 across four tiers. Beyond the four above: <code>generate</code> (scan and build the graph, from a local path or a git URL), <code>impact</code> (blast radius up and down the tiers), <code>neighbours</code> (one-hop connections), <code>activate</code> (spreading activation from seed nodes), <code>find</code> (match nodes by name), <code>reload</code> (re-scan after you change code).</p>
+<p>The habit to build: before grepping or reading files, <code>status</code> to orient, then <code>dense_text</code> for full context, or <code>find</code> / <code>activate</code> / <code>flow</code> to scope in.</p>
+<h2>Try it</h2>
+<pre><code class="language-bash">uvx mcp-repo-graph --repo .
+</code></pre>
+<p>Or wire it into your client:</p>
+<pre><code class="language-bash">claude mcp add repo-graph -- uvx mcp-repo-graph --repo .
+</code></pre>
+<p>More at <a href="https://repo-graph.com">repo-graph.com</a>.</p>
+</div></article>
+<footer><div class="wrap"><div class="cmd">$ <b>pip install mcp-repo-graph</b></div><a href="/guides/">‹ All guides</a> &nbsp;·&nbsp; <a href="https://github.com/James-Chahwan/repo-graph">GitHub</a> &nbsp;·&nbsp; repo-graph.com</div></footer>
+</body>
+</html>
