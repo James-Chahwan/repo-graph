@@ -47,6 +47,28 @@ def test_generate_handles_bad_path(mcp_server):
     assert "Generation failed" in out or "Generated:" in out
 
 
+def test_generate_routes_git_url_through_resolver(mcp_server, monkeypatch):
+    """A git URL must go through `_resolve_repo` (clone) before the engine, which
+    only accepts a directory — otherwise it errors with 'not a directory'."""
+    seen = {}
+
+    def fake_resolve(spec):
+        seen["spec"] = spec
+        raise RuntimeError("RESOLVE_WAS_CALLED")  # surfaced via generate's try/except
+
+    monkeypatch.setattr(mcp_server, "_resolve_repo", fake_resolve)
+    out = mcp_server.generate("https://github.com/org/repo.git")
+    assert seen.get("spec") == "https://github.com/org/repo.git"
+    assert "RESOLVE_WAS_CALLED" in out
+
+
+def test_resolve_repo_passes_local_path_through(mcp_server):
+    assert mcp_server._resolve_repo("/home/x/proj") == "/home/x/proj"
+    assert mcp_server._looks_like_git_url("https://github.com/o/r.git")
+    assert mcp_server._looks_like_git_url("git@github.com:o/r.git")
+    assert not mcp_server._looks_like_git_url("/home/x/proj")
+
+
 # ── Tier 1: Navigation ──────────────────────────────────────────────────────
 
 

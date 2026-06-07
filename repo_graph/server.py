@@ -122,10 +122,13 @@ def get_graph() -> RustGraph:
 def generate(
     repo_path: Annotated[str, Field(description="Absolute path to the repository to scan. Defaults to the repo the server was started with.", default="")] = "",
 ) -> str:
-    """Scan the codebase and (re)build the structural graph using tree-sitter AST parsing. Auto-detects 20 languages and frameworks. Runs cross-stack resolvers (HTTP, gRPC, GraphQL, WebSocket, queues, events, CLI). Call on first use or after major refactors."""
-    target = repo_path or REPO_PATH
+    """Scan the codebase and (re)build the structural graph using tree-sitter AST parsing. Auto-detects 20 languages and frameworks. Runs cross-stack resolvers (HTTP, gRPC, GraphQL, WebSocket, queues, events, CLI). Accepts a local path or a git URL (cloned on demand). Call on first use or after major refactors."""
+    global _graph, REPO_PATH
 
     try:
+        # Resolve a git URL (e.g. https://github.com/org/repo.git) to a local
+        # clone before handing it to the engine, which only takes a directory.
+        target = _resolve_repo(repo_path or REPO_PATH)
         pg = repo_graph_py.generate(target)
     except Exception as e:
         return f"Generation failed: {e}"
@@ -136,7 +139,7 @@ def generate(
         except Exception:
             pass
 
-    global _graph
+    REPO_PATH = target  # subsequent status/flow/reload reuse the resolved clone
     _graph = RustGraph(pg, target)
 
     kind_counts: dict[str, int] = Counter(n["kind"] for n in _graph.nodes.values())
