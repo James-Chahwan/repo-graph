@@ -40,8 +40,8 @@ T0=$SECONDS; elapsed(){ echo $(( SECONDS - T0 )); }
 # identical status-line format on BOTH panes → instant visual comparison
 statln(){ printf "   %s⏱ %2ss  ·  ~%s tokens  ·  %s%s\n" "${2:-$C_DIM}" "$(elapsed)" "$(commafy "$TOK")" "$1" "$C_R"
   [ -n "$SYNC" ] && printf '~%s tok · %s · %ss' "$(commafy "$TOK")" "$1" "$(elapsed)" > "$SYNC/$SIDE.stat" 2>/dev/null; return 0; }
-tally_l(){ statln "$FILES files read" "$C_YEL"; }
-tally_r(){ statln "$CALLS tool call(s)" "$C_GRN"; }
+tally_l(){ statln "$FILES files" "$C_YEL"; }
+tally_r(){ statln "$CALLS call(s)" "$C_GRN"; }
 finalcard(){ local n lbl; if [ "$SIDE" = "left" ]; then n=$FILES; lbl="files"; else n=$CALLS; lbl="call"; fi
   card "$1" "~$(commafy "$TOK") tokens   ·   $n $lbl   ·   $(elapsed)s" "$2"; }
 card(){ local c="$1" rule="━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -93,7 +93,7 @@ outro_card(){
   surf "any MCP client"  "mcpServers JSON  ·  command: uvx"
   printf '\n   %sruns on%s   🍎 %smacOS%s     🪟 %sWindows%s     🐧 %sLinux%s\n' \
     "$C_DIM" "$C_R" "$C_B" "$C_R" "$C_B" "$C_R" "$C_B" "$C_R"
-  printf '\n   %ssearch%s %s%smcp-repo-graph%s   %s·  github.com/James-Chahwan/repo-graph  ·  repo-graph.com%s\n' \
+  printf '\n   %ssearch%s %s%smcp-repo-graph%s   %s·  repo-graph.com%s\n' \
     "$C_DIM" "$C_R" "$C_B" "$C_GRN" "$C_R" "$C_DIM" "$C_R"; }
 
 grep_show(){ cmd "grep -rn \"$1\" ."
