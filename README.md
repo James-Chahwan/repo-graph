@@ -60,7 +60,7 @@ repo-graph scans your codebase once and builds a graph of:
 - **Relationships**: imports, calls, handles, defines, contains, cross-stack HTTP
 - **Flows**: end-to-end paths from entry point to data layer
 
-Then it exposes 13 MCP tools that let the LLM:
+Then it exposes 11 MCP tools that let the LLM:
 
 1. **Orient** — "What languages are in this repo? What are the main features?"
 2. **Navigate** — "Trace the login flow from route to database" / "What's the shortest path between UserService and the payments API?"
