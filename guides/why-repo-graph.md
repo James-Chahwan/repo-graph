@@ -12,13 +12,14 @@ The fix isn't a bigger context window. It's giving the model the map up front.
 
 repo-graph is an MCP server that builds a structural graph of your codebase: the entities, how they connect, and the feature flows that run frontend to backend. The model queries the graph to find the right files instead of reading everything to find them. The engine is Rust and tree-sitter, and it handles 20+ languages and frameworks, cross-stack.
 
-It exposes 11 tools across four tiers. Three carry most of the day-to-day load:
+It exposes 13 tools across four tiers. A few carry most of the day-to-day load:
 
 - **`status`** — orient first. The shape of the repo before anything else.
 - **`dense_text`** — the whole graph as dense text. The primary context dump.
 - **`activate`** — spreading activation (Personalized PageRank) from seed nodes, so the model pulls in what's actually related to the thing it's working on.
+- **`locate` → `read`** — paste a stacktrace, failing test, or diff into `locate` to jump straight to the relevant nodes, then `read` to pull their exact source. The debugging on-ramp.
 
-The pattern is simple: before grepping or reading files, call `status` to orient, then `dense_text` for full context, or `activate`/`find`/`flow` to scope down.
+The pattern is simple: before grepping or reading files, call `status` to orient, then `dense_text` for full context, or `activate`/`find`/`locate` to scope down.
 
 ## How it reads in practice
 

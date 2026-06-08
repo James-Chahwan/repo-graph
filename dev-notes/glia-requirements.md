@@ -5,6 +5,31 @@ Engine-side work repo-graph needs from glia (`repo-graph-py` pyo3 wheel) to ship
 rendering) stay in the repo-graph wrapper and are **not** listed here — this is only what
 the wrapper cannot do without engine support.
 
+## BUG-1 (glia data-sources) — SQL data_entity false positives from prose · P1
+
+Found 2026-06-09 on quokka-stack (MongoDB-only): **every** `data_entity` node is
+`data_entity:sql:<englishword>` — `sql:the`, `sql:a`, `sql:all`, `sql:from`, `sql:each`,
+`sql:already`, `sql:matches`, `sql:caller`, ... 40 nodes, ~all garbage, zero real SQL in the
+repo. Pollutes activation/impact/dense_text on the data tier and reads as broken in any demo.
+
+Root cause in `parsers/code/extractors/src/data_entities.rs`:
+1. `has_sql_context(source)` is a coarse **file-level** gate — one `"select "` / `"update…set"`
+   substring (incl. in comments/UI strings) opens the *entire file* to the table scan.
+2. `scan_sql_tables(source)` then scans `FROM/JOIN/INTO/UPDATE <word>` over the **whole file
+   text including comments** (header says "inside string literals" but it scans raw `source`).
+   The Swagger `@Description` doc-comments in quokka's Go controllers ("…request **from the**
+   user", "…**from all** group", "…**into a** group", "is **already** shared **into the**…")
+   get minted as tables.
+3. `is_noise_entity_name` is a stopword blocklist (`this/that/it/self/...`) that doesn't catch
+   `the/a/all/from/each/already/matches/...` — and a blocklist is unwinnable here anyway.
+
+Fix direction (not a bigger blocklist): scan only inside actual **SQL string literals**, or
+require the `FROM/JOIN/INTO x` to be in the *same literal/statement* as a SQL signature
+(`SELECT … FROM x`), not merely the same file. Separately, quokka's Mongo collections aren't
+captured as `nosql:` at all — the mongoose/`.collection()` scanners don't match the Go
+mongo-driver access pattern, so the data tier is *both* polluted (false SQL) and *missing*
+(no real collections). Not a 0.4.19 wrapper blocker; a glia analyzer fix.
+
 Hand-off target: glia repo (`/home/ivy/Code/glia`), shared crates
 (`graph`, `store`, `core`, `projection-text`, `activation`) + the `py` binding.
 

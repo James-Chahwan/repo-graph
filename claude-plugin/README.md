@@ -12,9 +12,11 @@ structure instead of grepping.
 
 ## What it provides
 
-An MCP server (`repo-graph`) exposing 11 tools: `status`, `flow`, `trace`,
-`impact`, `neighbours`, `activate`, `find`, `dense_text`, `graph_view`,
-`generate`, `reload`. The server maps the workspace it's launched in.
+An MCP server (`repo-graph`) exposing 13 tools: `status`, `flow`, `trace`,
+`impact`, `neighbours`, `read`, `activate`, `find`, `locate`, `dense_text`,
+`graph_view`, `generate`, `reload`. `locate` resolves a stacktrace / failing
+test / diff to the relevant nodes; `read` slices a node's source. The server
+maps the workspace it's launched in.
 
 ## Validate & submit
 

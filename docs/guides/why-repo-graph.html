@@ -64,13 +64,14 @@
 <p>The fix isn't a bigger context window. It's giving the model the map up front.</p>
 <h2>What repo-graph does</h2>
 <p>repo-graph is an MCP server that builds a structural graph of your codebase: the entities, how they connect, and the feature flows that run frontend to backend. The model queries the graph to find the right files instead of reading everything to find them. The engine is Rust and tree-sitter, and it handles 20+ languages and frameworks, cross-stack.</p>
-<p>It exposes 11 tools across four tiers. Three carry most of the day-to-day load:</p>
+<p>It exposes 13 tools across four tiers. A few carry most of the day-to-day load:</p>
 <ul>
 <li><strong><code>status</code></strong> — orient first. The shape of the repo before anything else.</li>
 <li><strong><code>dense_text</code></strong> — the whole graph as dense text. The primary context dump.</li>
 <li><strong><code>activate</code></strong> — spreading activation (Personalized PageRank) from seed nodes, so the model pulls in what's actually related to the thing it's working on.</li>
+<li><strong><code>locate</code> → <code>read</code></strong> — paste a stacktrace, failing test, or diff into <code>locate</code> to jump straight to the relevant nodes, then <code>read</code> to pull their exact source. The debugging on-ramp.</li>
 </ul>
-<p>The pattern is simple: before grepping or reading files, call <code>status</code> to orient, then <code>dense_text</code> for full context, or <code>activate</code>/<code>find</code>/<code>flow</code> to scope down.</p>
+<p>The pattern is simple: before grepping or reading files, call <code>status</code> to orient, then <code>dense_text</code> for full context, or <code>activate</code>/<code>find</code>/<code>locate</code> to scope down.</p>
 <h2>How it reads in practice</h2>
 <p>You ask your assistant questions in plain English. Behind the scenes it picks the tool:</p>
 <ul>

@@ -14,6 +14,6 @@ Know what a change touches before you make it.
 
 ## Steps
 
-1. Call `impact` with `node=<name>`. Default `direction=downstream` (what it affects); use `upstream` for what it depends on; `depth` is 1–10.
+1. Call `impact` with `nodes=<name>`. Default `direction=downstream` (what it affects); use `upstream` for what it depends on; `depth` is 1–10. Pass several comma-separated nodes (e.g. every file in a diff) for the unified blast radius in one call; add `mode=prose` for LLM-ready context.
 2. For just the immediate wiring, call `neighbours` with `node=<name>` — direct callers and callees one hop out.
 3. Report affected nodes by tier (entry / service / handler / data), and call out anything a plain grep would miss — transitive and cross-file dependents.

@@ -1,7 +1,7 @@
 {
   "name": "repo-graph",
   "displayName": "repo-graph",
-  "version": "0.4.17",
+  "version": "0.4.19",
   "description": "Structural graph memory for AI coding assistants — navigate any codebase by structure, not guesswork.",
   "author": {
     "name": "James Chahwan",
