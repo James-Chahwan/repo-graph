@@ -38,7 +38,7 @@ FIXTURES_DIR = Path(__file__).parent / "fixtures"
 
 EXPECTED_TOOLS = {
     "generate", "status", "dense_text", "flow", "trace",
-    "impact", "neighbours", "activate", "find",
+    "impact", "neighbours", "read", "activate", "find", "locate",
     "graph_view", "reload",
 }
 
@@ -70,7 +70,7 @@ async def _connect(target_repo: Path):
 
 
 async def test_initialize_and_list_tools(target_repo):
-    """Server handshakes and advertises the expected 11 tools with schemas."""
+    """Server handshakes and advertises the expected 13 tools with schemas."""
     async with _connect(target_repo) as session:
         result = await session.list_tools()
 
@@ -169,10 +169,10 @@ async def test_graph_view_overview_over_wire(target_repo):
 async def test_impact_unknown_over_wire(target_repo):
     async with _connect(target_repo) as session:
         result = await session.call_tool(
-            "impact", {"node": "xxx_unknown_xxx"}
+            "impact", {"nodes": "xxx_unknown_xxx"}
         )
         body = _text(result)
-        assert "Node not found" in body
+        assert "No nodes found" in body
 
 
 async def test_flow_unknown_over_wire(target_repo):
@@ -235,10 +235,12 @@ async def test_all_tools_callable_no_errors(target_repo):
             ("dense_text", {}),
             ("flow", {"feature": "anything"}),
             ("trace", {"from_node": "x", "to_node": "y"}),
-            ("impact", {"node": "x"}),
+            ("impact", {"nodes": "x"}),
             ("neighbours", {"node": "x"}),
+            ("read", {"node": "x"}),
             ("activate", {"seeds": "x"}),
             ("find", {"query": "x"}),
+            ("locate", {"signal": "x", "kind": "test"}),
             ("graph_view", {}),
             ("reload", {}),
         ]

@@ -32,10 +32,12 @@ mcp = FastMCP(
     "repo-graph",
     instructions=(
         "Structural map of this codebase — entities, relationships, and feature flows. "
-        "BEFORE grepping or reading files, call `status` to orient, then use `dense_text` "
-        "for full graph context or `activate` to find relevant nodes from seeds. "
-        "Use for: finding feature flows, tracing paths between components, impact analysis, "
-        "context cost estimation. Works with any language/framework."
+        "BEFORE grepping or reading files, call `status` to orient, then `dense_text` for "
+        "full graph context or `activate`/`find` to surface relevant nodes. "
+        "Debugging an error? Paste the stacktrace, failing-test id, or diff into `locate` to "
+        "jump straight to the code that matters, then `read` to pull a node's exact source. "
+        "Also: feature flows (`flow`), shortest paths (`trace`), and blast radius before a "
+        "change (`impact`). Works with any language/framework."
     ),
 )
 
@@ -126,6 +128,25 @@ def get_graph() -> RustGraph:
     return _build_graph(REPO_PATH)
 
 
+def _truncate(text: str, budget: int, what: str = "output") -> str:
+    """Cap `text` at `budget` chars (line-aligned) with a marker. budget <= 0 = no cap.
+
+    The shared char ceiling for the read tools so a result fits a small-model
+    context window. Per-tool item caps still apply as sane defaults; this is the
+    optional hard limit on top.
+    """
+    if budget <= 0 or len(text) <= budget:
+        return text
+    cut = text.rfind("\n", 0, budget)
+    if cut <= 0:
+        cut = budget
+    return (
+        text[:cut]
+        + f"\n\n[... {what} truncated: {len(text) - cut} of {len(text)} chars omitted "
+          f"to fit budget={budget}. Narrow the query or raise budget.]"
+    )
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Tier 0 — Generation
 # ─────────────────────────────────────────────────────────────────────────────
@@ -181,26 +202,33 @@ except ValueError:
 
 
 @mcp.tool(annotations=ToolAnnotations(title="Dense Graph Text", readOnlyHint=True))
-def dense_text() -> str:
-    """Full structural graph in dense sigil notation — the complete map of entities, relationships, and scopes. This is the primary context tool: feed it to the LLM so it can navigate without reading files. Large graphs are truncated; scope with `find`/`activate`/`flow`."""
+def dense_text(
+    seed: Annotated[str, Field(description="Optional node/qname to scope the map around (its activated neighbourhood). Blank = whole graph.", default="")] = "",
+    budget: Annotated[int, Field(description="Max chars in the result. 0 = default cap (~50k, or REPO_GRAPH_DENSE_MAX_CHARS).", default=0, ge=0)] = 0,
+) -> str:
+    """Structural graph in dense sigil notation — the map of entities, relationships, and scopes. The primary context tool: feed it to the LLM so it can navigate without reading files. With `seed`, returns just that node's activated neighbourhood (scoped map) instead of the whole graph; otherwise the full map, truncated to budget."""
     g = get_graph()
-    text = g.pygraph.dense_text()
-    if DENSE_TEXT_MAX_CHARS <= 0 or len(text) <= DENSE_TEXT_MAX_CHARS:
-        return text
-    cut = text.rfind("\n", 0, DENSE_TEXT_MAX_CHARS)
-    if cut <= 0:
-        cut = DENSE_TEXT_MAX_CHARS
-    return (
-        text[:cut]
-        + f"\n\n[... dense_text truncated: {len(text) - cut} of {len(text)} chars omitted to "
-          f"stay under client tool-result limits. This graph is large — scope it with `find`, "
-          f"`activate`, or `flow` instead of dumping the whole map.]"
-    )
+
+    if seed:
+        resolved = g.find_node(seed)
+        if not resolved:
+            return f"Seed node not found: '{seed}'"
+        scores = g.pygraph.activate([resolved["id"]], 50)
+        node_ids = [nid for nid, _ in scores] or [resolved["id"]]
+        text = g.pygraph.dense_text_subset(node_ids)
+        cap = budget  # scoped output is already small; honour explicit budget only
+    else:
+        text = g.pygraph.dense_text()
+        cap = budget or DENSE_TEXT_MAX_CHARS
+
+    what = "scoped dense_text" if seed else "dense_text"
+    return _truncate(text, cap, what)
 
 
 @mcp.tool(annotations=ToolAnnotations(title="Feature Flow", readOnlyHint=True))
 def flow(
     feature: Annotated[str, Field(description="Feature name or keyword to match against entry points. Case-insensitive, supports partial matching.")],
+    budget: Annotated[int, Field(description="Max chars in the result. 0 = no cap.", default=0, ge=0)] = 0,
 ) -> str:
     """End-to-end flow for a feature: entry point through service layer to data store, rendered as layered tiers. Call after `status` to drill into a specific feature."""
     g = get_graph()
@@ -211,7 +239,7 @@ def flow(
         available = ", ".join(sorted(g.flows.keys())[:30])
         return f"No flow found for '{feature}'. Available entry points: {available}"
 
-    return _render_nodes_layered(feature, flow_nodes[:30], g)
+    return _truncate(_render_nodes_layered(feature, flow_nodes[:30], g), budget, "flow")
 
 
 @mcp.tool(annotations=ToolAnnotations(title="Trace Path", readOnlyHint=True))
@@ -257,35 +285,53 @@ def trace(
 
 @mcp.tool(annotations=ToolAnnotations(title="Impact Analysis", readOnlyHint=True))
 def impact(
-    node: Annotated[str, Field(description="Node name or qname pattern to analyze.")],
-    direction: Annotated[str, Field(description="'downstream' or 'upstream'.", default="downstream")] = "downstream",
+    nodes: Annotated[str, Field(description="One or more node names/qnames, comma-separated. A diff touching N files is one call.")],
+    direction: Annotated[str, Field(description="'downstream' (what it affects) or 'upstream' (what it depends on).", default="downstream")] = "downstream",
     depth: Annotated[int, Field(description="How many hops to traverse. Default 3.", default=3, ge=1, le=10)] = 3,
+    mode: Annotated[str, Field(description="'table' (tiered list) or 'prose' (primed prose for LLM context).", default="table")] = "table",
+    budget: Annotated[int, Field(description="Max chars in the result. 0 = no cap.", default=0, ge=0)] = 0,
 ) -> str:
-    """Blast radius analysis: fan out from a node to see everything it affects (downstream) or depends on (upstream), grouped by tier."""
+    """Blast radius analysis: fan out from one or more nodes to see everything they affect (downstream) or depend on (upstream), grouped by tier. Pass several comma-separated nodes to assess a whole diff at once."""
     g = get_graph()
-    resolved = g.find_node(node)
-    if not resolved:
-        return f"Node not found: '{node}'"
 
-    if direction == "upstream":
-        results = g.upstream(resolved["id"], depth)
-    else:
-        results = g.downstream(resolved["id"], depth)
+    seeds = []
+    for s in nodes.split(","):
+        s = s.strip()
+        if not s:
+            continue
+        r = g.find_node(s)
+        if r:
+            seeds.append(r)
+    if not seeds:
+        return f"No nodes found for: '{nodes}'"
 
-    if not results:
-        return f"No {direction} nodes found from {resolved['name']} (depth={depth})"
+    # Union per-seed traversals; keep the closest depth per affected node and
+    # drop the seeds themselves from the result set.
+    seed_ids = {s["id"] for s in seeds}
+    closest: dict[int, dict] = {}
+    for s in seeds:
+        results = g.upstream(s["id"], depth) if direction == "upstream" else g.downstream(s["id"], depth)
+        for r in results:
+            if r["id"] in seed_ids:
+                continue
+            prev = closest.get(r["id"])
+            if prev is None or r.get("depth", 0) < prev.get("depth", 0):
+                closest[r["id"]] = r
+    affected = list(closest.values())
 
-    r_icon = _kind_icon(resolved["kind"])
-    lines = [
-        f"  Impact {direction} from {resolved['name']} (depth={depth})",
-        f"  {r_icon} {resolved['name']}  [{resolved['kind']}]",
-        "",
-    ]
+    seed_label = ", ".join(s["name"] for s in seeds)
+    if not affected:
+        return f"No {direction} nodes found from {seed_label} (depth={depth})"
+
+    if mode == "prose":
+        node_ids = list(seed_ids) + [r["id"] for r in affected]
+        return _truncate(g.pygraph.prose(node_ids), budget, "impact prose")
+
+    lines = [f"  Impact {direction} from {seed_label} (depth={depth})", ""]
 
     by_tier: dict[str, list[dict]] = {}
-    for r in results:
-        tier = _classify_tier(r["kind"])
-        by_tier.setdefault(tier, []).append(r)
+    for r in affected:
+        by_tier.setdefault(_classify_tier(r["kind"]), []).append(r)
 
     for tier_name in ["ENTRY", "SERVICE", "HANDLER", "DATA"]:
         items = by_tier.get(tier_name, [])
@@ -300,14 +346,15 @@ def impact(
             lines.append(f"    ... and {len(items) - 15} more")
 
     lines.append("")
-    lines.append(f"  -- {len(results)} nodes affected")
+    lines.append(f"  -- {len(affected)} nodes affected")
 
-    return "\n".join(lines)
+    return _truncate("\n".join(lines), budget, "impact")
 
 
 @mcp.tool(annotations=ToolAnnotations(title="Node Neighbours", readOnlyHint=True))
 def neighbours(
     node: Annotated[str, Field(description="Node name or qname pattern to inspect.")],
+    budget: Annotated[int, Field(description="Max chars in the result. 0 = no cap.", default=0, ge=0)] = 0,
 ) -> str:
     """All direct connections to and from a node, one hop in each direction."""
     g = get_graph()
@@ -345,7 +392,44 @@ def neighbours(
     if not n["outbound"] and not n["inbound"]:
         lines.append("  (isolated node -- no connections)")
 
-    return "\n".join(lines)
+    return _truncate("\n".join(lines), budget, "neighbours")
+
+
+@mcp.tool(annotations=ToolAnnotations(title="Read Source", readOnlyHint=True))
+def read(
+    node: Annotated[str, Field(description="Node name or qname to read the source for.")],
+    context_lines: Annotated[int, Field(description="Lines of padding above and below the node's span. Default 0.", default=0, ge=0, le=200)] = 0,
+    budget: Annotated[int, Field(description="Max chars in the result. 0 = no cap.", default=0, ge=0)] = 0,
+) -> str:
+    """Return the source code for a node, sliced from its file by the graph's line span. Use after `locate`/`find`/`activate` to read the exact code without grepping. Returns a code block headed by the qname and `path:start-end`."""
+    g = get_graph()
+    resolved = g.find_node(node)
+    if not resolved:
+        return f"Node not found: '{node}'"
+
+    path = resolved.get("path")
+    start = resolved.get("start_line")
+    end = resolved.get("end_line") or start
+    if not path or not start:
+        return f"{resolved['name']} has no source span (synthetic or cross-stack node) — nothing to read."
+
+    file_path = g.repo_path / path
+    if not file_path.is_file():
+        return f"Source file not found on disk: {path}"
+    try:
+        src_lines = file_path.read_text(encoding="utf-8", errors="replace").splitlines()
+    except OSError as e:
+        return f"Could not read {path}: {e}"
+
+    lo = max(1, start - context_lines)
+    hi = min(len(src_lines), end + context_lines)
+    snippet = "\n".join(src_lines[lo - 1:hi])
+
+    header = (
+        f"  {resolved['qname']}  [{resolved['kind']}]\n"
+        f"  {path}:{start}-{end}\n"
+    )
+    return _truncate(f"{header}\n```\n{snippet}\n```", budget, "source")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -353,12 +437,18 @@ def neighbours(
 # ─────────────────────────────────────────────────────────────────────────────
 
 
+_PROFILES = {"default", "repair", "review", "onboard"}
+
+
 @mcp.tool(annotations=ToolAnnotations(title="Spreading Activation", readOnlyHint=True))
 def activate(
     seeds: Annotated[str, Field(description="Comma-separated node names or qname patterns to seed activation from.")],
     top_k: Annotated[int, Field(description="Number of top results to return. Default 20.", default=20, ge=1, le=100)] = 20,
+    profile: Annotated[str, Field(description="Edge-weight preset: 'default', 'repair' (up-weights call/data), 'review', or 'onboard' (up-weights entry/module).", default="default")] = "default",
+    mode: Annotated[str, Field(description="'table' (ranked list) or 'prose' (primed prose for LLM context).", default="table")] = "table",
+    budget: Annotated[int, Field(description="Max chars in the result. 0 = no cap.", default=0, ge=0)] = 0,
 ) -> str:
-    """Spreading activation from seed nodes — finds the most relevant nodes in the graph relative to your seeds. Uses Personalized PageRank with domain-tuned edge weights. Returns ranked results by relevance score."""
+    """Spreading activation from seed nodes — finds the most relevant nodes in the graph relative to your seeds. Uses Personalized PageRank with domain-tuned edge weights. `profile` retunes the weights for a task (repair/review/onboard). `mode=prose` returns the ranked subgraph as primed prose instead of a score table."""
     g = get_graph()
 
     seed_ids = []
@@ -375,13 +465,17 @@ def activate(
     if not seed_ids:
         return f"No seed nodes found for: {seeds}"
 
-    scores = g.pygraph.activate(seed_ids, top_k)
+    prof = profile if profile in _PROFILES and profile != "default" else None
+    scores = g.pygraph.activate(seed_ids, top_k, profile=prof)
 
-    lines = [
-        f"  Activation from: {', '.join(seed_names)}",
-        f"  Top {len(scores)} results:",
-        "",
-    ]
+    if mode == "prose":
+        node_ids = [nid for nid, _ in scores] or seed_ids
+        return _truncate(g.pygraph.prose(node_ids), budget, "activation prose")
+
+    header = f"  Activation from: {', '.join(seed_names)}"
+    if prof:
+        header += f"  (profile={profile})"
+    lines = [header, f"  Top {len(scores)} results:", ""]
 
     for nid, score in scores:
         node = g.nodes.get(nid)
@@ -391,12 +485,13 @@ def activate(
         conf = _confidence_icon(node.get("confidence", "medium"))
         lines.append(f"    {score:.4f}  {icon} {conf} {node['name']}  [{node['kind']}]  {node['qname']}")
 
-    return "\n".join(lines)
+    return _truncate("\n".join(lines), budget, "activation")
 
 
 @mcp.tool(annotations=ToolAnnotations(title="Find Nodes", readOnlyHint=True))
 def find(
     query: Annotated[str, Field(description="Node name or qname pattern to search for. Supports partial matching.")],
+    budget: Annotated[int, Field(description="Max chars in the result. 0 = no cap.", default=0, ge=0)] = 0,
 ) -> str:
     """Find nodes by name or qualified name pattern. Returns matching nodes with their kinds and qnames."""
     g = get_graph()
@@ -419,7 +514,51 @@ def find(
     if len(results) > 30:
         lines.append(f"    ... and {len(results) - 30} more")
 
-    return "\n".join(lines)
+    return _truncate("\n".join(lines), budget, "find")
+
+
+@mcp.tool(annotations=ToolAnnotations(title="Locate", readOnlyHint=True))
+def locate(
+    signal: Annotated[str, Field(description="Raw stacktrace, failing-test id (path::test_name), or a unified diff / changed-file list.")],
+    kind: Annotated[str, Field(description="'stacktrace', 'test', 'diff', or 'auto' (sniff the shape).", default="auto")] = "auto",
+    top_k: Annotated[int, Field(description="Number of ranked nodes to return. Default 20.", default=20, ge=1, le=100)] = 20,
+    mode: Annotated[str, Field(description="'table' (ranked list) or 'prose' (primed prose for LLM context).", default="table")] = "table",
+    budget: Annotated[int, Field(description="Max chars in the result. 0 = no cap.", default=0, ge=0)] = 0,
+) -> str:
+    """Resolve a failure signal — a stacktrace, a failing-test id, or a diff/changed-file list — to the most relevant nodes in the graph. Sniffs the signal shape, maps frames/symbols/paths to seed nodes, then ranks the surrounding subgraph by Personalized PageRank. The on-ramp for debugging: paste the error, get the code that matters."""
+    g = get_graph()
+    try:
+        seed_ids = g.pygraph.resolve_signal(signal, kind)
+    except Exception as e:
+        return f"Locate failed: {e}"
+
+    if not seed_ids:
+        return (
+            f"No graph nodes resolved from the {kind} signal — none of its frames/"
+            f"symbols/paths matched a node. Fall back to `find` or `activate` with a keyword."
+        )
+
+    scores = g.pygraph.activate(seed_ids, top_k)
+
+    if mode == "prose":
+        node_ids = [nid for nid, _ in scores] or seed_ids
+        return _truncate(g.pygraph.prose(node_ids), budget, "locate prose")
+
+    lines = [
+        f"  Located from {kind} signal -> {len(seed_ids)} seed node(s)",
+        f"  Top {len(scores)} relevant nodes:",
+        "",
+    ]
+    for nid, score in scores:
+        node = g.nodes.get(nid)
+        if not node:
+            continue
+        icon = _kind_icon(node["kind"])
+        conf = _confidence_icon(node.get("confidence", "medium"))
+        loc = f"  {node['path']}:{node['start_line']}" if node.get("path") else ""
+        lines.append(f"    {score:.4f}  {icon} {conf} {node['name']}  [{node['kind']}]{loc}")
+
+    return _truncate("\n".join(lines), budget, "locate")
 
 
 # ─────────────────────────────────────────────────────────────────────────────

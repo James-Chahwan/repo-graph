@@ -9,37 +9,21 @@ import json
 from collections import defaultdict
 from pathlib import Path
 
+import repo_graph_py
 
-KIND_NAMES = {
-    1: "module", 2: "class", 3: "function", 4: "method",
-    5: "route", 6: "package", 7: "interface", 8: "struct",
-    9: "endpoint", 10: "enum",
-    11: "grpc_service", 12: "grpc_client", 13: "queue_consumer", 14: "queue_producer",
-    15: "graphql_resolver", 16: "graphql_operation", 17: "ws_handler", 18: "ws_client",
-    19: "event_handler", 20: "event_emitter", 21: "cli_command", 22: "cli_invocation",
-    23: "database", 24: "cache", 25: "blob_store", 26: "search_index", 27: "email_service",
-    28: "component", 29: "hook", 30: "service", 31: "directive",
-    32: "pipe", 33: "guard", 34: "composable",
-    35: "attribute",
-    36: "data_entity", 37: "cron_job", 38: "config_key", 39: "infra_resource", 40: "package_dep",
-    41: "region", 42: "doc_section", 43: "state_var",
-}
 
-CATEGORY_NAMES = {
-    1: "defines", 2: "contains", 3: "imports", 4: "calls", 5: "uses",
-    6: "documents", 7: "tests", 8: "injects",
-    9: "handled_by", 10: "http_calls",
-    11: "grpc_calls", 12: "queue_flows", 13: "graphql_calls", 14: "ws_connects",
-    15: "event_flows", 16: "shares_schema", 17: "cli_invokes",
-    18: "accesses_data", 19: "has_attribute", 20: "inherits_from", 21: "returns_type",
-    22: "shares_data_entity",
-    23: "schedules", 24: "shares_cron_schedule",
-    25: "reads_config", 26: "defines_config", 27: "shares_config",
-    28: "infra_references", 29: "shares_infra_ref",
-    30: "depends_on", 31: "shares_dependency",
-}
+# Kind / edge-category id -> name, pulled live from the engine's canonical decode
+# tables (repo-graph-py >= 0.4.15) so the wrapper never drifts from glia's
+# code-domain registry. Names are lowercased to match the wrapper's tier sets and
+# icons (server.py). Unknown ids fall back to kind_NN / cat_NN at lookup time.
+KIND_NAMES = {i: n.lower() for i, n in repo_graph_py.kind_names()}
+CATEGORY_NAMES = {i: n.lower() for i, n in repo_graph_py.category_names()}
 
-ENTRY_KINDS = {5, 11, 13, 15, 17, 19, 21, 37}  # route, grpc_service, queue_consumer, graphql_resolver, ws_handler, event_handler, cli_command, cron_job
+# Kinds that start a flow (anything that triggers code execution). Hand-kept: the
+# decode tables give names, not entry/tier semantics. Mirrors glia code-domain ids
+# — route, grpc_service, queue_consumer, graphql_resolver, ws_handler,
+# event_handler, cli_command, cron_job.
+ENTRY_KINDS = {5, 11, 13, 15, 17, 19, 21, 37}
 
 
 class RustGraph:
@@ -64,6 +48,11 @@ class RustGraph:
                 "name": n["name"],
                 "qname": n["qname"],
                 "confidence": n["confidence"],
+                # Source span (repo-graph-py >= 0.4.16, GR-1). None for synthetic
+                # / cross-stack nodes that have no file location.
+                "path": n.get("path"),
+                "start_line": n.get("start_line"),
+                "end_line": n.get("end_line"),
             }
         for e in json.loads(self.pygraph.edges_json()):
             cat = CATEGORY_NAMES.get(e["category"], f"cat_{e['category']}")
@@ -168,22 +157,3 @@ class RustGraph:
         if results:
             return self.downstream(results[0]["id"], depth=6)
         return []
-
-    # -- File sizes --
-
-    def file_line_count(self, qname: str) -> int:
-        parts = qname.replace("::", "/")
-        candidates = [
-            self.repo_path / f"{parts}.py",
-            self.repo_path / f"{parts}.go",
-            self.repo_path / f"{parts}.ts",
-            self.repo_path / f"{parts}.tsx",
-            self.repo_path / f"{parts}.rs",
-        ]
-        for p in candidates:
-            if p.is_file():
-                try:
-                    return sum(1 for _ in p.open(encoding="utf-8", errors="ignore"))
-                except OSError:
-                    return 0
-        return 0

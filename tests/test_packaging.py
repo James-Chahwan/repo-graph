@@ -87,7 +87,7 @@ def test_resolve_passes_through_local_path(tmp_path):
 
 async def test_all_tools_have_submission_annotations():
     tools = await srv.mcp.list_tools()
-    assert len(tools) == 11
+    assert len(tools) == 13
     for t in tools:
         ann = t.annotations
         assert ann is not None and ann.title, f"{t.name} missing annotations.title"

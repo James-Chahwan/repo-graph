@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Is
 
-A thin **Python MCP server** that wraps the **glia** Rust engine (crate `repo-graph-py`, PyPI `repo-graph-py`). It exposes **11 MCP tools** across four tiers — generation, navigation, activation & context, health & admin — over any codebase.
+A thin **Python MCP server** that wraps the **glia** Rust engine (crate `repo-graph-py`, PyPI `repo-graph-py`). It exposes **13 MCP tools** across four tiers — generation, navigation, activation & context, health & admin — over any codebase.
 
 The Python side is ~900 lines across 4 files. All parsing, graph building, storage (`.gmap`), and activation happen in Rust. The Python package only hosts the MCP server, the CLI entrypoints, and a thin wrapper over the pyo3 bindings.
 
@@ -58,7 +58,7 @@ Six test layers:
 
 ```
 repo_graph/
-  server.py   MCP server — 11 tools across 4 tiers, wraps repo-graph-py
+  server.py   MCP server — 13 tools across 4 tiers, wraps repo-graph-py
   graph.py    Graph loader — reads .gmap via pyo3, BFS traversal helpers
   init.py     repo-graph-init CLI — bootstraps a target repo
   __init__.py empty
@@ -69,11 +69,13 @@ The Rust engine lives in a separate repo (`glia` at `/home/ivy/Code/glia`) as of
 ### MCP tool tiers
 
 - **Generation**: `generate` — scan codebase and (re)build graph
-- **Navigation**: `status`, `flow`, `trace`, `impact`, `neighbours`
-- **Activation & Context**: `activate`, `find`, `dense_text`
+- **Navigation**: `status`, `flow`, `trace`, `impact`, `neighbours`, `read`
+- **Activation & Context**: `activate`, `find`, `locate`, `dense_text`
 - **Health & Admin**: `graph_view`, `reload`
 
-Lock: the public tool surface is asserted by `tests/test_mcp_tools.py::test_eleven_tools_decorated`. Adding or removing a tool must update both `server.py` and this list.
+`read` slices a node's source from its file span (engine GR-1). `locate` resolves a stacktrace/failing-test/diff to seed nodes then ranks the surrounding subgraph (engine GR-2). `impact` takes comma-separated nodes (whole-diff blast radius). `activate`/`impact`/`locate` take `mode=prose` for primed-prose output; `activate` takes a `profile` (default/repair/review/onboard); `dense_text` takes `seed=` for a scoped map. Most read tools take a `budget` char cap.
+
+Lock: the public tool surface is asserted by `tests/test_mcp_tools.py::test_thirteen_tools_decorated` (checked against the live MCP registry, catches added *and* removed tools). Adding or removing a tool must update both `server.py` and this list.
 
 ### Python/Rust boundary
 

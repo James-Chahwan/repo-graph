@@ -127,7 +127,21 @@ def test_impact_upstream(mcp_server):
 
 def test_impact_unknown_node(mcp_server):
     out = mcp_server.impact("xxx_unknown_node_xxx")
-    assert "Node not found" in out
+    assert "No nodes found" in out
+
+
+def test_impact_multi_seed(mcp_server):
+    names = [n["name"] for n in mcp_server._graph.nodes.values() if n.get("name") and len(n["name"]) > 1]
+    seeds = ",".join(names[:2])
+    out = mcp_server.impact(seeds, depth=2)
+    assert "Impact downstream" in out or "No downstream" in out
+
+
+def test_impact_prose_mode(mcp_server):
+    name = _real_node_name(mcp_server)
+    out = mcp_server.impact(name, mode="prose")
+    # prose is free text via the engine; just confirm a non-empty, non-error result
+    assert out.strip() and "Node not found" not in out
 
 
 def test_neighbours(mcp_server):
@@ -145,6 +159,36 @@ def test_neighbours(mcp_server):
 def test_neighbours_unknown(mcp_server):
     out = mcp_server.neighbours("xxx_unknown_node_xxx")
     assert "Node not found" in out
+
+
+def _node_with_span(mcp_server) -> dict | None:
+    for n in mcp_server._graph.nodes.values():
+        if n.get("path") and n.get("start_line"):
+            return n
+    return None
+
+
+def test_read_returns_source(mcp_server):
+    node = _node_with_span(mcp_server)
+    if node is None:
+        pytest.skip("fixture produced no node with a source span")
+    out = mcp_server.read(node["name"])
+    assert node["path"] in out           # header carries the real path
+    assert "```" in out                  # fenced code block
+
+
+def test_read_unknown_node(mcp_server):
+    out = mcp_server.read("xxx_unknown_node_xxx")
+    assert "Node not found" in out
+
+
+def test_read_context_lines_pads(mcp_server):
+    node = _node_with_span(mcp_server)
+    if node is None:
+        pytest.skip("fixture produced no node with a source span")
+    base = mcp_server.read(node["name"])
+    padded = mcp_server.read(node["name"], context_lines=5)
+    assert len(padded) >= len(base)
 
 
 # ── Tier 2: Activation & Context ────────────────────────────────────────────
@@ -178,6 +222,43 @@ def test_activate_unknown_seed(mcp_server):
     assert "No seed nodes found" in out
 
 
+def test_activate_profile(mcp_server):
+    name = _real_node_name(mcp_server)
+    out = mcp_server.activate(name, 10, profile="repair")
+    assert "profile=repair" in out
+
+
+def test_activate_prose_mode(mcp_server):
+    name = _real_node_name(mcp_server)
+    out = mcp_server.activate(name, 10, mode="prose")
+    assert out.strip() and "No seed nodes found" not in out
+
+
+def test_locate_resolves_path(mcp_server):
+    out = mcp_server.locate("backend/server/server.go", kind="diff", top_k=5)
+    # either resolves to ranked nodes, or cleanly reports nothing matched
+    assert "relevant nodes" in out or "No graph nodes resolved" in out
+
+
+def test_locate_no_match(mcp_server):
+    out = mcp_server.locate("zzz/nonexistent/file_xyz_qqq.go", kind="diff")
+    assert "No graph nodes resolved" in out or "relevant nodes" in out
+
+
+def test_dense_text_scoped_seed(mcp_server):
+    name = _real_node_name(mcp_server)
+    out = mcp_server.dense_text(seed=name)
+    assert out.strip() and "not found" not in out.lower()
+
+
+def test_dense_text_budget_truncates(mcp_server):
+    full = mcp_server.dense_text()
+    if len(full) <= 200:
+        pytest.skip("fixture dense_text smaller than budget")
+    out = mcp_server.dense_text(budget=200)
+    assert "truncated" in out
+
+
 # ── Tier 3: Health & Admin ──────────────────────────────────────────────────
 
 
@@ -207,24 +288,20 @@ def test_reload(mcp_server):
     assert pre == post, f"reload changed node count: {pre} -> {post}"
 
 
-# ── Smoke: confirm all 11 tools are decorated ───────────────────────────────
+# ── Smoke: confirm all 13 tools are registered ──────────────────────────────
 
 
-def test_eleven_tools_decorated():
-    """Lock the public surface — if a tool is added/removed, this test fails
-    and the CLAUDE.md tool list must be updated in lockstep."""
+def test_thirteen_tools_decorated():
+    """Lock the public surface — checked against the actual MCP tool registry, so
+    it catches both removed and added tools. If a tool changes, update both
+    server.py and the CLAUDE.md tool list in lockstep."""
     from repo_graph import server
 
     expected = {
-        "generate", "status", "dense_text", "flow", "trace",
-        "impact", "neighbours", "activate", "find",
-        "graph_view", "reload",
+        "generate",                                   # Generation
+        "status", "flow", "trace", "impact", "neighbours", "read",  # Navigation
+        "activate", "find", "locate", "dense_text",   # Activation & Context
+        "graph_view", "reload",                       # Health & Admin
     }
-    actual = {
-        name for name in dir(server)
-        if not name.startswith("_")
-        and callable(getattr(server, name))
-        and getattr(server, name).__module__ == "repo_graph.server"
-        and name in expected
-    }
+    actual = set(server.mcp._tool_manager._tools.keys())
     assert actual == expected, f"tool surface drifted: missing={expected - actual}, extra={actual - expected}"

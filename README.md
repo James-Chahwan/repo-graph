@@ -175,12 +175,14 @@ this — the server builds the graph on first connect.
 
 ### 2. Use it
 
-The AI assistant now has access to all 11 tools. Example queries it can answer:
+The AI assistant now has access to all 13 tools. Example queries it can answer:
 
 - *"What does this codebase do?"* → `status` tool
 - *"Trace the checkout flow"* → `flow` tool
 - *"What would break if I change UserService?"* → `impact` tool
 - *"Which nodes are relevant to this bug?"* → `activate` / `find` tools
+- *"Here's a stacktrace — where do I look?"* → `locate` tool
+- *"Show me that function's source"* → `read` tool
 - *"Give me the full graph context cheaply"* → `dense_text` tool
 - *"Show me the auth flow visually"* → `graph_view` tool
 
@@ -208,13 +210,13 @@ Every commit keeps the graph current. The LLM always has a fresh map without was
 
 ## MCP tools reference
 
-repo-graph exposes **11 tools** across four tiers.
+repo-graph exposes **13 tools** across four tiers.
 
 ### Generation
 
 | Tool | Parameters | Description |
 |------|-----------|-------------|
-| `generate` | `repo_path` *(optional)* | Scan the codebase with tree-sitter, rebuild the graph, run cross-stack resolvers, and cache it |
+| `generate` | `repo_path` *(optional)*, `incremental` | Scan the codebase with tree-sitter, rebuild the graph, run cross-stack resolvers, and cache it. Incremental by default — only changed files re-parse |
 
 ### Navigation
 
@@ -223,23 +225,27 @@ repo-graph exposes **11 tools** across four tiers.
 | `status` | *(none)* | Repo overview: node/edge counts, detected kinds, entry points, dense preview. Call this first to orient |
 | `flow` | `feature` | End-to-end flow for a feature — entry point → service layer → data store, in layered tiers |
 | `trace` | `from_node`, `to_node` | Shortest path between two nodes, hop by hop with tier transitions |
-| `impact` | `node`, `direction` (`downstream`/`upstream`), `depth` | Blast radius — what a node affects (downstream) or depends on (upstream) |
+| `impact` | `nodes` *(comma-separated)*, `direction`, `depth`, `mode` | Blast radius — what nodes affect (downstream) or depend on (upstream). Pass several nodes for a whole-diff radius |
 | `neighbours` | `node` | All direct connections to and from a node, one hop each way |
+| `read` | `node`, `context_lines` | Return a node's source code, sliced from its file by the graph's line span — read the exact code without grepping |
 
 ### Activation & context
 
 | Tool | Parameters | Description |
 |------|-----------|-------------|
-| `activate` | `seeds`, `top_k` | Spreading activation (Personalized PageRank) from seed nodes — the most relevant nodes to your seeds |
+| `activate` | `seeds`, `top_k`, `profile`, `mode` | Spreading activation (Personalized PageRank) from seed nodes — the most relevant nodes to your seeds. `profile` retunes for repair/review/onboard |
 | `find` | `query` | Find nodes by name or qualified-name pattern |
-| `dense_text` | *(none)* | The full graph in dense sigil notation — the primary context tool; feed it to the LLM to navigate without reading files |
+| `locate` | `signal`, `kind` (`stacktrace`/`test`/`diff`/`auto`), `top_k`, `mode` | Resolve a stacktrace, failing-test id, or diff to the most relevant nodes — paste the error, get the code that matters |
+| `dense_text` | `seed` *(optional)*, `budget` | The graph in dense sigil notation — the primary context tool. With `seed`, returns just that node's neighbourhood (scoped map) |
 
 ### Health & admin
 
 | Tool | Parameters | Description |
 |------|-----------|-------------|
 | `graph_view` | `node` *(optional)*, `depth` | Visual ASCII map — a node's tree/neighbourhood, or the full overview |
-| `reload` | *(none)* | Re-generate the graph from source after code changes |
+| `reload` | `incremental` | Re-generate the graph from source after code changes. Incremental by default |
+
+Most read tools also take a `budget` (max chars) so a result fits a small-model context window. `activate` / `impact` / `locate` take `mode=prose` to return the ranked subgraph as primed prose instead of a table.
 
 ## How it works
 
@@ -249,7 +255,7 @@ repo-graph exposes **11 tools** across four tiers.
 2. **Extract** — cross-cutting extractors layer on HTTP routes, data sources, CLI entrypoints, gRPC services, queue consumers
 3. **Resolve** — graph builder resolves intra-repo references; cross-graph resolvers link stacks (frontend HTTP calls → backend routes, etc.)
 4. **Store** — merged graph lands in `.ai/repo-graph/` as a zero-copy `.gmap` (rkyv + mmap) plus JSON projections for portability
-5. **Serve** — the MCP server loads the graph into memory and exposes the 11 tools
+5. **Serve** — the MCP server loads the graph into memory and exposes the 13 tools
 
 The Rust engine lives in its own [`glia`](https://github.com/James-Chahwan/glia) repo; `mcp-repo-graph` is the MCP-facing thin wrapper.
 
