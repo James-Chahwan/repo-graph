@@ -1,35 +1,22 @@
 ---
 name: repo-graph-flow
-description: List or inspect a named flow (http / page / cli / grpc / queue). Use to see end-to-end request paths for a feature.
+description: List or inspect a feature's end-to-end flow (http / page / cli / grpc / queue) — entry point through the service layer to the data store.
 ---
 
 # repo-graph flow
 
-Lists the pre-built flows for this repo, or expands a specific flow showing
-every step from entrypoint to leaf.
+See every file in a feature's path before you touch it.
 
 ## When to use
 
-- User asks "what features exist?" or "what endpoints does this expose?"
-- User asks about a specific route, command, or queue worker by name.
-- Before planning a change that touches a user-facing feature — read the
-  flow first so you know every file involved.
+- "What features or endpoints does this expose?"
+- The user names a route, page, command, or queue worker.
+- Before changing a user-facing feature — read its flow first.
 
 ## Steps
 
-1. With no argument: call `flow` with no feature — it prints the overview
-   (flow count by kind + confidence, per-flow one-liners).
+1. No argument: call `flow` with no feature → the overview (flows by kind and confidence, one line each).
+2. A specific feature: call `flow` with `feature=<slug>` → entry → service → data, each step as `file_path:node`.
+3. If the slug isn't found, the tool lists available entry points — pick the closest and retry.
 
-2. With a feature slug: call `flow` with `feature=<slug>`. Report:
-   - Kind (http/page/cli/grpc/queue) and confidence tier
-   - Each step: file_path:node_name
-   - Whether the flow touches external data sources
-
-3. Optional filters: `kind=http` to narrow, `min_confidence=strong` to skip
-   test/example routes.
-
-## Tips
-
-- Flow kinds tell you stack role: `page` = frontend route, `http` = backend
-  API, `cli` = CLI command, `grpc` = gRPC method, `queue` = job consumer.
-- A `weak` flow usually means the route was defined in a test/example file.
+Report the kind (http/page/cli/grpc/queue), confidence, and each step. That's the full set of files the feature touches.

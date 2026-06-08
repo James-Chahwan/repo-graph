@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "repo-graph": {
+      "command": "uvx",
+      "args": ["mcp-repo-graph", "--repo", "."]
+    }
+  }
+}
