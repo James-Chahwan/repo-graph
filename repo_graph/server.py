@@ -78,12 +78,33 @@ def _resolve_repo(spec: str) -> str:
     return dest
 
 
+def _build_graph(target: str, incremental: bool = True) -> RustGraph:
+    """Generate `target`'s graph, persist the `.gmap` cache, install it as live.
+
+    `incremental` (default True, repo-graph-py >= 0.4.16) reuses the per-file
+    parse cache at `<repo>/.ai/repo-graph/parse_cache.bin` so unchanged files
+    skip tree-sitter re-parsing; `incremental=False` forces a full reparse.
+    Shared by `get_graph` (cold regen), `generate`, and `reload`.
+    """
+    global _graph, REPO_PATH
+    pg = repo_graph_py.generate(target, incremental=incremental)
+    if hasattr(pg, "save_to_default"):
+        try:
+            pg.save_to_default(target)
+        except Exception:
+            # Best-effort: read-only fs / perms shouldn't break the live graph.
+            pass
+    REPO_PATH = target
+    _graph = RustGraph(pg, target)
+    return _graph
+
+
 def get_graph() -> RustGraph:
     """Return the in-memory graph, lazy-loading on first access.
 
-    Load order: cached `.gmap` if fresh → fresh `generate()` otherwise. The
-    cache-load path is opt-in via the `default_gmap_dir` convention introduced
-    in repo-graph-py 0.4.14; older wheels fall through to plain `generate()`.
+    Load order: cached `.gmap` if fresh → incremental `generate()` otherwise
+    (reusing the parse cache so the regen is cheap). The cache-load path uses the
+    `default_gmap_dir` convention introduced in repo-graph-py 0.4.14.
     """
     global _graph, REPO_PATH
     if _graph is not None:
@@ -102,15 +123,7 @@ def get_graph() -> RustGraph:
                 # Stale or unreadable cache — fall through to fresh generate.
                 pass
 
-    pg = repo_graph_py.generate(REPO_PATH)
-    if hasattr(pg, "save_to_default"):
-        try:
-            pg.save_to_default(REPO_PATH)
-        except Exception:
-            # Best-effort: read-only fs / perms shouldn't break the live graph.
-            pass
-    _graph = RustGraph(pg, REPO_PATH)
-    return _graph
+    return _build_graph(REPO_PATH)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -121,35 +134,26 @@ def get_graph() -> RustGraph:
 @mcp.tool(annotations=ToolAnnotations(title="Generate Graph", readOnlyHint=False, openWorldHint=True))
 def generate(
     repo_path: Annotated[str, Field(description="Absolute path to the repository to scan. Defaults to the repo the server was started with.", default="")] = "",
+    incremental: Annotated[bool, Field(description="Reuse the per-file parse cache so unchanged files skip re-parsing (default True). Set False to force a full reparse.", default=True)] = True,
 ) -> str:
-    """Scan the codebase and (re)build the structural graph using tree-sitter AST parsing. Auto-detects 20 languages and frameworks. Runs cross-stack resolvers (HTTP, gRPC, GraphQL, WebSocket, queues, events, CLI). Accepts a local path or a git URL (cloned on demand). Call on first use or after major refactors."""
-    global _graph, REPO_PATH
-
+    """Scan the codebase and (re)build the structural graph using tree-sitter AST parsing. Auto-detects 20 languages and frameworks. Runs cross-stack resolvers (HTTP, gRPC, GraphQL, WebSocket, queues, events, CLI). Incremental by default — reuses a per-file parse cache so only changed files re-parse. Accepts a local path or a git URL (cloned on demand). Call on first use or after major refactors."""
     try:
         # Resolve a git URL (e.g. https://github.com/org/repo.git) to a local
         # clone before handing it to the engine, which only takes a directory.
         target = _resolve_repo(repo_path or REPO_PATH)
-        pg = repo_graph_py.generate(target)
+        g = _build_graph(target, incremental)
     except Exception as e:
         return f"Generation failed: {e}"
 
-    if hasattr(pg, "save_to_default"):
-        try:
-            pg.save_to_default(target)
-        except Exception:
-            pass
-
-    REPO_PATH = target  # subsequent status/flow/reload reuse the resolved clone
-    _graph = RustGraph(pg, target)
-
-    kind_counts: dict[str, int] = Counter(n["kind"] for n in _graph.nodes.values())
+    pg = g.pygraph
+    kind_counts: dict[str, int] = Counter(n["kind"] for n in g.nodes.values())
     type_summary = ", ".join(f"{count} {k}" for k, count in kind_counts.most_common())
 
     return (
         f"Generated: {pg.node_count()} nodes, {pg.edge_count()} edges, "
         f"{pg.cross_edge_count()} cross-stack edges\n"
         f"Kinds: {type_summary}\n"
-        f"Flows: {len(_graph.flows)} auto-detected entry points\n"
+        f"Flows: {len(g.flows)} auto-detected entry points\n"
         f"Engine: repo-graph-py {repo_graph_py.version()} (Rust + tree-sitter)"
     )
 
@@ -437,11 +441,15 @@ def graph_view(
 
 
 @mcp.tool(annotations=ToolAnnotations(title="Reload Graph", readOnlyHint=False))
-def reload() -> str:
-    """Re-generate the graph from source. Call after code changes."""
-    global _graph
-    _graph = None
-    g = get_graph()
+def reload(
+    incremental: Annotated[bool, Field(description="Reuse the per-file parse cache so unchanged files skip re-parsing (default True). Set False to force a full reparse.", default=True)] = True,
+) -> str:
+    """Re-generate the graph from source. Incremental by default — only changed files re-parse, so this is cheap to call after edits. Set incremental=False to force a full reparse."""
+    try:
+        target = _resolve_repo(REPO_PATH)
+        g = _build_graph(target, incremental)
+    except Exception as e:
+        return f"Reload failed: {e}"
     return (
         f"Reloaded: {g.pygraph.node_count()} nodes, {g.pygraph.edge_count()} edges, "
         f"{g.pygraph.cross_edge_count()} cross-stack, {len(g.flows)} flows"

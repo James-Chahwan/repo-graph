@@ -128,3 +128,70 @@ def test_cache_load_matches_fresh_generate(target_repo):
     assert pg_cached.edge_count() == pg_fresh.edge_count()
     assert pg_cached.cross_edge_count() == pg_fresh.cross_edge_count()
     assert pg_cached.dense_text() == pg_fresh.dense_text()
+
+
+# ── Incremental parse cache (engine v0.4.16, GR-4) ──────────────────────────
+
+_HAS_INCREMENTAL = "incremental" in (repo_graph_py.generate.__text_signature__ or "")
+
+incremental = pytest.mark.skipif(
+    not _HAS_INCREMENTAL,
+    reason="repo-graph-py < 0.4.16 (no incremental parse cache)",
+)
+
+_PARSE_CACHE = Path(".ai") / "repo-graph" / "parse_cache.bin"
+
+
+@incremental
+def test_incremental_writes_parse_cache(target_repo):
+    repo_graph_py.generate(str(target_repo), incremental=True)
+    assert (target_repo / _PARSE_CACHE).exists(), \
+        "incremental generate should write the per-file parse cache"
+
+
+@incremental
+def test_incremental_picks_up_edits(target_repo):
+    """A warm incremental rebuild must re-parse the one changed file, not serve
+    its stale cached parse — node count reflects the new symbol."""
+    g1 = repo_graph_py.generate(str(target_repo), incremental=True)
+    n1 = g1.node_count()
+
+    src = target_repo / "backend" / "server" / "server.go"
+    src.write_text(src.read_text() + "\nfunc IncrCachePickupProbe() {}\n")
+
+    g2 = repo_graph_py.generate(str(target_repo), incremental=True)
+    assert g2.node_count() == n1 + 1, \
+        f"incremental rebuild missed the edit: {n1} -> {g2.node_count()}"
+
+
+@incremental
+def test_incremental_false_matches_incremental(target_repo):
+    """A full reparse and a warm incremental build agree on the graph.
+
+    Counts and the *set* of dense-text lines must match. We compare line sets,
+    not the raw string: two independent generate() calls order their output
+    nondeterministically (HashMap iteration), so byte-equality is flaky even
+    full-vs-full — only a gmap round-trip is order-stable.
+    """
+    warm = repo_graph_py.generate(str(target_repo), incremental=True)
+    full = repo_graph_py.generate(str(target_repo), incremental=False)
+    assert full.node_count() == warm.node_count()
+    assert full.edge_count() == warm.edge_count()
+    assert full.cross_edge_count() == warm.cross_edge_count()
+    assert sorted(full.dense_text().splitlines()) == sorted(warm.dense_text().splitlines())
+
+
+@incremental
+def test_reload_tool_reflects_edits(server_isolated, target_repo):
+    """The reload MCP tool re-generates from source (not just a gmap reload),
+    so an edit between calls shows up."""
+    out1 = server_isolated.generate()
+    n1 = server_isolated.get_graph().pygraph.node_count()
+    assert "Generated:" in out1
+
+    src = target_repo / "backend" / "server" / "server.go"
+    src.write_text(src.read_text() + "\nfunc ReloadToolProbe() {}\n")
+
+    out2 = server_isolated.reload()
+    assert "Reloaded:" in out2
+    assert server_isolated.get_graph().pygraph.node_count() == n1 + 1

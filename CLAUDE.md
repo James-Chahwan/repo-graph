@@ -21,7 +21,7 @@ repo-graph --repo /path/to/target-repo
 repo-graph-init --repo /path/to/target-repo
 ```
 
-Python 3.11+ required. Runtime deps: `mcp[cli]>=1.0.0`, `repo-graph-py>=0.4.14`.
+Python 3.11+ required. Runtime deps: `mcp[cli]>=1.0.0`, `repo-graph-py>=0.4.16`.
 
 ### Cache reuse on cold start
 
@@ -30,13 +30,17 @@ Since engine v0.4.14 the wrapper caches the graph at `<repo>/.ai/repo-graph/` (s
 - **Fresh cache** → `load_from_gmap()` (≈10× faster than re-scanning; a 22k-node repo loads in ~250ms instead of ~2.8s).
 - **Stale or missing** → `generate()` + `save_to_default()` so the next cold start is fast.
 
-Cache writes are best-effort: a read-only filesystem or perms error doesn't break the live graph. The `generate` MCP tool always writes the cache after a successful scan; the `reload` tool re-enters the same path. Source-tree change detection is mtime-based and skips `.git`, `target`, `node_modules`, `.venv`, `__pycache__`, `.ai/`.
+Cache writes are best-effort: a read-only filesystem or perms error doesn't break the live graph. The `generate` MCP tool always writes the cache after a successful scan; the `reload` tool now forces a real re-generate (not just a `.gmap` reload), so edits between calls always show up. Source-tree change detection for the `.gmap` staleness check is mtime-based and skips `.git`, `target`, `node_modules`, `.venv`, `__pycache__`, `.ai/`.
+
+#### Incremental parse cache (engine v0.4.16)
+
+`generate` and `reload` take `incremental: bool = True`. When on, the engine reuses a per-file parse cache at `<repo>/.ai/repo-graph/parse_cache.bin` (content-hashed; mtime fast-path deferred to a v2) so unchanged files skip tree-sitter re-parsing — only edited files re-parse. `incremental=False` forces a full reparse. The internal `_build_graph(target, incremental)` helper is the single path through which `get_graph` (cold regen), `generate`, and `reload` all build + cache the graph. Incremental output is equivalent to a full reparse (same nodes/edges/cross-edges and same dense-text line set; raw dense-text *order* is nondeterministic across independent generates — only a `.gmap` round-trip is order-stable). The engine logs `[incremental] reused N, reparsed M` to **stderr** (safe for the MCP stdio channel).
 
 ### Testing
 
 ```bash
 pip install -e ".[dev]"          # installs pytest + pytest-asyncio
-pytest                           # full suite (55 tests in ~9s, incl. e2e subprocess)
+pytest                           # full suite (65 tests in ~9s, incl. e2e subprocess)
 pytest -m "not e2e"              # fast loop — skip MCP subprocess spin-up
 pytest -m perf                   # opt-in performance gates
 pytest -m e2e                    # only MCP-over-stdio end-to-end tests
@@ -45,7 +49,7 @@ pytest -m e2e                    # only MCP-over-stdio end-to-end tests
 Six test layers:
 - `test_mcp_tools.py` — in-process @mcp.tool function calls (22 tests)
 - `test_mcp_e2e.py` — spawn `repo-graph` subprocess, talk MCP/JSON-RPC over stdio (14 tests)
-- `test_cache.py` — `.gmap` cache reuse roundtrip (5 tests)
+- `test_cache.py` — `.gmap` cache reuse roundtrip + incremental parse cache (9 tests)
 - `test_init.py` — `repo-graph-init` bootstrap CLI (5 tests)
 - `test_packaging.py` — install surface: `uvx`-runnable console script + server.json sync (3 tests)
 - `test_perf.py` — generate/dense_text/activate budgets (6 tests)
