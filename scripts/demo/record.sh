@@ -3,9 +3,9 @@
 # a separate kitty window using recording.kitty.conf + a bare zsh — your real
 # kitty/zsh configs are never touched. Close the window when done.
 #
-#   scripts/demo/record.sh            # all 5, side-by-side (16:9)
+#   scripts/demo/record.sh            # all 7, side-by-side (16:9)
 #   scripts/demo/record.sh 1          # one demo, side-by-side
-#   scripts/demo/record.sh shorts     # all 5, stacked 9:16 for Shorts/Reels (WITH on top)
+#   scripts/demo/record.sh shorts     # all 7, stacked 9:16 for Shorts/Reels (WITH on top)
 #   scripts/demo/record.sh shorts 3   # one demo, stacked
 #   DEMO_SPEED=1.4 scripts/demo/record.sh all
 set -euo pipefail

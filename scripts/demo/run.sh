@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # One-command side-by-side repo-graph demo for recording.
-#   scripts/demo/run.sh <1-5>     one demo
-#   scripts/demo/run.sh all       all five back-to-back, panes in lockstep
+#   scripts/demo/run.sh <1-7>     one demo
+#   scripts/demo/run.sh all       all seven back-to-back, panes in lockstep
 #   DEMO_REPO=/path DEMO_SPEED=1.4 scripts/demo/run.sh all
 #
 # Top bar is a LIVE comparison: "✗ WITHOUT <stats>  —  benefit  —  <stats> WITH ✓",

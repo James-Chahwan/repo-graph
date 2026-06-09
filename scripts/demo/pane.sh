@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # One side of a side-by-side repo-graph demo.
-#   pane.sh <left|right> <demo 1-5>
+#   pane.sh <left|right> <demo 1-7>
 # LEFT  = no repo-graph (real grep/cat on $DEMO_REPO, token counter = real file size / 4)
 # RIGHT = repo-graph (real tool output via rg.py, token counter = real output size / 4)
 # Numbers are grounded in actual bytes read — nothing is invented.
@@ -15,18 +15,20 @@ C_CYN=$'\033[36m'; C_MAG=$'\033[35m'; C_B=$'\033[1m'; C_R=$'\033[0m'
 TOK=0; FILES=0; CALLS=0
 SIDE="${1:-left}"; OTHER=$([ "$SIDE" = "left" ] && echo right || echo left)
 SYNC="${DEMO_SYNC:-}"   # shared dir for left/right lockstep in 'all' mode
-declare -A TITLES=([1]="Token Race" [2]="Files Opened" [3]="Cross-Stack Trace" [4]="Context Window" [5]="Blast Radius")
+declare -A TITLES=([1]="Ground the Edit" [2]="Debug a Stack Trace" [3]="Context Rot" [4]="Blast Radius" [5]="Cross-Stack Trace" [6]="Find the Feature" [7]="Token Race")
 barrier(){ [ -n "$SYNC" ] || return 0; touch "$SYNC/$1.$SIDE" 2>/dev/null; local t=0
   while [ ! -e "$SYNC/$1.$OTHER" ]; do sleep 0.1; t=$((t+1)); [ "$t" -gt 1800 ] && break; done; }
 titlecard(){ printf '\n\n\n   %s%s●  DEMO %s — %s%s\n\n   %ssame model · same prompt · only difference: repo-graph%s\n' \
   "$C_B" "$C_MAG" "$1" "${TITLES[$1]}" "$C_R" "$C_DIM" "$C_R"; pace 1.8; }
 # benefit framed for real human + LLM coding workflows (shown in the top comparison bar)
 declare -A BENEFIT=(
-  [1]="less context burned — cheaper & faster for you and the model"
-  [2]="the model reads 1 file, not 15 — your context stays clean"
-  [3]="frontend → backend in one hop — grep can't link stacks"
-  [4]="whole-repo understanding without filling the context window"
-  [5]="see everything a change touches before you edit")
+  [1]="edit the real function, not an almost-right guess"
+  [2]="stack trace → the exact code, no grep safari"
+  [3]="only the relevant slice — no context rot"
+  [4]="see everything a change touches, cross-stack"
+  [5]="frontend → backend in one hop — grep can't link stacks"
+  [6]="jump to where a feature lives — no grep→read→grep"
+  [7]="less context burned — cheaper & faster for you and the model")
 setbar(){ [ "$SIDE" = "left" ] && [ -n "${TMUX:-}" ] && \
   tmux rename-window "mcp-repo-graph · ${BENEFIT[$1]}" 2>/dev/null; return 0; }
 
@@ -53,11 +55,11 @@ card(){ local c="$1" rule="━━━━━━━━━━━━━━━━━�
 # ── end cards (shown after `all`) ───────────────────────────────────────────────
 # LEFT: the 5-demo WITHOUT-vs-WITH stat table + the headline multiplier.
 summary_card(){ local n lt lf lc rt rf rc tw=0 tr=0
-  printf '\n\n   %s%s5 demos · side by side%s\n' "$C_B" "$C_GRN" "$C_R"
+  printf '\n\n   %s%s7 demos · side by side%s\n' "$C_B" "$C_GRN" "$C_R"
   printf '   %ssame model · same prompt · only difference: repo-graph%s\n\n' "$C_DIM" "$C_R"
   printf '   %s%-20s %12s    %-12s%s\n' "$C_DIM" "demo" "WITHOUT" "WITH" "$C_R"
   printf '   %s────────────────────────────────────────────────%s\n' "$C_DIM" "$C_R"
-  for n in 1 2 3 4 5; do
+  for n in 1 2 3 4 5 6 7; do
     read -r lt lf lc < "$SYNC/left.d$n"  2>/dev/null || { lt=0; lf=0; lc=0; }
     read -r rt rf rc < "$SYNC/right.d$n" 2>/dev/null || { rt=0; rf=0; rc=0; }
     tw=$((tw+lt)); tr=$((tr+rt))
@@ -124,40 +126,79 @@ rg(){ # tool args...   (retries past a transient engine bug where impact/trace
   TOK=$(( ${#out}/4 )); CALLS=$((CALLS+1)); tally_r; pace 0.4; }
 
 # ── demos ─────────────────────────────────────────────────────────────────────
-P1="Groups created recently show as closed; new groups should be open. Find & fix."
-P3="Where does the frontend group action end up in the backend?"
-P4="Get enough context to work confidently in this codebase."
-P5="What breaks if I change GroupsComponent?"
+# Each demo is a CITED dev-with-LLM pain point (Sonar/Uvik/Cerbos 2026):
+#  1 "almost right" (66%) · 2 slow debugging (45%) · 3 context rot · 4 off-target
+#  changes · 5 cross-stack · 6 context retrieval (38%) · 7 context cost.
+P1="Add a guard to the send-friend-request handler — what does it actually take?"
+P2="Prod panic: nil pointer in the friends flow. Here's the trace — where do I look?"
+P3="Get just enough context to work on the groups feature — don't bloat the window."
+P4="What breaks if I change both friends handlers?"
+P5="Where does the frontend group action end up in the backend?"
+P6="Where does the groups feature live?"
+P7="Groups created recently show as closed; new groups should be open. Find & fix."
 
-left1(){  hdr "$C_RED" "✗ without repo-graph" "grep → read → grep → read…"; prompt "$P1"
-  grep_show "isGroupOpen"; grep_show "closed"; read_matches "GroupsComponent" 4; read_matches "group" 6
-  finalcard "$C_RED" "still hunting"; }
-right1(){ hdr "$C_GRN" "✓ with repo-graph" "one structural lookup"; prompt "$P1"
-  rg flow groups
-  finalcard "$C_GRN" "1 call → the exact handler flow"; }
+# A Go panic with paths/symbols that REALLY exist in quokka-stack (so locate resolves).
+STACK=$'panic: runtime error: invalid memory address or nil pointer dereference\n  turps/Server/Controllers.SendFriendRequestHandler(0xc000123)\n    turps/Server/Controllers/friends_controller.go:112\n  turps/Server/Controllers.GetFriendsHandler(0xc000123)\n    turps/Server/Controllers/friends_controller.go:40'
+paste(){ printf "%s┃ pasted error%s\n%s%s%s\n\n" "$C_YEL" "$C_R" "$C_DIM" "$1" "$C_R"; pace 0.5; }
+locate_demo(){ cmd "repo-graph locate \"<stack trace>\" stacktrace"; pace 0.3
+  local out; out=$(DEMO_REPO="$DEMO_REPO" python3 "$HERE/rg.py" locate "$STACK" stacktrace 2>/dev/null)
+  printf "%s\n" "$out" | head -20; TOK=$(( ${#out}/4 )); CALLS=$((CALLS+1)); tally_r; pace 0.4; }
 
-left2(){  left1; }                                  # same scenario, framed on FILES
-right2(){ right1; }
-left3(){  hdr "$C_RED" "✗ without repo-graph" "guessing the frontend↔backend link"; prompt "$P3"
-  grep_show "groups"; read_matches "GroupsComponent" 3; grep_show "group" ; read_matches "Controller" 3
+# 1 · Ground the Edit — find + read the REAL function vs guessing its contract
+left1(){  hdr "$C_RED" "✗ without repo-graph" "guess the signature, write almost-right code"; prompt "$P1"
+  grep_show "SendFriendRequestHandler"; read_matches "FriendRequest" 3; read_matches "friend" 4
+  finalcard "$C_RED" "contract still assumed — 'almost right'"; }
+right1(){ hdr "$C_GRN" "✓ with repo-graph" "read the real source first"; prompt "$P1"
+  rg find SendFriendRequestHandler; rg read SendFriendRequestHandler
+  finalcard "$C_GRN" "exact signature + body, grounded"; }
+
+# 2 · Debug a Stack Trace — locate → read vs grepping frames by hand
+left2(){  hdr "$C_RED" "✗ without repo-graph" "grep the frames, open file after file"; prompt "$P2"
+  paste "$STACK"; grep_show "SendFriendRequestHandler"; grep_show "GetFriendsHandler"; read_matches "friend" 4
+  finalcard "$C_RED" "still tracing the error by hand"; }
+right2(){ hdr "$C_GRN" "✓ with repo-graph" "locate the trace → read the frame"; prompt "$P2"
+  paste "$STACK"; locate_demo; rg read GetFriendsHandler
+  finalcard "$C_GRN" "error → exact code, ranked"; }
+
+# 3 · Context Rot — scoped dense_text vs dumping files until accuracy decays
+left3(){  hdr "$C_RED" "✗ without repo-graph" "load files until you 'get it' — accuracy rots"; prompt "$P3"
+  read_biggest 14
+  finalcard "$C_RED" "window bloated with off-target detail"; }
+right3(){ hdr "$C_GRN" "✓ with repo-graph" "just the relevant slice"; prompt "$P3"
+  rg dense_text GroupsComponent
+  finalcard "$C_GRN" "scoped map — a fraction of the full dump"; }
+
+# 4 · Blast Radius — multi-seed impact (cross-stack) vs grep's direct refs
+left4(){  hdr "$C_RED" "✗ without repo-graph" "grep finds direct refs only"; prompt "$P4"
+  grep_show "GetFriendsHandler"; grep_show "SendFriendRequestHandler"; read_matches "friend" 4
+  finalcard "$C_RED" "cross-stack + transitive missed"; }
+right4(){ hdr "$C_GRN" "✓ with repo-graph" "full blast radius, both files at once"; prompt "$P4"
+  rg impact "GetFriendsHandler, SendFriendRequestHandler" upstream
+  finalcard "$C_GRN" "routes → controller → frontend caller"; }
+
+# 5 · Cross-Stack Trace — trace vs guessing the FE↔BE link
+left5(){  hdr "$C_RED" "✗ without repo-graph" "guessing the frontend↔backend link"; prompt "$P5"
+  grep_show "groups"; read_matches "GroupsComponent" 3; grep_show "group"; read_matches "Controller" 3
   finalcard "$C_RED" "FE→BE link still unconfirmed"; }
-right3(){ hdr "$C_GRN" "✓ with repo-graph" "cross-stack path in one hop"; prompt "$P3"
+right5(){ hdr "$C_GRN" "✓ with repo-graph" "cross-stack path in one hop"; prompt "$P5"
   rg trace GroupsComponent /groups
   finalcard "$C_GRN" "frontend → backend, linked"; }
 
-left4(){  hdr "$C_RED" "✗ without repo-graph" "load files until you 'get it'"; prompt "$P4"
-  read_biggest 16
-  finalcard "$C_RED" "context near full"; }
-right4(){ hdr "$C_GRN" "✓ with repo-graph" "the whole map, capped"; prompt "$P4"
-  rg dense_text
-  finalcard "$C_GRN" "whole-repo structure, 1 call"; }
+# 6 · Find the Feature — activate's ranked cluster vs grep→read→grep
+left6(){  hdr "$C_RED" "✗ without repo-graph" "grep → read → grep to find it"; prompt "$P6"
+  grep_show "groups"; read_matches "GroupsComponent" 4
+  finalcard "$C_RED" "scattered hits, no ranking"; }
+right6(){ hdr "$C_GRN" "✓ with repo-graph" "the ranked cluster from one seed"; prompt "$P6"
+  rg activate GroupsComponent
+  finalcard "$C_GRN" "the feature's nodes, ranked by relevance"; }
 
-left5(){  hdr "$C_RED" "✗ without repo-graph" "grep finds direct refs only"; prompt "$P5"
-  grep_show "GroupsComponent"; read_matches "GroupsComponent" 3
-  finalcard "$C_RED" "direct refs only — transitive missed"; }
-right5(){ hdr "$C_GRN" "✓ with repo-graph" "full blast radius by tier"; prompt "$P5"
-  rg impact GroupsComponent
-  finalcard "$C_GRN" "complete downstream graph"; }
+# 7 · Token Race — flow vs grep→read→grep for a real bug-fix task
+left7(){  hdr "$C_RED" "✗ without repo-graph" "grep → read → grep → read…"; prompt "$P7"
+  grep_show "isGroupOpen"; grep_show "closed"; read_matches "GroupsComponent" 4; read_matches "group" 6
+  finalcard "$C_RED" "still hunting"; }
+right7(){ hdr "$C_GRN" "✓ with repo-graph" "one structural lookup"; prompt "$P7"
+  rg flow groups
+  finalcard "$C_GRN" "1 call → the exact handler flow"; }
 
 ready(){ printf "\n%s%s● repo-graph demo · %s side%s\n" "$C_B" "$C_MAG" "$1" "$C_R"
   for i in 3 2 1; do printf "  starting in %s…\r" "$i"; sleep 1; done; printf "                    \n\n"; }
@@ -166,7 +207,7 @@ ready(){ printf "\n%s%s● repo-graph demo · %s side%s\n" "$C_B" "$C_MAG" "$1" 
 clear 2>/dev/null; printf '\033[3J\033[2J\033[H'   # wipe scrollback + echoed launch command for a clean top
 ready "$SIDE"
 if [ "${2:-}" = "all" ]; then
-  for n in 1 2 3 4 5; do
+  for n in 1 2 3 4 5 6 7; do
     printf '\033[2J\033[3J\033[H'      # clean frame per demo
     titlecard "$n"
     barrier "start-$n"                 # both panes begin demo n together
