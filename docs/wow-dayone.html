@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>repo-graph — day one</title>
+<style>
+  :root{--bg:#0a0a0a;--ink:#e8ffe8;--dim:#5a6b5a;--grn:#8effc0;--grn2:#3ad17a;--gold:#c9a227;--line:#26331f;
+    --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;}
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;background:#000;overflow:hidden;font-family:var(--mono)}
+  #stage{position:absolute;top:0;left:0;width:1080px;height:1920px;
+    background:radial-gradient(120% 80% at 50% 0%,#0e150e 0%,var(--bg) 55%);transform-origin:top left;color:var(--ink);overflow:hidden}
+  #mark{position:absolute;top:56px;left:0;right:0;text-align:center;color:var(--dim);font-size:27px;letter-spacing:.4em;text-transform:uppercase}
+  #mark b{color:var(--grn)}
+  #bar{position:absolute;left:0;bottom:0;height:8px;width:0;background:var(--grn);box-shadow:0 0 12px var(--grn)}
+  .capbox{position:absolute;top:140px;left:0;right:0;height:220px;padding:0 70px}
+  .cap{position:absolute;left:70px;right:70px;top:0;text-align:center;opacity:0;transition:opacity .5s}
+  .cap h1{font-size:62px;line-height:1.12;font-weight:700} .cap h1 em{color:var(--grn);font-style:normal}
+  .cap .sub{margin-top:14px;color:var(--dim);font-size:30px}
+  body.p0 .c0,body.p1 .c1,body.p2 .c2{opacity:1}
+
+  /* p0: the overwhelming wall of unknown files */
+  .wall{position:absolute;top:400px;left:60px;right:60px;display:flex;flex-wrap:wrap;gap:14px 26px;opacity:0;transition:opacity .5s}
+  body.p0 .wall{opacity:1} body.p1 .wall,body.p2 .wall{opacity:.06}
+  .wall span{color:#3f4a3c;font-size:24px}
+
+  .term{position:absolute;top:380px;left:0;right:0;text-align:center;font-size:32px;color:var(--grn);font-weight:700;opacity:0;transition:opacity .5s}
+  body.p1 .term,body.p2 .term{opacity:1} .term .d{color:var(--grn2)}
+
+  /* p1: the structured overview */
+  .card{position:absolute;top:470px;left:90px;right:90px;background:#0c130c;border:1px solid var(--line);border-radius:18px;
+    padding:34px 38px;opacity:0;transition:opacity .5s}
+  body.p1 .card,body.p2 .card{opacity:1}
+  .card .h{color:var(--grn);font-size:30px;font-weight:700;margin-bottom:22px}
+  .card .grid{display:flex;gap:30px;margin-bottom:30px}
+  .card .stat{flex:1;text-align:center;background:#0e160e;border:1px solid var(--line);border-radius:12px;padding:22px}
+  .card .stat b{display:block;color:var(--grn);font-size:46px;font-weight:800} .card .stat .l{color:var(--dim);font-size:23px;margin-top:6px}
+  .card .sec{color:var(--dim);font-size:24px;letter-spacing:.12em;margin:20px 0 14px}
+  .row{display:flex;align-items:center;gap:16px;font-size:27px;padding:8px 0}
+  .row .ic{color:var(--grn)} .row .ty{margin-left:auto;color:var(--dim);font-size:23px}
+  .row.data .ic{color:var(--gold)}
+
+  .stat2{position:absolute;left:0;right:0;bottom:108px;text-align:center;font-size:36px;opacity:0;transition:opacity .5s}
+  body.p2 .stat2{opacity:1} .stat2 b{color:var(--grn);font-weight:800}
+</style></head>
+<body class="p0"><div id="stage">
+  <div id="mark"><b>repo-graph</b> · onboarding</div>
+  <div class="capbox">
+    <div class="cap c0"><h1>new job.<br>day <em>one.</em></h1><div class="sub">80,000 lines you've never seen</div></div>
+    <div class="cap c1"><h1>one call,<br><em>oriented</em></h1><div class="sub">$ repo-graph status</div></div>
+    <div class="cap c2"><h1>understood in <em>3 calls</em></h1><div class="sub">not three days of grep archaeology</div></div>
+  </div>
+  <div class="wall" id="wall"></div>
+  <div class="card">
+    <div class="h">repo-graph · structural overview</div>
+    <div class="grid">
+      <div class="stat"><b>2,887</b><span class="l">nodes</span></div>
+      <div class="stat"><b>8</b><span class="l">languages</span></div>
+      <div class="stat"><b>18</b><span class="l">entry points</span></div>
+    </div>
+    <div class="sec">ENTRY POINTS — start here</div>
+    <div class="row"><span class="ic">⟁</span> POST /checkout <span class="ty">route · Go</span></div>
+    <div class="row"><span class="ic">⟁</span> GET /users/:id <span class="ty">route · Go</span></div>
+    <div class="row"><span class="ic">⟁</span> email-worker <span class="ty">queue · Python</span></div>
+    <div class="row data"><span class="ic">⊟</span> orders, users, carts <span class="ty">data · SQL</span></div>
+  </div>
+  <div class="stat2">grep → read → grep for <b>3 days</b>… or <b>1 call</b></div>
+  <div id="bar"></div>
+</div>
+<script>
+  const stage=document.getElementById('stage'),bar=document.getElementById('bar');
+  function fit(){const s=Math.min(innerWidth/1080,innerHeight/1920);
+    stage.style.transform=`translate(${(innerWidth-1080*s)/2}px,${(innerHeight-1920*s)/2}px) scale(${s})`;}
+  addEventListener('resize',fit);fit();
+  const fs=['auth.ts','pool.rs','cron.go','user.py','cart.tsx','orders.sql','ws.go','redis.rs','api.java','view.vue','queue.go','stripe.ts',
+    'index.ts','model.rs','seed.py','routes.go','schema.gql','token.ts','mailer.py','cache.go','env.ts','utils.rs','admin.tsx','jobs.go',
+    'socket.ts','types.ts','config.rs','hooks.ts','store.ts','main.go','db.py','app.vue','guard.ts','dto.java','event.go','sync.rs'];
+  document.getElementById('wall').innerHTML=fs.map(f=>`<span>${f}</span>`).join('');
+  const TOTAL=12000,cues=[[0,'p0'],[3800,'p1'],[8500,'p2']];
+  const ph=new URLSearchParams(location.search).get('phase');
+  if(ph){document.body.className=ph;}
+  else{let st=null;(function f(ts){if(st===null)st=ts;const t=(ts-st)%TOTAL;let c='p0';for(const[a,k]of cues)if(t>=a)c=k;
+    if(!document.body.classList.contains(c))document.body.className=c;bar.style.width=(t/TOTAL*1080)+'px';requestAnimationFrame(f);})(0);}
+</script></body></html>

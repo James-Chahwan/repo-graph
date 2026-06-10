@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>repo-graph — always fresh</title>
+<style>
+  :root{--bg:#0a0a0a;--ink:#e8ffe8;--dim:#5a6b5a;--grn:#8effc0;--grn2:#3ad17a;--red:#ff6b6b;--line:#26331f;
+    --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;}
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;background:#000;overflow:hidden;font-family:var(--mono)}
+  #stage{position:absolute;top:0;left:0;width:1080px;height:1920px;
+    background:radial-gradient(120% 80% at 50% 0%,#0e150e 0%,var(--bg) 55%);transform-origin:top left;color:var(--ink);overflow:hidden}
+  #mark{position:absolute;top:56px;left:0;right:0;text-align:center;color:var(--dim);font-size:27px;letter-spacing:.4em;text-transform:uppercase}
+  #mark b{color:var(--grn)}
+  #bar{position:absolute;left:0;bottom:0;height:8px;width:0;background:var(--grn);box-shadow:0 0 12px var(--grn)}
+  .capbox{position:absolute;top:140px;left:0;right:0;height:210px;padding:0 70px}
+  .cap{position:absolute;left:70px;right:70px;top:0;text-align:center;opacity:0;transition:opacity .5s}
+  .cap h1{font-size:62px;line-height:1.12;font-weight:700} .cap h1 em{color:var(--grn);font-style:normal}
+  .cap .sub{margin-top:14px;color:var(--dim);font-size:30px}
+  body.p0 .c0,body.p1 .c1,body.p2 .c2{opacity:1}
+
+  .diff{position:absolute;top:380px;left:140px;right:140px;background:#0b110b;border:1px solid var(--line);border-radius:14px;
+    padding:24px 28px;font-size:27px;line-height:1.55;white-space:pre;opacity:0;transition:opacity .5s}
+  body.p0 .diff,body.p1 .diff,body.p2 .diff{opacity:1}
+  .diff .add{color:var(--grn)} .diff .ctx{color:var(--dim)} .diff .file{color:var(--ink);font-weight:700;margin-bottom:12px}
+
+  .term{position:absolute;top:680px;left:0;right:0;text-align:center;font-size:32px;color:var(--grn);font-weight:700;opacity:0;transition:opacity .5s}
+  body.p1 .term,body.p2 .term{opacity:1} .term .d{color:var(--grn2)}
+
+  .race{position:absolute;top:790px;left:140px;right:140px;opacity:0;transition:opacity .5s}
+  body.p1 .race,body.p2 .race{opacity:1}
+  .row{margin-bottom:54px}
+  .row .lbl{display:flex;justify-content:space-between;font-size:30px;margin-bottom:16px}
+  .row .lbl .t{font-weight:800}
+  .track{height:42px;background:#13191360;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  .fill{height:100%;width:0;border-radius:10px;transition:width 2.4s linear}
+  .full .fill{background:#5a2828} .full .t{color:#c98}
+  .inc .fill{background:var(--grn);box-shadow:0 0 14px var(--grn);transition:width .25s ease} .inc .t{color:var(--grn)}
+  body.p1 .full .fill,body.p2 .full .fill{width:100%}
+  body.p1 .inc .fill,body.p2 .inc .fill{width:2.2%}
+
+  .stat{position:absolute;left:0;right:0;bottom:120px;text-align:center;font-size:38px;opacity:0;transition:opacity .5s}
+  body.p2 .stat{opacity:1} .stat b{color:var(--grn);font-weight:800}
+</style></head>
+<body class="p0"><div id="stage">
+  <div id="mark"><b>repo-graph</b> · always fresh</div>
+  <div class="capbox">
+    <div class="cap c0"><h1>you changed<br>one line</h1></div>
+    <div class="cap c1"><h1>re-map the <em>whole</em> repo?</h1><div class="sub">no — just the file you touched</div></div>
+    <div class="cap c2"><h1>always <em>fresh</em></h1><div class="sub">the map never lags behind your edits</div></div>
+  </div>
+  <div class="diff"><div class="file">friends_controller.go</div><span class="ctx">  ctx := c.Request.Context()
+</span><span class="add">+ if claims == nil { return }
+</span><span class="ctx">  userRepo := Services.UserRepository()</span></div>
+  <div class="term"><span class="d">$</span> repo-graph reload</div>
+  <div class="race">
+    <div class="row full"><div class="lbl"><span class="t">full rescan</span><span class="t">2.8s · 412 files</span></div><div class="track"><div class="fill"></div></div></div>
+    <div class="row inc"><div class="lbl"><span class="t">incremental</span><span class="t">0.06s · 1 file</span></div><div class="track"><div class="fill"></div></div></div>
+  </div>
+  <div class="stat">re-parsed <b>1</b> of 412 files · <b>~47× faster</b></div>
+  <div id="bar"></div>
+</div>
+<script>
+  const stage=document.getElementById('stage'),bar=document.getElementById('bar');
+  function fit(){const s=Math.min(innerWidth/1080,innerHeight/1920);
+    stage.style.transform=`translate(${(innerWidth-1080*s)/2}px,${(innerHeight-1920*s)/2}px) scale(${s})`;}
+  addEventListener('resize',fit);fit();
+  const TOTAL=11500,cues=[[0,'p0'],[3200,'p1'],[8000,'p2']];
+  const ph=new URLSearchParams(location.search).get('phase');
+  if(ph){document.body.className=ph;}
+  else{let st=null;(function f(ts){if(st===null)st=ts;const t=(ts-st)%TOTAL;let c='p0';for(const[a,k]of cues)if(t>=a)c=k;
+    if(!document.body.classList.contains(c))document.body.className=c;bar.style.width=(t/TOTAL*1080)+'px';requestAnimationFrame(f);})(0);}
+</script></body></html>

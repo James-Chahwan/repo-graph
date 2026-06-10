@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>repo-graph — one graph, many languages</title>
+<style>
+  :root{--bg:#0a0a0a;--ink:#e8ffe8;--dim:#5a6b5a;--grn:#8effc0;--grn2:#3ad17a;--line:#26331f;
+    --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;}
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;background:#000;overflow:hidden;font-family:var(--mono)}
+  #stage{position:absolute;top:0;left:0;width:1080px;height:1920px;
+    background:radial-gradient(120% 80% at 50% 40%,#0e150e 0%,var(--bg) 60%);transform-origin:top left;color:var(--ink);overflow:hidden}
+  #mark{position:absolute;top:56px;left:0;right:0;text-align:center;color:var(--dim);font-size:27px;letter-spacing:.4em;text-transform:uppercase}
+  #mark b{color:var(--grn)}
+  #bar{position:absolute;left:0;bottom:0;height:8px;width:0;background:var(--grn);box-shadow:0 0 12px var(--grn)}
+  .capbox{position:absolute;top:130px;left:0;right:0;height:210px;padding:0 70px}
+  .cap{position:absolute;left:70px;right:70px;top:0;text-align:center;opacity:0;transition:opacity .5s}
+  .cap h1{font-size:62px;line-height:1.12;font-weight:700} .cap h1 em{color:var(--grn);font-style:normal}
+  .cap .sub{margin-top:14px;color:var(--dim);font-size:30px}
+  body.p0 .c0,body.p1 .c1,body.p2 .c2{opacity:1}
+  .term{position:absolute;top:360px;left:0;right:0;text-align:center;font-size:32px;color:var(--grn);font-weight:700;opacity:0;transition:opacity .5s}
+  body.p1 .term,body.p2 .term{opacity:1} .term .d{color:var(--grn2)}
+
+  svg{position:absolute;top:440px;left:0;width:1080px;height:1180px}
+  .xe{stroke:var(--grn2);stroke-width:3;fill:none;opacity:0;stroke-dasharray:1;stroke-dashoffset:1;filter:drop-shadow(0 0 5px var(--grn))}
+  body.p1 .xe,body.p2 .xe{opacity:.85;animation:draw .8s ease forwards;animation-delay:var(--d,0s)}
+  @keyframes draw{to{stroke-dashoffset:0}}
+  .ln{opacity:.5;transition:opacity .5s}
+  body.p1 .ln,body.p2 .ln{opacity:1}
+  .ln circle{stroke-width:4;fill:#0d140d}
+  .ln text{fill:var(--ink);font-size:26px;font-weight:700;text-anchor:middle}
+  .ln .f{fill:var(--dim);font-size:20px}
+  .stat{position:absolute;left:0;right:0;bottom:108px;text-align:center;font-size:36px;opacity:0;transition:opacity .5s}
+  body.p2 .stat{opacity:1} .stat b{color:var(--grn);font-weight:800}
+</style></head>
+<body class="p0"><div id="stage">
+  <div id="mark"><b>repo-graph</b> · polyglot</div>
+  <div class="capbox">
+    <div class="cap c0"><h1>Go. TS. Python.<br>Rust. SQL…</h1><div class="sub">eight languages, eight worlds</div></div>
+    <div class="cap c1"><h1>one <em>graph</em></h1><div class="sub">tree-sitter parses them all, cross-stack resolvers link them</div></div>
+    <div class="cap c2"><h1>your stack isn't<br>siloed <em>anymore</em></h1></div>
+  </div>
+  <div class="term"><span class="d">$</span> repo-graph generate</div>
+  <svg viewBox="0 0 1080 1180" id="g"></svg>
+  <div class="stat"><b>20</b> languages · <b>1</b> graph · frontend → backend</div>
+  <div id="bar"></div>
+</div>
+<script>
+  const stage=document.getElementById('stage'),bar=document.getElementById('bar'),svg=document.getElementById('g');
+  function fit(){const s=Math.min(innerWidth/1080,innerHeight/1920);
+    stage.style.transform=`translate(${(innerWidth-1080*s)/2}px,${(innerHeight-1920*s)/2}px) scale(${s})`;}
+  addEventListener('resize',fit);fit();
+
+  // 8 language nodes around a centre; cross-language edges draw on at p1
+  const langs=[
+    {n:'Go',f:'server.go',c:'#00add8',x:540,y:120},
+    {n:'TypeScript',f:'app.ts',c:'#4a8cf0',x:880,y:300},
+    {n:'GraphQL',f:'schema.gql',c:'#ff86c8',x:940,y:640},
+    {n:'Rust',f:'engine.rs',c:'#e2a06a',x:760,y:960},
+    {n:'SQL',f:'schema.sql',c:'#e0a92e',x:400,y:1010},
+    {n:'Python',f:'worker.py',c:'#ffd343',x:160,y:720},
+    {n:'Vue',f:'App.vue',c:'#42b883',x:200,y:340},
+    {n:'Java',f:'Api.java',c:'#e76f00',x:540,y:560},
+  ];
+  const edges=[[0,1],[1,2],[2,3],[3,4],[4,5],[5,6],[6,0],[7,0],[7,1],[7,4],[7,6],[0,4],[1,3]];
+  let s='';
+  edges.forEach(([a,b],i)=>{ s+=`<path class="xe" style="--d:${(i*0.07).toFixed(2)}s" pathLength="1" d="M${langs[a].x},${langs[a].y} L${langs[b].x},${langs[b].y}"/>`; });
+  langs.forEach(l=>{ s+=`<g class="ln"><circle cx="${l.x}" cy="${l.y}" r="58" style="stroke:${l.c};filter:drop-shadow(0 0 12px ${l.c}88)"/><text x="${l.x}" y="${l.y-2}">${l.n}</text><text class="f" x="${l.x}" y="${l.y+26}">${l.f}</text></g>`; });
+  svg.innerHTML=s;
+
+  const TOTAL=12000,cues=[[0,'p0'],[3800,'p1'],[8500,'p2']];
+  const ph=new URLSearchParams(location.search).get('phase');
+  if(ph){document.body.className=ph;}
+  else{let st=null;(function f(ts){if(st===null)st=ts;const t=(ts-st)%TOTAL;let c='p0';for(const[a,k]of cues)if(t>=a)c=k;
+    if(!document.body.classList.contains(c))document.body.className=c;bar.style.width=(t/TOTAL*1080)+'px';requestAnimationFrame(f);})(0);}
+</script></body></html>
