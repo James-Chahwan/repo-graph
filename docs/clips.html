@@ -88,6 +88,14 @@
     border-radius:16px;padding:28px;background:#10301d;box-shadow:0 0 20px rgba(58,209,122,.22)}
   .ok .c{color:var(--grn);font-weight:800;margin-right:14px}
   .ok b{color:var(--grn)}
+
+  /* PAIN beat (the without-repo-graph struggle, red) */
+  .pain{background:#160d0d;border:1px solid #3a2222;border-radius:18px;padding:26px 30px;
+    font-size:30px;line-height:1.5;margin-bottom:28px}
+  .pain .d{color:#a85a5a} .pain .g{color:#ff9a9a;font-weight:700}
+  .pain .n{color:#7a5555;font-size:26px;margin-top:14px}
+  .cap.pn .num{background:var(--red)}
+  .cap.pn h1 em{color:var(--red)}
 </style>
 </head>
 <body>
@@ -97,12 +105,13 @@
   <!-- 1 · GROUND THE EDIT (find → read) -->
   <section class="clip" data-clip="ground" data-steps="3">
     <div class="capbox">
-      <div class="cap" data-at="0"><span class="num">⌁</span><h1>About to edit a function?</h1><div class="sub">don't guess what it does</div></div>
-      <div class="cap" data-at="1"><span class="num">⌁</span><h1><em>find</em> the real symbol</h1><div class="sub">name → the actual node</div></div>
+      <div class="cap pn" data-at="0"><span class="num">✗</span><h1>Editing code you<br>half-remember?</h1><div class="sub">grep, skim, guess the signature…</div></div>
+      <div class="cap" data-at="1"><span class="num">⌁</span><h1><em>find</em> the real symbol</h1><div class="sub">one name → the actual node</div></div>
       <div class="cap" data-at="2"><span class="num">⌁</span><h1>then <em>read</em> it</h1><div class="sub">the real source — not an almost-right guess</div></div>
     </div>
     <div class="screen">
-      <div class="term" data-at="0"><span class="d">$</span> <span class="cmd">repo-graph find</span> SendFriendRequestHandler</div>
+      <div class="pain" data-at="0" data-swap><span class="d">$</span> <span class="g">grep -rn "SendFriendRequest" .</span><div class="n">11 hits · 4 files · still guessing what it expects</div></div>
+      <div class="term" data-at="1"><span class="d">$</span> <span class="cmd">repo-graph find</span> SendFriendRequestHandler</div>
       <div class="chip" data-at="1"><span class="dot"></span><span class="nm">SendFriendRequestHandler</span><span class="loc">friends_controller.go:95</span></div>
       <div class="code" data-at="2">
         <div class="hd">$ repo-graph read SendFriendRequestHandler · :95</div>
@@ -119,7 +128,7 @@
   <!-- 2 · CONTEXT (scoped dense_text) -->
   <section class="clip" data-clip="context" data-steps="2">
     <div class="capbox">
-      <div class="cap" data-at="0"><span class="num">⌁</span><h1>Whole repo won't fit?</h1><div class="sub">dumping everything = context rot</div></div>
+      <div class="cap pn" data-at="0"><span class="num">✗</span><h1>Dumping the <em>whole</em> repo?</h1><div class="sub">50,000 chars · accuracy rots as it fills</div></div>
       <div class="cap" data-at="1"><span class="num">⌁</span><h1><em>scope</em> it to one feature</h1><div class="sub">a fraction of the tokens, all the signal</div></div>
     </div>
     <div class="screen">
@@ -147,14 +156,16 @@ GroupsController > MongoDB</div>
   </section>
 
   <!-- 3 · TRACE (cross-stack path) -->
-  <section class="clip" data-clip="trace" data-steps="2">
+  <section class="clip" data-clip="trace" data-steps="3">
     <div class="capbox">
-      <div class="cap" data-at="0"><span class="num">⌁</span><h1>Frontend → backend?</h1><div class="sub">grep can't connect the two halves</div></div>
-      <div class="cap" data-at="1"><span class="num">⌁</span><h1>the <em>exact path</em></h1><div class="sub">trace · 8 hops, end to end</div></div>
+      <div class="cap pn" data-at="0"><span class="num">✗</span><h1>FE calls the backend…<br><em>where?</em></h1><div class="sub">grep each half — can't link them</div></div>
+      <div class="cap" data-at="1"><span class="num">⌁</span><h1>one <em>trace</em></h1><div class="sub">GroupsComponent → /groups</div></div>
+      <div class="cap" data-at="2"><span class="num">⌁</span><h1>the <em>exact path</em></h1><div class="sub">8 hops, frontend to data</div></div>
     </div>
     <div class="screen">
-      <div class="term" data-at="0"><span class="d">$</span> <span class="cmd">repo-graph trace</span> GroupsComponent /groups</div>
-      <svg viewBox="0 0 1080 760" data-at="1">
+      <div class="pain" data-at="0" data-swap><span class="d">$</span> <span class="g">grep "groups" web/ ; grep "groups" backend/</span><div class="n">two greps, two halves · the link is invisible</div></div>
+      <div class="term" data-at="1"><span class="d">$</span> <span class="cmd">repo-graph trace</span> GroupsComponent /groups</div>
+      <svg viewBox="0 0 1080 760" data-at="2">
         <path class="edge path" d="M250,120 C360,200 460,300 540,360"></path>
         <path class="edge path" d="M540,400 L540,520"></path>
         <path class="edge path" d="M540,560 C560,620 600,650 640,680"></path>
@@ -167,14 +178,16 @@ GroupsController > MongoDB</div>
   </section>
 
   <!-- 4 · FIND (activate cluster) -->
-  <section class="clip" data-clip="find" data-steps="2">
+  <section class="clip" data-clip="find" data-steps="3">
     <div class="capbox">
-      <div class="cap" data-at="0"><span class="num">⌁</span><h1>Where does it live?</h1><div class="sub">a couple of keywords, that's it</div></div>
-      <div class="cap" data-at="1"><span class="num">⌁</span><h1>the whole <em>cluster</em>, ranked</h1><div class="sub">spreading activation — most relevant first</div></div>
+      <div class="cap pn" data-at="0"><span class="num">✗</span><h1>Where does it <em>live?</em></h1><div class="sub">grep returns 131 hits — which one?</div></div>
+      <div class="cap" data-at="1"><span class="num">⌁</span><h1>one <em>seed</em></h1><div class="sub">a keyword, that's it</div></div>
+      <div class="cap" data-at="2"><span class="num">⌁</span><h1>the whole <em>cluster</em>, ranked</h1><div class="sub">spreading activation — most relevant first</div></div>
     </div>
     <div class="screen">
-      <div class="term" data-at="0"><span class="d">$</span> <span class="cmd">repo-graph activate</span> GroupsComponent</div>
-      <div data-at="1">
+      <div class="pain" data-at="0" data-swap><span class="d">$</span> <span class="g">grep -rn "groups" .</span><div class="n">131 matches across 40 files · no ranking, no idea</div></div>
+      <div class="term" data-at="1"><span class="d">$</span> <span class="cmd">repo-graph activate</span> GroupsComponent</div>
+      <div data-at="2">
         <div class="chip"><span class="sc">0.62</span><span class="nm">GroupsComponent</span><span class="loc">class</span></div>
         <div class="chip"><span class="sc">0.11</span><span class="nm">sortMessages</span><span class="loc">method</span></div>
         <div class="chip"><span class="sc">0.08</span><span class="nm">loadActivities</span><span class="loc">method</span></div>
@@ -185,14 +198,16 @@ GroupsController > MongoDB</div>
   </section>
 
   <!-- 5 · FLOW (feature flow) -->
-  <section class="clip" data-clip="flow" data-steps="2">
+  <section class="clip" data-clip="flow" data-steps="3">
     <div class="capbox">
-      <div class="cap" data-at="0"><span class="num">⌁</span><h1>Just find &amp; fix it</h1><div class="sub">skip the grep safari</div></div>
-      <div class="cap" data-at="1"><span class="num">⌁</span><h1>entry → data, <em>one call</em></h1><div class="sub">the feature as layered tiers</div></div>
+      <div class="cap pn" data-at="0"><span class="num">✗</span><h1>Where does this<br>feature <em>start?</em></h1><div class="sub">grep → read → grep → read…</div></div>
+      <div class="cap" data-at="1"><span class="num">⌁</span><h1>one <em>flow</em></h1><div class="sub">name the feature, that's it</div></div>
+      <div class="cap" data-at="2"><span class="num">⌁</span><h1>entry → data, <em>one call</em></h1><div class="sub">the feature as layered tiers</div></div>
     </div>
     <div class="screen">
-      <div class="term" data-at="0"><span class="d">$</span> <span class="cmd">repo-graph flow</span> groups</div>
-      <div data-at="1">
+      <div class="pain" data-at="0" data-swap><span class="d">$</span> <span class="g">grep "groups" · cat · grep · cat …</span><div class="n">15 files deep, still mapping it in your head</div></div>
+      <div class="term" data-at="1"><span class="d">$</span> <span class="cmd">repo-graph flow</span> groups</div>
+      <div data-at="2">
         <div class="tier entry"><div class="lbl">ENTRY</div><div class="pills"><div class="pill">/groups</div><div class="pill">/groups/:id</div></div></div>
         <div class="arrow">↓</div>
         <div class="tier"><div class="lbl">SERVICE</div><div class="pills"><div class="pill">GroupsController</div></div></div>
@@ -231,7 +246,7 @@ GroupsController > MongoDB</div>
     stage.style.transform=`translate(${(innerWidth-1080*s)/2}px,${(innerHeight-1920*s)/2}px) scale(${s})`;}
   addEventListener('resize',fit);fit();
 
-  const STEP=2900; // ms per step
+  const STEP=3400; // ms per step (slightly longer — room to read pain + relief)
   const params=new URLSearchParams(location.search);
   const want=params.get('clip');           // ?clip=trace → loop just that clip
   let clips=[...document.querySelectorAll('.clip')];
