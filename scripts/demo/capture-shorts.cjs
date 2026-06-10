@@ -1,14 +1,17 @@
 #!/usr/bin/env node
-// Capture every animated HTML piece to a clean, native-resolution mp4.
+// Capture every animated HTML piece to a clean, native-resolution, 60fps mp4.
 //
 //   node scripts/demo/capture-shorts.cjs            # all pieces
 //   node scripts/demo/capture-shorts.cjs constellation   # just one (by name)
 //
-// WHY headless: the CLI/kitty pieces had to be captured at 765x1360 then ffmpeg-
-// upscaled, because a real 1080x1920 window is TALLER than the 1440px monitor and
-// gets clipped (desktop bleed). A browser render uses a VIRTUAL viewport with no
-// screen-size limit — so we record at native 1080x1920 directly: no upscale, no
-// bleed, no manual screen-recording. One full loop per piece => seamless to loop.
+// HOW: headless chromium with the frame-rate limiter OFF paints these CSS/SVG
+// animations at ~90fps. We grab every painted frame via CDP Page.screencast
+// (real frames — no interpolation/ghosting), then resample to a constant 60fps
+// with ffmpeg using the frames' own timestamps, and clip to exactly one loop so
+// it loops seamlessly. Output is NATIVE res (1080x1920 / 1920x1080) — no upscale,
+// no monitor clip (the kitty pieces needed 765x1360->upscale; a virtual viewport
+// doesn't). Output -> scripts/demo/shorts/<name>.mp4 (crf 18 source; re-encode
+// to whatever you like, e.g. VP9/AV1 crf for tiny web files).
 
 const path = require('path');
 const fs = require('fs');
@@ -27,11 +30,11 @@ const { chromium } = loadPlaywright();
 
 const DOCS = path.resolve(__dirname, '../../docs');
 const OUT = path.resolve(__dirname, 'shorts');
-const TMP = path.join(OUT, '.webm');
-fs.mkdirSync(TMP, { recursive: true });
+const TMP = path.join(OUT, '.frames');
+fs.mkdirSync(OUT, { recursive: true });
 
-const V = { w: 1080, h: 1920 };   // 9:16 vertical (Shorts/Reels/TikTok)
-const W = { w: 1920, h: 1080 };   // 16:9 landscape (YouTube/Twitter)
+const V = { w: 1080, h: 1920 };   // 9:16 vertical
+const W = { w: 1920, h: 1080 };   // 16:9 landscape
 
 // name, file (+ optional ?query), loop length ms (= the piece's TOTAL), [size]
 const PIECES = [
@@ -63,31 +66,58 @@ const only = process.argv[2];
 const list = PIECES.filter(p => !only || p[0] === only || p[1].includes(only));
 if (!list.length) { console.error('no piece matches', only); process.exit(1); }
 
+async function capture(browser, name, file, ms, size) {
+  fs.rmSync(TMP, { recursive: true, force: true });
+  fs.mkdirSync(TMP, { recursive: true });
+  const [fileOnly, query] = file.split('?');
+  const url = 'file://' + path.join(DOCS, fileOnly) + (query ? '?' + query : '');
+
+  // capture at 0.8x (where headless paints >60fps; full res caps at ~37fps), then
+  // upscale to the output size — true 60fps motion, negligible softness on flat art.
+  const cap = { w: Math.round(size.w * 0.8), h: Math.round(size.h * 0.8) };
+  const ctx = await browser.newContext({ viewport: { width: cap.w, height: cap.h }, deviceScaleFactor: 1 });
+  const page = await ctx.newPage();
+  const cdp = await ctx.newCDPSession(page);
+  const frames = [];
+  cdp.on('Page.screencastFrame', async f => {
+    const fn = path.join(TMP, `f${String(frames.length).padStart(6, '0')}.jpg`);
+    try { fs.writeFileSync(fn, Buffer.from(f.data, 'base64')); frames.push({ file: fn, ts: f.metadata.timestamp }); } catch (e) {}
+    try { await cdp.send('Page.screencastFrameAck', { sessionId: f.sessionId }); } catch (e) {}
+  });
+  await page.goto(url);
+  await cdp.send('Page.startScreencast', { format: 'jpeg', quality: 80, everyNthFrame: 1 });
+  await page.waitForTimeout(ms + 400);
+  try { await cdp.send('Page.stopScreencast'); } catch (e) {}
+  await ctx.close();
+
+  // keep exactly one loop [t0, t0+ms); ffmpeg concat with per-frame durations -> 60fps CFR
+  const t0 = frames[0].ts, end = t0 + ms / 1000;
+  const keep = frames.filter(f => f.ts < end);
+  let concat = '';
+  for (let i = 0; i < keep.length; i++) {
+    const next = (i < keep.length - 1) ? keep[i + 1].ts : end;
+    concat += `file '${keep[i].file}'\nduration ${Math.max(next - keep[i].ts, 0.001).toFixed(5)}\n`;
+  }
+  concat += `file '${keep[keep.length - 1].file}'\n`;
+  const listFile = path.join(TMP, 'list.txt');
+  fs.writeFileSync(listFile, concat);
+
+  const mp4 = path.join(OUT, name + '.mp4');
+  execSync(
+    `ffmpeg -y -f concat -safe 0 -i "${listFile}" ` +
+    `-vf "fps=60,scale=${size.w}:${size.h}:flags=lanczos" ` +
+    `-c:v libx264 -pix_fmt yuv420p -crf 18 -an "${mp4}"`,
+    { stdio: 'ignore' });
+  fs.rmSync(TMP, { recursive: true, force: true });
+  return { mp4, frames: keep.length };
+}
+
 (async () => {
-  const browser = await chromium.launch();
+  const browser = await chromium.launch({ args: ['--disable-frame-rate-limit', '--disable-gpu-vsync', '--disable-background-timer-throttling'] });
   for (const [name, file, ms, size = V] of list) {
-    const [fileOnly, query] = file.split('?');
-    const url = 'file://' + path.join(DOCS, fileOnly) + (query ? '?' + query : '');
-    const ctx = await browser.newContext({
-      viewport: { width: size.w, height: size.h }, deviceScaleFactor: 1,
-      recordVideo: { dir: TMP, size: { width: size.w, height: size.h } },
-    });
-    const page = await ctx.newPage();
-    await page.goto(url);
-    await page.waitForTimeout(ms + 900);          // one full loop + load settle
-    const webm = await page.video().path();
-    await ctx.close();                            // finalises the video file
-    const mp4 = path.join(OUT, name + '.mp4');
-    // trim the first ~0.4s (load) and take exactly one loop -> seamless; force 30fps
-    execSync(
-      `ffmpeg -y -ss 0.4 -t ${(ms / 1000).toFixed(2)} -i "${webm}" ` +
-      `-vf "scale=${size.w}:${size.h}:flags=lanczos,fps=30" ` +
-      `-c:v libx264 -pix_fmt yuv420p -crf 18 -an "${mp4}"`,
-      { stdio: 'ignore' });
-    fs.unlinkSync(webm);
-    console.log(`  ✓ ${name}  →  shorts/${name}.mp4  (${size.w}x${size.h}, ${ms / 1000}s)`);
+    const r = await capture(browser, name, file, ms, size);
+    console.log(`  ✓ ${name}  →  shorts/${name}.mp4  (${size.w}x${size.h} · 60fps · ${ms / 1000}s · ${r.frames} src frames)`);
   }
   await browser.close();
-  fs.rmSync(TMP, { recursive: true, force: true });
   console.log('\ndone → scripts/demo/shorts/');
 })();
