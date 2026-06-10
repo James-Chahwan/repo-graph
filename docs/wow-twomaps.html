@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>repo-graph — deterministic</title>
+<style>
+  :root{--bg:#0a0a0a;--ink:#e8ffe8;--dim:#5a6b5a;--grn:#8effc0;--grn2:#3ad17a;--gold:#c9a227;--line:#26331f;
+    --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;}
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;background:#000;overflow:hidden;font-family:var(--mono)}
+  #stage{position:absolute;top:0;left:0;width:1080px;height:1920px;
+    background:radial-gradient(120% 80% at 50% 0%,#0e150e 0%,var(--bg) 55%);transform-origin:top left;color:var(--ink);overflow:hidden}
+  #mark{position:absolute;top:56px;left:0;right:0;text-align:center;color:var(--dim);font-size:27px;letter-spacing:.4em;text-transform:uppercase}
+  #mark b{color:var(--grn)}
+  #bar{position:absolute;left:0;bottom:0;height:8px;width:0;background:var(--grn);box-shadow:0 0 12px var(--grn)}
+  .capbox{position:absolute;top:130px;left:0;right:0;height:210px;padding:0 60px}
+  .cap{position:absolute;left:60px;right:60px;top:0;text-align:center;opacity:0;transition:opacity .5s}
+  .cap h1{font-size:58px;line-height:1.12;font-weight:700} .cap h1 em{color:var(--grn);font-style:normal}
+  .cap .sub{margin-top:14px;color:var(--dim);font-size:30px}
+  body.p0 .c0,body.p1 .c1,body.p2 .c2,body.p3 .c3{opacity:1}
+
+  .vline{position:absolute;top:420px;left:540px;width:2px;height:680px;background:var(--line);opacity:0;transition:opacity .5s}
+  body.p0 .vline,body.p1 .vline,body.p2 .vline,body.p3 .vline{opacity:1}
+  .rhdr{position:absolute;top:400px;font-size:30px;color:var(--dim);font-weight:700;text-align:center;width:460px;opacity:0;transition:opacity .5s}
+  .rhdr.l{left:30px} .rhdr.r{left:590px}
+  body.p1 .rhdr.l,body.p2 .rhdr.l,body.p3 .rhdr.l{opacity:1}
+  body.p2 .rhdr.r,body.p3 .rhdr.r{opacity:1}
+
+  svg{position:absolute;top:0;left:0;width:1080px;height:1920px}
+  .mapL{opacity:0} body.p1 .mapL,body.p2 .mapL,body.p3 .mapL{opacity:1}
+  .mapR{opacity:0} body.p2 .mapR,body.p3 .mapR{opacity:1}
+  .ed{stroke:var(--grn2);stroke-width:2.5;fill:none;opacity:.7}
+  .nd{fill:#10301d;stroke:var(--grn);stroke-width:2.5}
+
+  .ledger{position:absolute;top:1140px;left:90px;right:90px;opacity:0;transition:opacity .5s}
+  body.p2 .ledger,body.p3 .ledger{opacity:1}
+  .lrow{display:flex;align-items:center;font-size:26px;padding:9px 0;border-bottom:1px solid #16201460}
+  .lrow .h{color:var(--dim);width:230px}
+  .lrow .ok{color:var(--grn);width:230px;font-weight:700}
+  .lrow .rag{color:#8a7a55;margin-left:auto}
+  .lrow .rag b{color:var(--gold)}
+
+  .stamp{position:absolute;top:1560px;left:0;right:0;text-align:center;opacity:0;transition:opacity .5s}
+  body.p3 .stamp{opacity:1}
+  .stamp .big{font-size:60px;font-weight:800;color:var(--grn);text-shadow:0 0 26px rgba(142,255,192,.5)}
+  .stamp .sub{margin-top:14px;color:var(--dim);font-size:30px}
+</style></head>
+<body class="p0"><div id="stage">
+  <div id="mark"><b>repo-graph</b> · deterministic</div>
+  <div class="capbox">
+    <div class="cap c0"><h1>embeddings <em>drift</em></h1><div class="sub">run twice, get two answers</div></div>
+    <div class="cap c1"><h1>run it…</h1></div>
+    <div class="cap c2"><h1>…and <em>again</em></h1><div class="sub">byte for byte, the same map</div></div>
+    <div class="cap c3"><h1>the answer<br>doesn't <em>move</em></h1></div>
+  </div>
+  <div class="vline"></div>
+  <div class="rhdr l">run #1</div><div class="rhdr r">run #2</div>
+  <svg viewBox="0 0 1080 1920" id="maps"></svg>
+  <div class="ledger" id="ledger"></div>
+  <div class="stamp"><div class="big">byte-identical · 0 diffs</div><div class="sub">0 embeddings · the map is a function, not a guess</div></div>
+  <div id="bar"></div>
+</div>
+<script>
+  const stage=document.getElementById('stage'),bar=document.getElementById('bar');
+  function fit(){const s=Math.min(innerWidth/1080,innerHeight/1920);
+    stage.style.transform=`translate(${(innerWidth-1080*s)/2}px,${(innerHeight-1920*s)/2}px) scale(${s})`;}
+  addEventListener('resize',fit);fit();
+
+  // a fixed 9-node layout, rendered identically in both halves
+  const nodes=[[230,120],[120,250],[340,250],[80,400],[210,400],[360,400],[150,540],[300,540],[230,660]];
+  const edges=[[0,1],[0,2],[1,3],[1,4],[2,5],[4,6],[5,7],[6,8],[7,8]];
+  function map(ox,oy,cls){let g=`<g class="${cls}">`;
+    edges.forEach(([a,b])=>{g+=`<line class="ed" x1="${nodes[a][0]+ox}" y1="${nodes[a][1]+oy}" x2="${nodes[b][0]+ox}" y2="${nodes[b][1]+oy}"/>`;});
+    nodes.forEach(n=>{g+=`<circle class="nd" cx="${n[0]+ox}" cy="${n[1]+oy}" r="20"/>`;});
+    return g+'</g>';}
+  document.getElementById('maps').innerHTML=map(60,470,'mapL')+map(600,470,'mapR');
+
+  const hashes=['a1b2','3f9c','7e21','c084','5db6','9a4f'];
+  let L='';hashes.forEach(h=>{L+=`<div class="lrow"><span class="h">node ${h}…</span><span class="ok">= match ✓</span><span class="rag">vector RAG: rank <b class="flick">#3</b></span></div>`;});
+  document.getElementById('ledger').innerHTML=L;
+  // strawman ranks flicker (only matters in auto-play)
+  const opts=['#3','#7','#2','#5'];
+
+  const TOTAL=13500,cues=[[0,'p0'],[3000,'p1'],[6800,'p2'],[11000,'p3']];
+  const ph=new URLSearchParams(location.search).get('phase');
+  if(ph){document.body.className=ph;}
+  else{let st=null,fl=0;(function f(ts){if(st===null)st=ts;const t=(ts-st)%TOTAL;let c='p0';for(const[a,k]of cues)if(t>=a)c=k;
+    if(!document.body.classList.contains(c))document.body.className=c;
+    if(ts-fl>500){fl=ts;document.querySelectorAll('.flick').forEach((e,i)=>e.textContent=opts[(Math.floor(ts/500)+i)%opts.length]);}
+    bar.style.width=(t/TOTAL*1080)+'px';requestAnimationFrame(f);})(0);}
+</script></body></html>

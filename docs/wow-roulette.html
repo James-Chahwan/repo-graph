@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>repo-graph — ranked, not found</title>
+<style>
+  :root{--bg:#0a0a0a;--ink:#e8ffe8;--dim:#5a6b5a;--grn:#8effc0;--grn2:#3ad17a;--red:#ff6b6b;--line:#26331f;
+    --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;}
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;background:#000;overflow:hidden;font-family:var(--mono)}
+  #stage{position:absolute;top:0;left:0;width:1080px;height:1920px;
+    background:radial-gradient(120% 80% at 50% 0%,#0e150e 0%,var(--bg) 55%);transform-origin:top left;color:var(--ink);overflow:hidden}
+  #mark{position:absolute;top:56px;left:0;right:0;text-align:center;color:var(--dim);font-size:27px;letter-spacing:.4em;text-transform:uppercase}
+  #mark b{color:var(--grn)}
+  #bar{position:absolute;left:0;bottom:0;height:8px;width:0;background:var(--grn);box-shadow:0 0 12px var(--grn)}
+  .capbox{position:absolute;top:130px;left:0;right:0;height:200px;padding:0 70px}
+  .cap{position:absolute;left:70px;right:70px;top:0;text-align:center;opacity:0;transition:opacity .5s}
+  .cap h1{font-size:60px;line-height:1.12;font-weight:700} .cap h1 em{color:var(--grn);font-style:normal}
+  .cap .sub{margin-top:14px;color:var(--dim);font-size:30px}
+  body.p0 .c0,body.p1 .c1,body.p2 .c2{opacity:1}
+
+  .gterm{position:absolute;top:330px;left:70px;right:70px;font-size:30px;color:#c98;opacity:0;transition:opacity .4s}
+  body.p0 .gterm{opacity:1} .gterm .d{color:#a85a5a}
+  .aterm{position:absolute;top:330px;left:70px;right:70px;text-align:center;font-size:32px;color:var(--grn);font-weight:700;opacity:0;transition:opacity .4s}
+  body.p1 .aterm,body.p2 .aterm{opacity:1} .aterm .d{color:var(--grn2)}
+  .count{position:absolute;top:330px;right:70px;font-size:30px;color:#a85a5a;font-weight:700;opacity:0;transition:opacity .4s}
+  body.p0 .count{opacity:1}
+
+  .grep{position:absolute;top:410px;left:70px;right:70px;font-size:23px;line-height:1.55;color:#5a6357;opacity:0;transition:opacity .6s}
+  body.p0 .grep{opacity:.85} body.p1 .grep,body.p2 .grep{opacity:.1}
+  .grep .m{color:#7a8573}
+
+  .chips{position:absolute;top:560px;left:70px;right:70px;opacity:0;transition:opacity .5s}
+  body.p1 .chips,body.p2 .chips{opacity:1}
+  .rc{background:#0e160e;border:1px solid var(--line);border-radius:16px;padding:24px 28px;margin-bottom:22px;position:relative;overflow:hidden}
+  .rc .top{display:flex;align-items:baseline;gap:18px}
+  .rc .rk{color:var(--grn);font-weight:800;font-size:32px}
+  .rc .nm{font-size:32px;font-weight:700}
+  .rc .sc{margin-left:auto;color:var(--grn);font-size:30px;font-weight:700}
+  .rc .sub{color:var(--dim);font-size:24px;margin-top:6px}
+  .rc .barbg{height:10px;background:#16201460;border-radius:6px;margin-top:18px}
+  .rc .bar{height:10px;background:var(--grn);border-radius:6px;width:0;box-shadow:0 0 10px var(--grn);transition:width .8s ease}
+  body.p2 .rc .bar{width:var(--w)}
+  .rc.one{border-color:var(--grn2);box-shadow:0 0 20px rgba(58,209,122,.2)}
+  .stat{position:absolute;left:0;right:0;bottom:108px;text-align:center;font-size:34px;opacity:0;transition:opacity .5s}
+  body.p2 .stat{opacity:1} .stat b{color:var(--grn);font-weight:800}
+</style></head>
+<body class="p0"><div id="stage">
+  <div id="mark"><b>repo-graph</b> · ranked, not found</div>
+  <div class="capbox">
+    <div class="cap c0"><h1>312 hits.<br>which one <em>runs?</em></h1></div>
+    <div class="cap c1"><h1>rank, don't <em>scroll</em></h1></div>
+    <div class="cap c2"><h1>the <em>4</em> that matter</h1><div class="sub">312 → 4, by relevance</div></div>
+  </div>
+  <div class="gterm"><span class="d">$</span> grep -r handleSubmit</div>
+  <div class="aterm"><span class="d">$</span> repo-graph activate checkout submit</div>
+  <div class="count" id="cnt">312 matches</div>
+  <div class="grep" id="grep"></div>
+  <div class="chips">
+    <div class="rc one"><div class="top"><span class="rk">#1</span><span class="nm">checkout/Form.tsx</span><span class="sc">0.58</span></div><div class="sub">onSubmit → POST /checkout</div><div class="barbg"><div class="bar" style="--w:96%"></div></div></div>
+    <div class="rc"><div class="top"><span class="rk">#2</span><span class="nm">hooks/useCheckout.ts</span><span class="sc">0.19</span></div><div class="sub">submit() guard</div><div class="barbg"><div class="bar" style="--w:33%"></div></div></div>
+    <div class="rc"><div class="top"><span class="rk">#3</span><span class="nm">api/orders.ts</span><span class="sc">0.11</span></div><div class="sub">createOrder</div><div class="barbg"><div class="bar" style="--w:19%"></div></div></div>
+    <div class="rc"><div class="top"><span class="rk">#4</span><span class="nm">CartContext.tsx</span><span class="sc">0.06</span></div><div class="sub">clearCart on success</div><div class="barbg"><div class="bar" style="--w:11%"></div></div></div>
+  </div>
+  <div class="stat"><b>312</b> matches → <b>4</b> that matter, ranked</div>
+  <div id="bar"></div>
+</div>
+<script>
+  const stage=document.getElementById('stage'),bar=document.getElementById('bar');
+  function fit(){const s=Math.min(innerWidth/1080,innerHeight/1920);
+    stage.style.transform=`translate(${(innerWidth-1080*s)/2}px,${(innerHeight-1920*s)/2}px) scale(${s})`;}
+  addEventListener('resize',fit);fit();
+  // noisy near-identical grep results
+  const dirs=['src/forms','components/ui','features/cart','legacy/admin','pages/account','shared/widgets','features/auth','vendor/kit'];
+  let g='';for(let i=0;i<24;i++){const d=dirs[i%dirs.length];g+=`<div>${d}/Form${i}.tsx:<span class="m">  const handleSubmit = (e) =&gt; {</span></div>`;}
+  document.getElementById('grep').innerHTML=g;
+
+  const TOTAL=12500,cues=[[0,'p0'],[4000,'p1'],[7500,'p2']];
+  const ph=new URLSearchParams(location.search).get('phase');
+  if(ph){document.body.className=ph;}
+  else{let st=null;(function f(ts){if(st===null)st=ts;const t=(ts-st)%TOTAL;let c='p0';for(const[a,k]of cues)if(t>=a)c=k;
+    if(!document.body.classList.contains(c))document.body.className=c;
+    if(t<4000){document.getElementById('cnt').textContent=(40+Math.floor(t/4000*272))+' matches';}
+    bar.style.width=(t/TOTAL*1080)+'px';requestAnimationFrame(f);})(0);}
+</script></body></html>

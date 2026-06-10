@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>repo-graph — your repo, a city</title>
+<style>
+  :root{--bg:#0a0a0a;--ink:#e8ffe8;--dim:#5a6b5a;--grn:#8effc0;--grn2:#3ad17a;--line:#26331f;
+    --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;}
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;background:#000;overflow:hidden;font-family:var(--mono)}
+  #stage{position:absolute;top:0;left:0;width:1080px;height:1920px;
+    background:radial-gradient(130% 70% at 50% 100%,#0c1410 0%,var(--bg) 60%);transform-origin:top left;color:var(--ink);overflow:hidden}
+  #mark{position:absolute;top:56px;left:0;right:0;text-align:center;color:var(--dim);font-size:27px;letter-spacing:.4em;text-transform:uppercase}
+  #mark b{color:var(--grn)}
+  #bar{position:absolute;left:0;bottom:0;height:8px;width:0;background:var(--grn);box-shadow:0 0 12px var(--grn)}
+  .capbox{position:absolute;top:140px;left:0;right:0;height:230px;padding:0 70px}
+  .cap{position:absolute;left:70px;right:70px;top:0;text-align:center;opacity:0;transition:opacity .5s}
+  .cap h1{font-size:64px;line-height:1.12;font-weight:700} .cap h1 em{color:var(--grn);font-style:normal}
+  .cap .sub{margin-top:16px;color:var(--dim);font-size:30px}
+  body.p0 .c0,body.p1 .c1,body.p2 .c2{opacity:1}
+  .term{position:absolute;top:360px;left:0;right:0;text-align:center;font-size:32px;color:var(--grn);font-weight:700;opacity:0;transition:opacity .5s}
+  body.p1 .term,body.p2 .term{opacity:1} .term .d{color:var(--grn2)}
+
+  svg{position:absolute;top:0;left:0;width:1080px;height:1920px}
+  .tower{fill:#101a12;stroke:#1d2c1d;stroke-width:1.5;opacity:0;transition:opacity .5s}
+  body.p0 .tower,body.p1 .tower,body.p2 .tower{opacity:1;transition-delay:var(--d,0s)}
+  .lit{fill:#10301d;stroke:var(--grn);stroke-width:2;opacity:0}
+  body.p1 .lit,body.p2 .lit{opacity:1;filter:drop-shadow(0 0 9px var(--grn));transition:opacity .4s;transition-delay:var(--d,0s)}
+  body.p2 .tower:not(.keep){opacity:.5}
+  .road{stroke:var(--grn);stroke-width:5;fill:none;opacity:0;stroke-dasharray:1;stroke-dashoffset:1;filter:drop-shadow(0 0 8px var(--grn))}
+  body.p1 .road,body.p2 .road{opacity:1;animation:draw 1.7s ease forwards}
+  @keyframes draw{to{stroke-dashoffset:0}}
+  .stat{position:absolute;left:0;right:0;bottom:108px;text-align:center;font-size:36px;opacity:0;transition:opacity .5s}
+  body.p2 .stat{opacity:1} .stat b{color:var(--grn);font-weight:800}
+</style></head>
+<body class="p0"><div id="stage">
+  <div id="mark"><b>repo-graph</b> · your repo</div>
+  <div class="capbox">
+    <div class="cap c0"><h1>every file is a<br><em>building</em></h1><div class="sub">height = size</div></div>
+    <div class="cap c1"><h1>one feature lights<br>its <em>street</em></h1><div class="sub">$ repo-graph flow checkout</div></div>
+    <div class="cap c2"><h1>the rest of the city<br>stays <em>dark</em></h1></div>
+  </div>
+  <svg viewBox="0 0 1080 1920" id="city"></svg>
+  <div class="stat">lit <b>14</b> of <b>118</b> files · <b>1</b> feature</div>
+  <div id="bar"></div>
+</div>
+<script>
+  const stage=document.getElementById('stage'),bar=document.getElementById('bar'),svg=document.getElementById('city');
+  function fit(){const s=Math.min(innerWidth/1080,innerHeight/1920);
+    stage.style.transform=`translate(${(innerWidth-1080*s)/2}px,${(innerHeight-1920*s)/2}px) scale(${s})`;}
+  addEventListener('resize',fit);fit();
+
+  const BASE=1800, N=118, W=7; const towers=[];
+  for(let i=0;i<N;i++){ const x=40+i*(1000/N); const h=120+Math.pow(Math.random(),1.5)*640; towers.push({x,h,top:BASE-h}); }
+  // the feature's "street": 14 towers spread across, sorted by x
+  const litIdx=[]; while(litIdx.length<14){const r=4+Math.floor(Math.random()*(N-8)); if(!litIdx.includes(r))litIdx.push(r);} litIdx.sort((a,b)=>a-b);
+  const litSet=new Set(litIdx);
+  let s='';
+  towers.forEach((t,i)=>{ if(litSet.has(i))return;
+    s+=`<rect class="tower" style="--d:${(i*0.004).toFixed(3)}s" x="${t.x.toFixed(1)}" y="${t.top.toFixed(1)}" width="${W}" height="${t.h.toFixed(1)}"/>`; });
+  // the road through lit tower tops
+  const pts=litIdx.map(i=>`${(towers[i].x+W/2).toFixed(1)},${(towers[i].top-6).toFixed(1)}`);
+  s+=`<path class="road" pathLength="1" d="M${pts.join(' L')}"/>`;
+  // lit towers (glow), staggered along the road
+  litIdx.forEach((i,k)=>{ const t=towers[i];
+    s+=`<rect class="lit keep" style="--d:${(0.2+k*0.11).toFixed(2)}s" x="${t.x.toFixed(1)}" y="${t.top.toFixed(1)}" width="${W}" height="${t.h.toFixed(1)}"/>`; });
+  svg.innerHTML=s;
+
+  const TOTAL=12500,cues=[[0,'p0'],[4000,'p1'],[9000,'p2']];
+  const ph=new URLSearchParams(location.search).get('phase');
+  if(ph){document.body.className=ph;}
+  else{let st=null;(function f(ts){if(st===null)st=ts;const t=(ts-st)%TOTAL;let c='p0';for(const[a,k]of cues)if(t>=a)c=k;
+    if(!document.body.classList.contains(c))document.body.className=c;bar.style.width=(t/TOTAL*1080)+'px';requestAnimationFrame(f);})(0);}
+</script></body></html>
