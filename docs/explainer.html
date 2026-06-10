@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>repo-graph — what it is (30s)</title>
+<style>
+  /* ── theme (matches the demo kit) ─────────────────────────────── */
+  :root{
+    --bg:#0a0a0a; --ink:#e8ffe8; --dim:#5a6b5a; --grn:#8effc0;
+    --grn2:#3ad17a; --red:#ff6b6b; --line:#26331f; --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;background:#000;overflow:hidden;font-family:var(--mono)}
+  /* 9:16 stage, scaled to fit any window via JS */
+  #stage{position:absolute;top:0;left:0;width:1080px;height:1920px;background:
+      radial-gradient(120% 80% at 50% 0%, #0e150e 0%, var(--bg) 55%);
+      transform-origin:top left;color:var(--ink);overflow:hidden}
+  .scene{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
+      justify-content:center;text-align:center;padding:0 90px;opacity:0;
+      transition:opacity .6s ease}
+  /* a scene becomes visible when body carries its phase class */
+  .p0 #s0,.p1 #s1,.p2 #sg,.p3 #sg,.p4 #sg,.p5 #s5{opacity:1}
+  /* the graph stays up across p2–p4; only the matching caption shows
+     (body.pN raises specificity above `.capbox .cap{opacity:0}`) */
+  body.p2 .c2,body.p3 .c3,body.p4 .c4{opacity:1}
+  .kicker{color:var(--grn);font-size:30px;letter-spacing:.32em;text-transform:uppercase;margin-bottom:34px}
+  h1{font-size:78px;line-height:1.12;font-weight:700;letter-spacing:-.01em}
+  h1 em{color:var(--grn);font-style:normal}
+  .sub{margin-top:30px;color:var(--dim);font-size:34px;line-height:1.5}
+  .big{font-size:120px;font-weight:800;letter-spacing:-.02em}
+
+  /* ── scene 1: the grep pile ───────────────────────────────────── */
+  #pile{position:absolute;inset:0;opacity:.0}
+  .p1 #pile{opacity:1;transition:opacity .5s}
+  .file{position:absolute;border:1px solid var(--line);background:#0c120c;color:var(--dim);
+      font-size:24px;padding:10px 14px;border-radius:8px;opacity:0;
+      animation:none}
+  .p1 .file{animation:fly .5s ease forwards}
+  @keyframes fly{from{opacity:0;transform:translateY(26px) scale(.9)}to{opacity:.9;transform:none}}
+  .counter{position:absolute;bottom:300px;left:0;right:0;text-align:center}
+  .counter .n{font-size:96px;font-weight:800;color:var(--red)}
+  .counter .l{color:var(--dim);font-size:30px;letter-spacing:.2em;text-transform:uppercase}
+
+  /* ── graph (scenes 2–4) ───────────────────────────────────────── */
+  #sg{justify-content:flex-start;padding-top:140px}
+  .capbox{position:relative;height:330px;width:100%;margin-bottom:6px}
+  .capbox .cap{position:absolute;left:0;right:0;top:0;opacity:0;transition:opacity .5s;
+      display:flex;flex-direction:column;align-items:center}
+  .capbox .kicker{margin-bottom:18px}
+  .capbox h1{font-size:62px}
+  svg{width:1080px;height:1160px;display:block}
+  /* opacity-only fades — never CSS-transform an SVG <g> (it clobbers the translate attr) */
+  .edge{stroke:var(--line);stroke-width:3;fill:none;opacity:0;
+      animation-delay:var(--d,0s);animation-fill-mode:forwards;animation-timing-function:ease}
+  .p2 .edge,.p3 .edge,.p4 .edge{animation-name:fadein;animation-duration:.55s}
+  .node{opacity:0;animation-delay:var(--d,0s);animation-fill-mode:forwards;animation-timing-function:ease}
+  .p2 .node,.p3 .node,.p4 .node{animation-name:fadein;animation-duration:.5s}
+  @keyframes fadein{to{opacity:1}}
+  .node circle{fill:#0d140d;stroke:var(--grn2);stroke-width:3}
+  .node.fe circle{stroke:#6aa9ff}
+  .node.data circle{stroke:#c9a227}
+  .node text{fill:var(--ink);font-size:23px;text-anchor:middle;font-family:var(--mono)}
+  .node .k{fill:var(--dim);font-size:18px}
+  /* navigate: light the relevant path */
+  .lit circle{stroke:var(--grn);filter:drop-shadow(0 0 16px var(--grn));fill:#10301d}
+  .p3 .lit circle,.p4 .lit circle{animation:throb 1.1s ease-in-out infinite}
+  @keyframes throb{0%,100%{filter:drop-shadow(0 0 10px var(--grn))}50%{filter:drop-shadow(0 0 26px var(--grn))}}
+  .edge.litE{stroke:var(--grn);stroke-width:4;opacity:0}
+  .p3 .edge.litE,.p4 .edge.litE{opacity:1;filter:drop-shadow(0 0 8px var(--grn))}
+  .edge.xstack{stroke-dasharray:10 8}
+  .p4 .edge.xstack{stroke:#6aa9ff;stroke-width:5;opacity:1;filter:drop-shadow(0 0 10px #6aa9ff)}
+
+  /* tier labels down the side */
+  .tier{fill:var(--dim);font-size:20px;letter-spacing:.18em;text-anchor:start;opacity:.0}
+  .p2 .tier,.p3 .tier,.p4 .tier{opacity:.7;transition:opacity .8s .4s}
+
+  /* ── scene 5: CTA ─────────────────────────────────────────────── */
+  #s5 .cmd{font-size:58px;font-weight:700;color:var(--grn);background:#0c140c;
+      border:1px solid var(--line);border-radius:16px;padding:30px 46px;margin:14px 0 40px}
+  #s5 .plat{color:var(--dim);font-size:34px;letter-spacing:.04em}
+  #s5 .url{margin-top:46px;font-size:40px;color:var(--ink);font-weight:700}
+  #s5 .name{color:var(--grn)}
+
+  /* progress bar + wordmark */
+  #bar{position:absolute;left:0;bottom:0;height:8px;width:0;background:var(--grn);box-shadow:0 0 12px var(--grn)}
+  #mark{position:absolute;top:64px;left:0;right:0;text-align:center;color:var(--dim);
+      font-size:28px;letter-spacing:.42em;text-transform:uppercase}
+  #mark b{color:var(--grn)}
+</style>
+</head>
+<body class="p0">
+<div id="stage">
+  <div id="mark"><b>repo-graph</b></div>
+
+  <!-- 0 · hook -->
+  <section class="scene" id="s0">
+    <div class="kicker">the problem</div>
+    <h1>Your AI reads the <em>whole</em> codebase<br>to find <em>one</em> thing.</h1>
+  </section>
+
+  <!-- 1 · grep pile -->
+  <section class="scene" id="s1">
+    <div id="pile"></div>
+    <h1 style="position:absolute;top:300px;left:0;right:0">grep. read.<br>grep. read…</h1>
+    <div class="counter"><div class="n" id="tok">0</div><div class="l">tokens burned, still guessing</div></div>
+  </section>
+
+  <!-- graph stage (phases 2–4 share the SVG; only one caption shows at a time) -->
+  <section class="scene" id="sg">
+    <div class="capbox">
+      <div class="cap c2"><div class="kicker">the idea</div><h1>repo-graph <em>maps</em> it instead.</h1><div class="sub">entities · relationships · flows</div></div>
+      <div class="cap c3"><div class="kicker">navigate, don't grep</div><h1>Ask → it jumps to the<br>code that <em>matters</em>.</h1><div class="sub">stack trace · feature · diff → the exact nodes</div></div>
+      <div class="cap c4"><div class="kicker">cross-stack</div><h1><em>Frontend → backend</em>, linked.</h1><div class="sub">grep can't connect the two halves</div></div>
+    </div>
+    <svg viewBox="0 0 1080 1160" id="graph">
+      <!-- tier labels -->
+      <text class="tier" x="40" y="250">FRONTEND</text>
+      <text class="tier" x="40" y="430">ROUTES</text>
+      <text class="tier" x="40" y="610">SERVICE</text>
+      <text class="tier" x="40" y="790">HANDLERS</text>
+      <text class="tier" x="40" y="1010">DATA</text>
+      <!-- edges (staggered top→bottom build) -->
+      <path class="edge xstack" style="--d:.25s" d="M300,230 C420,300 480,360 540,410"></path>
+      <path class="edge litE"   style="--d:.6s"  d="M540,440 L540,560"></path>
+      <path class="edge"        style="--d:.6s"  d="M820,440 C760,500 640,520 560,560"></path>
+      <path class="edge litE"   style="--d:.85s" d="M520,640 C460,690 420,720 380,760"></path>
+      <path class="edge"        style="--d:.85s" d="M560,640 C620,690 680,720 720,760"></path>
+      <path class="edge litE"   style="--d:1.15s" d="M380,820 C440,890 480,930 520,980"></path>
+      <path class="edge"        style="--d:1.15s" d="M720,820 C660,890 600,930 560,980"></path>
+      <!-- nodes -->
+      <g class="node fe"       style="--d:.1s"  transform="translate(300,210)"><circle r="58"/><text y="-2">Groups</text><text class="k" y="24">component</text></g>
+      <g class="node"          style="--d:.4s"  transform="translate(540,410)"><circle r="54"/><text y="-2">/groups</text><text class="k" y="24">route</text></g>
+      <g class="node"          style="--d:.5s"  transform="translate(820,410)"><circle r="54"/><text y="-2">/friends</text><text class="k" y="24">route</text></g>
+      <g class="node lit"      style="--d:.7s"  transform="translate(540,600)"><circle r="58"/><text y="-2">controller</text><text class="k" y="24">service</text></g>
+      <g class="node lit"      style="--d:.95s" transform="translate(380,790)"><circle r="56"/><text y="-2">GetFriends</text><text class="k" y="24">handler</text></g>
+      <g class="node"          style="--d:1.0s" transform="translate(720,790)"><circle r="56"/><text y="-2">SendReq</text><text class="k" y="24">handler</text></g>
+      <g class="node lit data" style="--d:1.25s" transform="translate(540,1000)"><circle r="60"/><text y="-2">MongoDB</text><text class="k" y="24">data</text></g>
+    </svg>
+  </section>
+
+  <!-- 5 · CTA -->
+  <section class="scene" id="s5">
+    <div class="kicker">one line, any AI client</div>
+    <div class="cmd">uvx mcp-repo-graph</div>
+    <div class="plat">Claude · Cursor · VS Code · Codex · Gemini · Windsurf</div>
+    <div class="url"><span class="name">mcp-repo-graph</span> &nbsp;·&nbsp; repo-graph.com</div>
+  </section>
+
+  <div id="bar"></div>
+</div>
+
+<script>
+  // fit the 1080×1920 stage to the window (centred), for any recording size
+  const stage = document.getElementById('stage');
+  function fit(){
+    const s = Math.min(innerWidth/1080, innerHeight/1920);
+    stage.style.transform = `translate(${(innerWidth-1080*s)/2}px,${(innerHeight-1920*s)/2}px) scale(${s})`;
+  }
+  addEventListener('resize', fit); fit();
+
+  // 30s timeline → body phase class drives the CSS
+  const TOTAL = 30000;
+  const cues = [ [0,'p0'], [4000,'p1'], [8000,'p2'], [16000,'p3'], [22000,'p4'], [26000,'p5'] ];
+  const bar = document.getElementById('bar');
+  const tok = document.getElementById('tok');
+
+  // scatter the grep "pile" once
+  const pile = document.getElementById('pile');
+  const names = ['groups.go','friends.ts','controller.go','user.ts','routes.go','auth.ts','db.go','chat.ts','handler.go','model.ts','api.ts','ws.go','store.ts','types.ts'];
+  names.forEach((n,i)=>{ const d=document.createElement('div'); d.className='file'; d.textContent=n;
+    d.style.left=(120+Math.random()*740)+'px'; d.style.top=(760+Math.random()*620)+'px';
+    d.style.animationDelay=(i*0.09)+'s'; pile.appendChild(d); });
+
+  let start=null;
+  function frame(ts){
+    if(start===null) start=ts;
+    let t=(ts-start)%TOTAL;
+    // phase
+    let cls='p0'; for(const [at,c] of cues){ if(t>=at) cls=c; }
+    if(!document.body.classList.contains(cls)) document.body.className=cls;
+    // progress bar
+    bar.style.width=(t/TOTAL*1080)+'px';
+    // token counter ramps during the grep scene (4s–8s)
+    if(t>=4000 && t<8000){ tok.textContent=Math.round((t-4000)/4000*82000).toLocaleString(); }
+    requestAnimationFrame(frame);
+  }
+  // ?phase=N freezes a single scene (for screenshots/stills); default = auto-play loop
+  const ph=new URLSearchParams(location.search).get('phase');
+  if(ph!==null){ document.body.className='p'+ph; if(ph==='1') tok.textContent='82,000'; bar.style.width=(ph/5*1080)+'px'; }
+  else requestAnimationFrame(frame);
+</script>
+</body>
+</html>
