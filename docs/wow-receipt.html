@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>repo-graph — the bill</title>
+<style>
+  :root{--bg:#0a0a0a;--ink:#e8ffe8;--dim:#5a6b5a;--grn:#8effc0;--grn2:#3ad17a;--red:#ff6b6b;--line:#26331f;
+    --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;}
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;background:#000;overflow:hidden;font-family:var(--mono)}
+  #stage{position:absolute;top:0;left:0;width:1080px;height:1920px;
+    background:radial-gradient(120% 80% at 50% 0%,#0e150e 0%,var(--bg) 55%);transform-origin:top left;color:var(--ink);overflow:hidden}
+  #mark{position:absolute;top:56px;left:0;right:0;text-align:center;color:var(--dim);font-size:27px;letter-spacing:.4em;text-transform:uppercase}
+  #mark b{color:var(--grn)}
+  #bar{position:absolute;left:0;bottom:0;height:8px;width:0;background:var(--grn);box-shadow:0 0 12px var(--grn)}
+
+  .task{position:absolute;top:300px;left:0;right:0;text-align:center;opacity:0;transition:opacity .5s}
+  body.p0 .task{opacity:1}
+  .task .ln{font-size:46px;font-weight:700;color:var(--ink)} .task .ln b{color:var(--grn)}
+  .task .sub{margin-top:18px;color:var(--dim);font-size:32px}
+
+  .receipt{position:absolute;top:150px;left:230px;width:620px;background:#0d130d;border:1px solid var(--line);
+    border-radius:10px;padding:30px 34px;opacity:0;transition:opacity .35s}
+  body.p1 .receipt{opacity:1}
+  .receipt .rh{text-align:center;color:#a85a5a;font-size:26px;border-bottom:1px dashed #3a2222;padding-bottom:18px;margin-bottom:18px;letter-spacing:.05em}
+  .row{display:flex;justify-content:space-between;font-size:25px;color:#6f7a6a;padding:7px 0;opacity:0}
+  body.p1 .row{animation:fin .4s ease forwards;animation-delay:var(--d,0s)}
+  @keyframes fin{to{opacity:1}}
+  .row .c{color:#a85a5a}
+  .rmore{text-align:center;color:#54604f;font-size:24px;margin-top:14px;opacity:0}
+  body.p1 .rmore{animation:fin .4s ease forwards;animation-delay:3s}
+  .rtot{margin-top:22px;border-top:1px dashed #3a2222;padding-top:22px;text-align:center;font-size:40px;font-weight:800;color:var(--red);opacity:0}
+  body.p1 .rtot{animation:fin .5s ease forwards;animation-delay:3.2s}
+
+  .cut{position:absolute;top:330px;left:0;right:0;text-align:center;font-size:38px;color:var(--grn);font-weight:700;opacity:0;transition:opacity .4s}
+  body.p2 .cut{opacity:1} .cut .d{color:var(--grn2)}
+
+  .clean{position:absolute;top:240px;left:230px;width:620px;opacity:0;transition:opacity .5s}
+  body.p3 .clean{opacity:1}
+  .clean .ch{text-align:center;color:var(--grn);font-size:28px;margin-bottom:20px;letter-spacing:.05em}
+  .grow{display:flex;justify-content:space-between;font-size:26px;color:var(--ink);padding:8px 0;opacity:0}
+  body.p3 .grow{animation:fin .35s ease forwards;animation-delay:var(--d,0s)}
+  .grow .dia{color:var(--grn)}
+  .vs{position:absolute;top:1060px;left:0;right:0;text-align:center;opacity:0;transition:opacity .5s}
+  body.p3 .vs{opacity:1;transition-delay:1.2s}
+  .vs .pair{display:flex;justify-content:center;gap:60px;align-items:baseline}
+  .vs .a{font-size:64px;font-weight:800;color:#7a5555}
+  .vs .b{font-size:78px;font-weight:800;color:var(--grn);text-shadow:0 0 26px rgba(142,255,192,.5)}
+  .vs .lbl{color:var(--dim);font-size:26px;margin-top:4px}
+  .vs .same{margin-top:26px;color:var(--dim);font-size:30px}
+</style></head>
+<body class="p0"><div id="stage">
+  <div id="mark"><b>repo-graph</b> · the bill</div>
+
+  <div class="task"><div class="ln">&gt; fix: button label <b>typo</b></div><div class="sub">one-line change.</div></div>
+
+  <div class="receipt" id="rcpt"></div>
+
+  <div class="cut"><span class="d">$</span> repo-graph impact "button label"</div>
+
+  <div class="clean" id="clean"></div>
+  <div class="vs">
+    <div class="pair"><div><div class="a">75,308</div><div class="lbl">WITHOUT</div></div><div><div class="b">29,838</div><div class="lbl">WITH</div></div></div>
+    <div class="same">same fix · same model · one read the whole repo</div>
+  </div>
+  <div id="bar"></div>
+</div>
+<script>
+  const stage=document.getElementById('stage'),bar=document.getElementById('bar');
+  function fit(){const s=Math.min(innerWidth/1080,innerHeight/1920);
+    stage.style.transform=`translate(${(innerWidth-1080*s)/2}px,${(innerHeight-1920*s)/2}px) scale(${s})`;}
+  addEventListener('resize',fit);fit();
+
+  const junk=[['auth/middleware.ts','+1,204'],['db/pool.rs','+880'],['vendor/lodash.js','+2,317'],['utils/date.ts','+640'],
+    ['api/orders.ts','+1,510'],['legacy/cron.go','+930'],['payments/stripe.ts','+1,820'],['models/user.rs','+760'],
+    ['search/index.ts','+1,140'],['ws/socket.go','+690'],['config/env.ts','+420'],['analytics/track.ts','+980'],
+    ['email/templates.tsx','+1,260'],['queue/worker.go','+1,050'],['cache/redis.rs','+560'],['admin/dashboard.tsx','+2,040']];
+  let r=`<div class="rh">WITHOUT repo-graph — read 412 files</div>`;
+  junk.forEach((j,i)=>{r+=`<div class="row" style="--d:${(i*0.16).toFixed(2)}s"><span>${j[0]}</span><span class="c">${j[1]}</span></div>`;});
+  r+=`<div class="rmore">… and 396 more files …</div><div class="rtot">75,308 tokens</div>`;
+  document.getElementById('rcpt').innerHTML=r;
+
+  const clean=[['ui/Button.tsx','◆'],['i18n/labels.en.ts','◆'],['i18n/labels.fr.ts','◆'],['components/Btn.test.tsx','◆'],
+    ['stories/Button.stories.tsx','◆'],['theme/tokens.ts','◆'],['ui/index.ts','◆'],['hooks/useLabel.ts','◆'],['a11y/aria.ts','◆']];
+  let c=`<div class="ch">WITH repo-graph — 9 files, all relevant</div>`;
+  clean.forEach((x,i)=>{c+=`<div class="grow" style="--d:${(i*0.1).toFixed(2)}s"><span>${x[0]}</span><span class="dia">${x[1]}</span></div>`;});
+  document.getElementById('clean').innerHTML=c;
+
+  const TOTAL=13500,cues=[[0,'p0'],[3000,'p1'],[8200,'p2'],[9000,'p3']];
+  const ph=new URLSearchParams(location.search).get('phase');
+  if(ph){document.body.className=ph;}
+  else{let st=null;(function f(ts){if(st===null)st=ts;const t=(ts-st)%TOTAL;let k='p0';for(const[a,kk]of cues)if(t>=a)k=kk;
+    if(!document.body.classList.contains(k))document.body.className=k;bar.style.width=(t/TOTAL*1080)+'px';requestAnimationFrame(f);})(0);}
+</script></body></html>
