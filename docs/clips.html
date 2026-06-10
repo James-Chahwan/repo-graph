@@ -80,6 +80,14 @@
   .node.fe circle{stroke:var(--blue)} .node text{fill:var(--ink);font-size:22px;text-anchor:middle}
   .node .k{fill:var(--dim);font-size:17px}
   .node.on circle{stroke:var(--grn);fill:#10301d;filter:drop-shadow(0 0 16px var(--grn))}
+
+  /* install: client grid + mapped status */
+  .grid{display:flex;flex-wrap:wrap;gap:16px;justify-content:center}
+  .grid .pill{font-size:28px}
+  .ok{margin-top:34px;text-align:center;font-size:33px;color:var(--ink);border:1px solid var(--grn2);
+    border-radius:16px;padding:28px;background:#10301d;box-shadow:0 0 20px rgba(58,209,122,.22)}
+  .ok .c{color:var(--grn);font-weight:800;margin-right:14px}
+  .ok b{color:var(--grn)}
 </style>
 </head>
 <body>
@@ -193,6 +201,24 @@ GroupsController > MongoDB</div>
         <div class="arrow">↓</div>
         <div class="tier data"><div class="lbl">DATA</div><div class="pills"><div class="pill">MongoDB</div></div></div>
       </div>
+    </div>
+  </section>
+
+  <!-- 6 · INSTALL -->
+  <section class="clip" data-clip="install" data-steps="3">
+    <div class="capbox">
+      <div class="cap" data-at="0"><span class="num">⇣</span><h1>Add it in <em>one line</em></h1><div class="sub">no API key · no account · runs local</div></div>
+      <div class="cap" data-at="1"><span class="num">⇣</span><h1>works in <em>every</em> AI client</h1><div class="sub">it's just an MCP server</div></div>
+      <div class="cap" data-at="2"><span class="num">⇣</span><h1>mapped <em>instantly</em></h1><div class="sub">13 tools, ready to navigate</div></div>
+    </div>
+    <div class="screen">
+      <div class="term" data-at="0"><span class="d">$</span> <span class="cmd">uvx mcp-repo-graph</span> <span class="m">--repo .</span></div>
+      <div class="grid" data-at="1">
+        <div class="pill">Claude Code</div><div class="pill">Cursor</div><div class="pill">VS Code</div>
+        <div class="pill">OpenAI Codex</div><div class="pill">Gemini CLI</div><div class="pill">Windsurf</div>
+        <div class="pill">Antigravity</div><div class="pill">Claude Desktop</div><div class="pill">any MCP client</div>
+      </div>
+      <div class="ok" data-at="2"><span class="c">✓</span> scanned <b>2,887 nodes</b> · <b>53</b> cross-stack links · <b>13 tools</b> ready</div>
     </div>
   </section>
 
