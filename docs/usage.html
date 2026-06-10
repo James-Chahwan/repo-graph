@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>repo-graph — usage (30s)</title>
+<style>
+  :root{
+    --bg:#0a0a0a; --ink:#e8ffe8; --dim:#5a6b5a; --grn:#8effc0; --grn2:#3ad17a;
+    --blue:#6aa9ff; --gold:#c9a227; --red:#ff6b6b; --line:#26331f;
+    --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;background:#000;overflow:hidden;font-family:var(--mono)}
+  #stage{position:absolute;top:0;left:0;width:1080px;height:1920px;
+    background:radial-gradient(120% 80% at 50% 0%, #0e150e 0%, var(--bg) 55%);
+    transform-origin:top left;color:var(--ink);overflow:hidden}
+  #mark{position:absolute;top:60px;left:0;right:0;text-align:center;color:var(--dim);
+    font-size:28px;letter-spacing:.42em;text-transform:uppercase}
+  #mark b{color:var(--grn)}
+  #bar{position:absolute;left:0;bottom:0;height:8px;width:0;background:var(--grn);box-shadow:0 0 12px var(--grn)}
+
+  /* caption box — one shows at a time (body.<phase> raises specificity) */
+  .capbox{position:absolute;top:150px;left:0;right:0;height:300px;padding:0 80px}
+  .cap{position:absolute;left:80px;right:80px;top:0;text-align:center;opacity:0;transition:opacity .5s}
+  .cap .num{display:inline-block;color:#0a0a0a;background:var(--grn);font-weight:800;
+    font-size:30px;width:54px;height:54px;line-height:54px;border-radius:50%;margin-bottom:24px}
+  .cap h1{font-size:70px;line-height:1.12;font-weight:700;letter-spacing:-.01em}
+  .cap h1 em{color:var(--grn);font-style:normal}
+  .cap .sub{margin-top:22px;color:var(--dim);font-size:32px}
+  body.e1a .c1a,body.e1b .c1b,body.e1c .c1c,body.e2a .c2a,body.e2b .c2b{opacity:1}
+
+  /* the two example "screens" */
+  .screen{position:absolute;left:70px;right:70px;top:480px;bottom:90px;opacity:0;transition:opacity .45s}
+  .e1a #ex1,.e1b #ex1,.e1c #ex1{opacity:1}
+  .e2a #ex2,.e2b #ex2{opacity:1}
+
+  /* terminal panel */
+  .term{background:#0c130c;border:1px solid var(--line);border-radius:18px;padding:30px 34px;
+    font-size:30px;line-height:1.5}
+  .term .dollar{color:var(--grn2)}
+  .term .cmd{color:var(--grn);font-weight:700}
+  .term .trace{color:var(--dim);font-size:26px;white-space:pre;margin-top:14px;line-height:1.45}
+  .term .muted{color:var(--dim)}
+  .step{opacity:0;transition:opacity .4s}
+  .e1b .s-locate,.e1c .s-locate{opacity:1}
+
+  /* resolved-frame chips (locate result) */
+  .chips{margin-top:30px;display:flex;flex-direction:column;gap:18px;opacity:0;transition:opacity .45s}
+  .e1b .chips,.e1c .chips{opacity:1}
+  .chip{display:flex;align-items:center;gap:18px;background:#10301d;border:1px solid var(--grn2);
+    border-radius:14px;padding:20px 26px;box-shadow:0 0 18px rgba(58,209,122,.25)}
+  .chip .dot{width:16px;height:16px;border-radius:50%;background:var(--grn);box-shadow:0 0 14px var(--grn)}
+  .chip .nm{font-size:32px;font-weight:700;color:var(--ink)}
+  .chip .loc{margin-left:auto;color:var(--grn);font-size:26px}
+
+  /* read result code panel */
+  .code{margin-top:30px;background:#0b110b;border:1px solid var(--line);border-radius:18px;
+    overflow:hidden;opacity:0;transition:opacity .5s}
+  .e1c .code{opacity:1}
+  .code .hd{background:#0e160e;border-bottom:1px solid var(--line);padding:18px 28px;
+    color:var(--grn);font-size:28px;font-weight:700}
+  .code pre{padding:24px 28px;font-size:27px;line-height:1.5;color:var(--ink);white-space:pre}
+  .code .kw{color:var(--grn)} .code .cm{color:var(--dim)} .code .st{color:var(--gold)}
+
+  /* example 2 graph + tally */
+  #ex2 .term{margin-bottom:24px}
+  .tally{display:flex;gap:14px;justify-content:center;margin-bottom:14px;opacity:0;transition:opacity .5s}
+  .e2b .tally{opacity:1}
+  .tally span{border:1px solid var(--line);border-radius:10px;padding:10px 18px;font-size:26px;color:var(--dim)}
+  .tally b{color:var(--grn)}
+  svg{width:100%;height:780px;display:block}
+  .edge{stroke:var(--line);stroke-width:3;fill:none;opacity:0;transition:opacity .5s}
+  .e2b .edge{opacity:1}
+  .e2b .edge.litE{stroke:var(--grn);stroke-width:4;filter:drop-shadow(0 0 8px var(--grn))}
+  .e2b .edge.xstack{stroke:var(--blue);stroke-width:5;stroke-dasharray:10 8;filter:drop-shadow(0 0 8px var(--blue))}
+  .node{opacity:0;transition:opacity .45s}
+  .e2b .node{opacity:1;animation:np .5s ease forwards;animation-delay:var(--d,0s)}
+  @keyframes np{from{opacity:0}to{opacity:1}}
+  .node circle{fill:#0d140d;stroke:var(--grn2);stroke-width:3}
+  .node.fe circle{stroke:var(--blue)} .node.data circle{stroke:var(--gold)}
+  .node text{fill:var(--ink);font-size:22px;text-anchor:middle}
+  .node .k{fill:var(--dim);font-size:17px}
+  .e2b .lit circle{stroke:var(--grn);fill:#10301d;filter:drop-shadow(0 0 16px var(--grn));
+    animation:throb 1.2s ease-in-out infinite;animation-delay:var(--d,0s)}
+  @keyframes throb{0%,100%{filter:drop-shadow(0 0 10px var(--grn))}50%{filter:drop-shadow(0 0 26px var(--grn))}}
+  .tier{fill:var(--dim);font-size:19px;letter-spacing:.16em;text-anchor:start;opacity:0;transition:opacity .6s}
+  .e2b .tier{opacity:.65}
+
+  /* outro */
+  #out{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
+    justify-content:center;text-align:center;opacity:0;transition:opacity .5s}
+  .out #out{opacity:1}
+  #out .cmd{font-size:56px;font-weight:700;color:var(--grn);background:#0c140c;border:1px solid var(--line);
+    border-radius:16px;padding:28px 44px;margin:20px 0 34px}
+  #out .url{font-size:40px;font-weight:700}#out .nm{color:var(--grn)}
+  #out .k{color:var(--grn);font-size:30px;letter-spacing:.3em;text-transform:uppercase;margin-bottom:30px}
+</style>
+</head>
+<body class="e1a">
+<div id="stage">
+  <div id="mark"><b>repo-graph</b> · how you use it</div>
+
+  <!-- captions -->
+  <div class="capbox">
+    <div class="cap c1a"><span class="num">1</span><h1>Hit an error?</h1><div class="sub">paste the stack trace — don't go grep-hunting</div></div>
+    <div class="cap c1b"><span class="num">1</span><h1><em>locate</em> the trace</h1><div class="sub">frames → the exact nodes, ranked</div></div>
+    <div class="cap c1c"><span class="num">1</span><h1>then <em>read</em> it</h1><div class="sub">the real source — no grep, no scrolling</div></div>
+    <div class="cap c2a"><span class="num">2</span><h1>Changing something?</h1><div class="sub">check the blast radius first</div></div>
+    <div class="cap c2b"><span class="num">2</span><h1><em>impact</em>, cross-stack</h1><div class="sub">everything the change touches — frontend included</div></div>
+  </div>
+
+  <!-- example 1: locate → read -->
+  <section id="ex1" class="screen">
+    <div class="term">
+      <div><span class="dollar">$</span> <span class="muted">paste error →</span> <span class="cmd step s-locate">repo-graph locate</span></div>
+      <div class="trace">panic: nil pointer dereference
+  …/Controllers.SendFriendRequestHandler
+    friends_controller.go:112
+  …/Controllers.GetFriendsHandler
+    friends_controller.go:40</div>
+    </div>
+    <div class="chips">
+      <div class="chip"><span class="dot"></span><span class="nm">GetFriendsHandler</span><span class="loc">friends_controller.go:34</span></div>
+      <div class="chip"><span class="dot"></span><span class="nm">SendFriendRequestHandler</span><span class="loc">friends_controller.go:95</span></div>
+    </div>
+    <div class="code">
+      <div class="hd">$ repo-graph read GetFriendsHandler  ·  friends_controller.go:34</div>
+      <pre><span class="kw">func</span> GetFriendsHandler(c *gin.Context) {
+    claims, ok := middleware.RequireClaims(c)
+    <span class="kw">if</span> !ok { <span class="kw">return</span> }
+    userRepo := Services.UserRepository()
+    doc, err := userRepo.FindByPublicID(ctx, claims.ID)
+    <span class="cm">// ← the nil the trace pointed at</span></pre>
+    </div>
+  </section>
+
+  <!-- example 2: impact / blast radius -->
+  <section id="ex2" class="screen">
+    <div class="term"><span class="dollar">$</span> <span class="cmd">repo-graph impact GroupsComponent</span> <span class="muted">--upstream</span></div>
+    <div class="tally"><span>ENTRY <b>2</b></span><span>SERVICE <b>1</b></span><span>HANDLERS <b>2</b></span><span>DATA <b>1</b></span></div>
+    <svg viewBox="0 0 1080 800" id="g2">
+      <text class="tier" x="20" y="120">FRONTEND</text>
+      <text class="tier" x="20" y="270">ROUTES</text>
+      <text class="tier" x="20" y="420">SERVICE</text>
+      <text class="tier" x="20" y="570">HANDLERS</text>
+      <text class="tier" x="20" y="720">DATA</text>
+      <path class="edge xstack" style="--d:.2s" d="M300,130 C400,180 470,210 540,250"></path>
+      <path class="edge litE"   style="--d:.5s" d="M540,280 L540,380"></path>
+      <path class="edge"        style="--d:.5s" d="M800,280 C740,330 630,350 560,390"></path>
+      <path class="edge litE"   style="--d:.8s" d="M520,450 C470,500 430,520 400,545"></path>
+      <path class="edge"        style="--d:.8s" d="M560,450 C610,500 660,520 700,545"></path>
+      <path class="edge litE"   style="--d:1.1s" d="M400,605 C450,660 490,690 520,710"></path>
+      <path class="edge"        style="--d:1.1s" d="M700,605 C650,660 600,690 560,710"></path>
+      <g class="node fe lit"  style="--d:.05s" transform="translate(300,110)"><circle r="50"/><text y="-2">Groups</text><text class="k" y="22">component</text></g>
+      <g class="node lit"     style="--d:.35s" transform="translate(540,250)"><circle r="48"/><text y="-2">/groups</text><text class="k" y="22">route</text></g>
+      <g class="node"         style="--d:.45s" transform="translate(800,250)"><circle r="48"/><text y="-2">/friends</text><text class="k" y="22">route</text></g>
+      <g class="node lit"     style="--d:.65s" transform="translate(540,420)"><circle r="52"/><text y="-2">controller</text><text class="k" y="22">service</text></g>
+      <g class="node lit"     style="--d:.9s"  transform="translate(400,570)"><circle r="50"/><text y="-2">sortMsgs</text><text class="k" y="22">handler</text></g>
+      <g class="node lit"     style="--d:.95s" transform="translate(700,570)"><circle r="50"/><text y="-2">loadGroup</text><text class="k" y="22">handler</text></g>
+      <g class="node lit data" style="--d:1.2s" transform="translate(540,710)"><circle r="54"/><text y="-2">MongoDB</text><text class="k" y="22">data</text></g>
+    </svg>
+  </section>
+
+  <!-- outro -->
+  <section id="out">
+    <div class="k">one line, any AI client</div>
+    <div class="cmd">uvx mcp-repo-graph</div>
+    <div class="url"><span class="nm">mcp-repo-graph</span> &nbsp;·&nbsp; repo-graph.com</div>
+  </section>
+
+  <div id="bar"></div>
+</div>
+
+<script>
+  const stage=document.getElementById('stage');
+  function fit(){const s=Math.min(innerWidth/1080,innerHeight/1920);
+    stage.style.transform=`translate(${(innerWidth-1080*s)/2}px,${(innerHeight-1920*s)/2}px) scale(${s})`;}
+  addEventListener('resize',fit);fit();
+
+  const TOTAL=30000;
+  // [startMs, phaseClass]
+  const cues=[[0,'e1a'],[3000,'e1b'],[6500,'e1c'],[13000,'e2a'],[16000,'e2b'],[26500,'out']];
+  const bar=document.getElementById('bar');
+  let start=null;
+  function frame(ts){
+    if(start===null)start=ts;
+    const t=(ts-start)%TOTAL;
+    let cls='e1a';for(const[at,c]of cues){if(t>=at)cls=c;}
+    if(!document.body.classList.contains(cls))document.body.className=cls;
+    bar.style.width=(t/TOTAL*1080)+'px';
+    requestAnimationFrame(frame);
+  }
+  const ph=new URLSearchParams(location.search).get('phase'); // e.g. ?phase=e2b for a still
+  if(ph){document.body.className=ph;const i=cues.findIndex(c=>c[1]===ph);bar.style.width=(i<0?0:cues[i][0]/TOTAL*1080)+'px';}
+  else requestAnimationFrame(frame);
+</script>
+</body>
+</html>
