@@ -15,7 +15,9 @@ C_CYN=$'\033[36m'; C_MAG=$'\033[35m'; C_B=$'\033[1m'; C_R=$'\033[0m'
 TOK=0; FILES=0; CALLS=0
 SIDE="${1:-left}"; OTHER=$([ "$SIDE" = "left" ] && echo right || echo left)
 SYNC="${DEMO_SYNC:-}"   # shared dir for left/right lockstep in 'all' mode
-declare -A TITLES=([1]="Ground the Edit" [2]="Debug a Stack Trace" [3]="Context Rot" [4]="Blast Radius" [5]="Cross-Stack Trace" [6]="Find the Feature" [7]="Token Race")
+# Human names — the question the dev is already asking. Title = the problem/pain,
+# the WITH pane = the relief. Understandable in 5 seconds.
+declare -A TITLES=([1]="What's it actually do?" [2]="Where's this even coming from?" [3]="Just the bit I need" [4]="What'll this break?" [5]="Where's it go on the backend?" [6]="Where does this live?" [7]="Find it and fix it")
 barrier(){ [ -n "$SYNC" ] || return 0; touch "$SYNC/$1.$SIDE" 2>/dev/null; local t=0
   while [ ! -e "$SYNC/$1.$OTHER" ]; do sleep 0.1; t=$((t+1)); [ "$t" -gt 1800 ] && break; done; }
 titlecard(){ printf '\n\n\n   %s%s●  DEMO %s — %s%s\n\n   %ssame model · same prompt · only difference: repo-graph%s\n' \
@@ -24,7 +26,7 @@ titlecard(){ printf '\n\n\n   %s%s●  DEMO %s — %s%s\n\n   %ssame model · sa
 declare -A BENEFIT=(
   [1]="edit the real function, not an almost-right guess"
   [2]="stack trace → the exact code, no grep safari"
-  [3]="only the relevant slice — no context rot"
+  [3]="just the slice that matters, not the whole repo"
   [4]="see everything a change touches, cross-stack"
   [5]="frontend → backend in one hop — grep can't link stacks"
   [6]="jump to where a feature lives — no grep→read→grep"
@@ -54,23 +56,25 @@ card(){ local c="$1" rule="━━━━━━━━━━━━━━━━━�
 
 # ── end cards (shown after `all`) ───────────────────────────────────────────────
 # LEFT: the 5-demo WITHOUT-vs-WITH stat table + the headline multiplier.
-summary_card(){ local n lt lf lc rt rf rc tw=0 tr=0
+summary_card(){ local n lt lf lc rt rf rc tw=0 tr=0 tf=0 tc=0
   printf '\n\n   %s%s7 demos · side by side%s\n' "$C_B" "$C_GRN" "$C_R"
   printf '   %ssame model · same prompt · only difference: repo-graph%s\n\n' "$C_DIM" "$C_R"
-  printf '   %s%-20s %12s    %-12s%s\n' "$C_DIM" "demo" "WITHOUT" "WITH" "$C_R"
-  printf '   %s────────────────────────────────────────────────%s\n' "$C_DIM" "$C_R"
+  printf '   %s%-31s %12s    %-12s%s\n' "$C_DIM" "demo" "WITHOUT" "WITH" "$C_R"
+  printf '   %s──────────────────────────────────────────────────────────────%s\n' "$C_DIM" "$C_R"
   for n in 1 2 3 4 5 6 7; do
     read -r lt lf lc < "$SYNC/left.d$n"  2>/dev/null || { lt=0; lf=0; lc=0; }
     read -r rt rf rc < "$SYNC/right.d$n" 2>/dev/null || { rt=0; rf=0; rc=0; }
-    tw=$((tw+lt)); tr=$((tr+rt))
-    printf '   %-20s %s%8s tok%s    %s%8s tok%s\n' \
+    tw=$((tw+lt)); tr=$((tr+rt)); tf=$((tf+lf)); tc=$((tc+rc))
+    printf '   %-31s %s%8s tok%s    %s%8s tok%s\n' \
       "${TITLES[$n]}" "$C_RED" "$(commafy "$lt")" "$C_R" "$C_GRN" "$(commafy "$rt")" "$C_R"
   done
-  printf '   %s────────────────────────────────────────────────%s\n' "$C_DIM" "$C_R"
-  printf '   %s%-20s %s%8s tok%s    %s%8s tok%s\n' \
+  printf '   %s──────────────────────────────────────────────────────────────%s\n' "$C_DIM" "$C_R"
+  printf '   %s%-31s %s%8s tok%s    %s%8s tok%s\n' \
     "$C_B" "total" "$C_RED" "$(commafy "$tw")" "$C_R$C_B" "$C_GRN" "$(commafy "$tr")" "$C_R"
   local mult=0; [ "$tr" -gt 0 ] && mult=$(( (tw + tr/2) / tr ))
-  printf '\n   %s%s→ ~%s× less context, every task%s\n' "$C_B" "$C_GRN" "$mult" "$C_R"; }
+  printf '\n   %s%s→ ~%s× less context, every task%s\n' "$C_B" "$C_GRN" "$mult" "$C_R"
+  printf '   %s%s→ and far less work: %s files opened by hand  →  %s repo-graph calls%s\n' \
+    "$C_B" "$C_GRN" "$tf" "$tc" "$C_R"; }
 
 # RIGHT: the package NAME big (the searchable string that survives phone→desktop)
 # + the literal install command, large and held. No QR — devs install at a terminal,
