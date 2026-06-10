@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>repo-graph — clip library</title>
+<style>
+  :root{
+    --bg:#0a0a0a; --ink:#e8ffe8; --dim:#5a6b5a; --grn:#8effc0; --grn2:#3ad17a;
+    --blue:#6aa9ff; --gold:#c9a227; --red:#ff6b6b; --line:#26331f;
+    --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;background:#000;overflow:hidden;font-family:var(--mono)}
+  #stage{position:absolute;top:0;left:0;width:1080px;height:1920px;
+    background:radial-gradient(120% 80% at 50% 0%, #0e150e 0%, var(--bg) 55%);
+    transform-origin:top left;color:var(--ink);overflow:hidden}
+  #mark{position:absolute;top:60px;left:0;right:0;text-align:center;color:var(--dim);
+    font-size:28px;letter-spacing:.42em;text-transform:uppercase}
+  #mark b{color:var(--grn)}
+  #bar{position:absolute;left:0;bottom:0;height:8px;width:0;background:var(--grn);box-shadow:0 0 12px var(--grn)}
+
+  .clip{position:absolute;inset:0;opacity:0;transition:opacity .4s}
+  .clip.active{opacity:1}
+  /* captions: exclusive per step.  other [data-at]: cumulative.  both gated by .shown */
+  [data-at]{opacity:0;transition:opacity .5s}
+  [data-at].shown{opacity:1}
+
+  .capbox{position:absolute;top:150px;left:0;right:0;height:300px;padding:0 80px}
+  .cap{position:absolute;left:80px;right:80px;top:0;text-align:center}
+  .cap .num{display:inline-block;color:#0a0a0a;background:var(--grn);font-weight:800;
+    font-size:28px;width:50px;height:50px;line-height:50px;border-radius:50%;margin-bottom:22px}
+  .cap h1{font-size:68px;line-height:1.12;font-weight:700;letter-spacing:-.01em}
+  .cap h1 em{color:var(--grn);font-style:normal}
+  .cap .sub{margin-top:20px;color:var(--dim);font-size:31px}
+
+  .screen{position:absolute;left:70px;right:70px;top:480px;bottom:90px}
+
+  /* terminal */
+  .term{background:#0c130c;border:1px solid var(--line);border-radius:18px;padding:28px 32px;
+    font-size:30px;line-height:1.5;margin-bottom:28px}
+  .term .d{color:var(--grn2)} .term .cmd{color:var(--grn);font-weight:700} .term .m{color:var(--dim)}
+  .term .trace{color:var(--dim);font-size:25px;white-space:pre;margin-top:12px;line-height:1.4}
+
+  /* chips */
+  .chip{display:flex;align-items:center;gap:18px;background:#10301d;border:1px solid var(--grn2);
+    border-radius:14px;padding:18px 24px;box-shadow:0 0 18px rgba(58,209,122,.25);margin-bottom:16px}
+  .chip .dot{width:14px;height:14px;border-radius:50%;background:var(--grn);box-shadow:0 0 12px var(--grn)}
+  .chip .nm{font-size:30px;font-weight:700} .chip .loc{margin-left:auto;color:var(--grn);font-size:25px}
+  .chip .sc{color:var(--grn);font-weight:700;font-size:28px}
+
+  /* code panel */
+  .code{background:#0b110b;border:1px solid var(--line);border-radius:18px;overflow:hidden}
+  .code .hd{background:#0e160e;border-bottom:1px solid var(--line);padding:16px 26px;color:var(--grn);font-size:27px;font-weight:700}
+  .code pre{padding:22px 26px;font-size:26px;line-height:1.5;white-space:pre}
+  .code .kw{color:var(--grn)} .code .cm{color:var(--dim)}
+
+  /* context text-blocks (full vs scoped) */
+  .blk{border:1px solid var(--line);border-radius:16px;padding:24px 28px;font-size:18px;line-height:1.35;
+    white-space:pre-wrap;overflow:hidden;position:relative}
+  .blk.full{height:560px;color:#36412f}
+  .blk.full::after{content:"";position:absolute;left:0;right:0;bottom:0;height:200px;background:linear-gradient(transparent,#0a0a0a)}
+  .blk .tag{position:absolute;top:18px;right:22px;font-size:26px;font-weight:700}
+  .blk.full .tag{color:var(--red)} .blk.scoped{height:300px;color:var(--grn2);border-color:var(--grn2);box-shadow:0 0 18px rgba(58,209,122,.18)}
+  .blk.scoped .tag{color:var(--grn)}
+
+  /* tier flow */
+  .tier{display:flex;align-items:center;gap:20px;margin-bottom:22px}
+  .tier .lbl{width:150px;color:var(--dim);font-size:22px;letter-spacing:.12em;text-align:right}
+  .tier .pills{display:flex;gap:14px;flex-wrap:wrap}
+  .pill{background:#0e160e;border:1px solid var(--grn2);border-radius:12px;padding:14px 22px;font-size:27px}
+  .tier.entry .pill{border-color:var(--grn)} .tier.data .pill{border-color:var(--gold)}
+  .arrow{color:var(--dim);font-size:30px;text-align:center;margin:0 0 22px 150px}
+
+  /* graph (trace) */
+  svg{width:100%;height:760px;display:block}
+  .edge{stroke:var(--line);stroke-width:3;fill:none}
+  .edge.path{stroke:var(--grn);stroke-width:5;filter:drop-shadow(0 0 8px var(--grn))}
+  .node circle{fill:#0d140d;stroke:var(--grn2);stroke-width:3}
+  .node.fe circle{stroke:var(--blue)} .node text{fill:var(--ink);font-size:22px;text-anchor:middle}
+  .node .k{fill:var(--dim);font-size:17px}
+  .node.on circle{stroke:var(--grn);fill:#10301d;filter:drop-shadow(0 0 16px var(--grn))}
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="mark"><b>repo-graph</b></div>
+
+  <!-- 1 · GROUND THE EDIT (find → read) -->
+  <section class="clip" data-clip="ground" data-steps="3">
+    <div class="capbox">
+      <div class="cap" data-at="0"><span class="num">⌁</span><h1>About to edit a function?</h1><div class="sub">don't guess what it does</div></div>
+      <div class="cap" data-at="1"><span class="num">⌁</span><h1><em>find</em> the real symbol</h1><div class="sub">name → the actual node</div></div>
+      <div class="cap" data-at="2"><span class="num">⌁</span><h1>then <em>read</em> it</h1><div class="sub">the real source — not an almost-right guess</div></div>
+    </div>
+    <div class="screen">
+      <div class="term" data-at="0"><span class="d">$</span> <span class="cmd">repo-graph find</span> SendFriendRequestHandler</div>
+      <div class="chip" data-at="1"><span class="dot"></span><span class="nm">SendFriendRequestHandler</span><span class="loc">friends_controller.go:95</span></div>
+      <div class="code" data-at="2">
+        <div class="hd">$ repo-graph read SendFriendRequestHandler · :95</div>
+        <pre><span class="kw">func</span> SendFriendRequestHandler(c *gin.Context) {
+    claims, ok := middleware.RequireClaims(c)
+    target := c.Param(<span class="cm">"publicId"</span>)
+    <span class="kw">if</span> target == <span class="cm">""</span> || target == claims.ID {
+        c.JSON(400, gin.H{<span class="cm">"error"</span>: <span class="cm">"invalid"</span>})
+    }</pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2 · CONTEXT (scoped dense_text) -->
+  <section class="clip" data-clip="context" data-steps="2">
+    <div class="capbox">
+      <div class="cap" data-at="0"><span class="num">⌁</span><h1>Whole repo won't fit?</h1><div class="sub">dumping everything = context rot</div></div>
+      <div class="cap" data-at="1"><span class="num">⌁</span><h1><em>scope</em> it to one feature</h1><div class="sub">a fraction of the tokens, all the signal</div></div>
+    </div>
+    <div class="screen">
+      <div class="term" data-at="0" data-swap><span class="d">$</span> <span class="cmd">repo-graph dense_text</span></div>
+      <div class="blk full" data-at="0" data-swap><span class="tag">≈50,000 chars</span>RGR = repo_graph::graph::RustGraph
+RS = repo_graph::server
+[TOPOLOGY]
+RGR::__init__ > RGR::_build_flows
+RGR::downstream > RGR::_traverse
+RS::status > RS::get_graph
+RS::activate > RS::get_graph
+RS::impact > RS::get_graph
+… 1,300 more nodes …
+endpoint:GET protected/groups
+route:/groups/activities/:groupId
+component:GroupsComponent
+service:UserProfileService …</div>
+      <div class="term" data-at="1" data-swap><span class="d">$</span> <span class="cmd">repo-graph dense_text</span> GroupsComponent</div>
+      <div class="blk scoped" data-at="1" data-swap><span class="tag">≈2,600 chars</span>[SCOPES] groups feature
+GroupsComponent > sortMessages
+GroupsComponent > loadActivities
+/groups > GroupsController
+GroupsController > MongoDB</div>
+    </div>
+  </section>
+
+  <!-- 3 · TRACE (cross-stack path) -->
+  <section class="clip" data-clip="trace" data-steps="2">
+    <div class="capbox">
+      <div class="cap" data-at="0"><span class="num">⌁</span><h1>Frontend → backend?</h1><div class="sub">grep can't connect the two halves</div></div>
+      <div class="cap" data-at="1"><span class="num">⌁</span><h1>the <em>exact path</em></h1><div class="sub">trace · 8 hops, end to end</div></div>
+    </div>
+    <div class="screen">
+      <div class="term" data-at="0"><span class="d">$</span> <span class="cmd">repo-graph trace</span> GroupsComponent /groups</div>
+      <svg viewBox="0 0 1080 760" data-at="1">
+        <path class="edge path" d="M250,120 C360,200 460,300 540,360"></path>
+        <path class="edge path" d="M540,400 L540,520"></path>
+        <path class="edge path" d="M540,560 C560,620 600,650 640,680"></path>
+        <g class="node fe on" transform="translate(250,100)"><circle r="50"/><text y="-2">Groups</text><text class="k" y="22">component</text></g>
+        <g class="node on" transform="translate(540,380)"><circle r="50"/><text y="-2">/groups</text><text class="k" y="22">route</text></g>
+        <g class="node on" transform="translate(540,540)"><circle r="52"/><text y="-2">controller</text><text class="k" y="22">service</text></g>
+        <g class="node on" transform="translate(660,700)"><circle r="50"/><text y="-2">MongoDB</text><text class="k" y="22">data</text></g>
+      </svg>
+    </div>
+  </section>
+
+  <!-- 4 · FIND (activate cluster) -->
+  <section class="clip" data-clip="find" data-steps="2">
+    <div class="capbox">
+      <div class="cap" data-at="0"><span class="num">⌁</span><h1>Where does it live?</h1><div class="sub">a couple of keywords, that's it</div></div>
+      <div class="cap" data-at="1"><span class="num">⌁</span><h1>the whole <em>cluster</em>, ranked</h1><div class="sub">spreading activation — most relevant first</div></div>
+    </div>
+    <div class="screen">
+      <div class="term" data-at="0"><span class="d">$</span> <span class="cmd">repo-graph activate</span> GroupsComponent</div>
+      <div data-at="1">
+        <div class="chip"><span class="sc">0.62</span><span class="nm">GroupsComponent</span><span class="loc">class</span></div>
+        <div class="chip"><span class="sc">0.11</span><span class="nm">sortMessages</span><span class="loc">method</span></div>
+        <div class="chip"><span class="sc">0.08</span><span class="nm">loadActivities</span><span class="loc">method</span></div>
+        <div class="chip"><span class="sc">0.05</span><span class="nm">resolveRoomId</span><span class="loc">method</span></div>
+        <div class="chip"><span class="sc">0.04</span><span class="nm">GroupsController</span><span class="loc">service</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5 · FLOW (feature flow) -->
+  <section class="clip" data-clip="flow" data-steps="2">
+    <div class="capbox">
+      <div class="cap" data-at="0"><span class="num">⌁</span><h1>Just find &amp; fix it</h1><div class="sub">skip the grep safari</div></div>
+      <div class="cap" data-at="1"><span class="num">⌁</span><h1>entry → data, <em>one call</em></h1><div class="sub">the feature as layered tiers</div></div>
+    </div>
+    <div class="screen">
+      <div class="term" data-at="0"><span class="d">$</span> <span class="cmd">repo-graph flow</span> groups</div>
+      <div data-at="1">
+        <div class="tier entry"><div class="lbl">ENTRY</div><div class="pills"><div class="pill">/groups</div><div class="pill">/groups/:id</div></div></div>
+        <div class="arrow">↓</div>
+        <div class="tier"><div class="lbl">SERVICE</div><div class="pills"><div class="pill">GroupsController</div></div></div>
+        <div class="arrow">↓</div>
+        <div class="tier"><div class="lbl">HANDLERS</div><div class="pills"><div class="pill">sortMessages</div><div class="pill">loadActivities</div></div></div>
+        <div class="arrow">↓</div>
+        <div class="tier data"><div class="lbl">DATA</div><div class="pills"><div class="pill">MongoDB</div></div></div>
+      </div>
+    </div>
+  </section>
+
+  <div id="bar"></div>
+</div>
+
+<script>
+  const stage=document.getElementById('stage'), bar=document.getElementById('bar');
+  function fit(){const s=Math.min(innerWidth/1080,innerHeight/1920);
+    stage.style.transform=`translate(${(innerWidth-1080*s)/2}px,${(innerHeight-1920*s)/2}px) scale(${s})`;}
+  addEventListener('resize',fit);fit();
+
+  const STEP=2900; // ms per step
+  const params=new URLSearchParams(location.search);
+  const want=params.get('clip');           // ?clip=trace → loop just that clip
+  let clips=[...document.querySelectorAll('.clip')];
+  if(want) clips=clips.filter(c=>c.dataset.clip===want);
+  if(!clips.length) clips=[...document.querySelectorAll('.clip')];
+
+  // flat timeline of [clipEl, step]
+  const flat=[]; clips.forEach(c=>{const n=+c.dataset.steps; for(let s=0;s<n;s++) flat.push([c,s]);});
+  const TOTAL=flat.length*STEP;
+
+  function paint(clipEl, step){
+    document.querySelectorAll('.clip').forEach(c=>c.classList.toggle('active', c===clipEl));
+    clipEl.querySelectorAll('[data-at]').forEach(el=>{
+      const at=+el.dataset.at;
+      const exclusive = el.classList.contains('cap') || el.hasAttribute('data-swap');
+      el.classList.toggle('shown', exclusive ? at===step : at<=step);
+    });
+  }
+
+  const freeze=params.get('step');          // ?clip=x&step=1 → still
+  if(freeze!==null){ paint(clips[0], +freeze); bar.style.width='0'; }
+  else {
+    let start=null;
+    function loop(ts){ if(start===null)start=ts;
+      const t=(ts-start)%TOTAL, idx=Math.floor(t/STEP)%flat.length;
+      paint(flat[idx][0], flat[idx][1]);
+      bar.style.width=(t/TOTAL*1080)+'px';
+      requestAnimationFrame(loop);
+    }
+    requestAnimationFrame(loop);
+  }
+</script>
+</body>
+</html>
