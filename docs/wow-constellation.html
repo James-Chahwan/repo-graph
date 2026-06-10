@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>repo-graph — the whole codebase</title>
+<style>
+  :root{--bg:#0a0a0a;--ink:#e8ffe8;--dim:#5a6b5a;--grn:#8effc0;--grn2:#3ad17a;
+    --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;}
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;background:#000;overflow:hidden;font-family:var(--mono)}
+  #stage{position:absolute;top:0;left:0;width:1080px;height:1920px;
+    background:radial-gradient(120% 80% at 50% 0%,#0e150e 0%,var(--bg) 55%);
+    transform-origin:top left;color:var(--ink);overflow:hidden}
+  #mark{position:absolute;top:60px;left:0;right:0;text-align:center;color:var(--dim);font-size:28px;letter-spacing:.42em;text-transform:uppercase}
+  #mark b{color:var(--grn)}
+  #bar{position:absolute;left:0;bottom:0;height:8px;width:0;background:var(--grn);box-shadow:0 0 12px var(--grn)}
+  .capbox{position:absolute;top:140px;left:0;right:0;height:270px;padding:0 80px;z-index:2}
+  .cap{position:absolute;left:80px;right:80px;top:0;text-align:center;opacity:0;transition:opacity .5s}
+  .cap h1{font-size:70px;line-height:1.1;font-weight:700;letter-spacing:-.01em}
+  .cap h1 em{color:var(--grn);font-style:normal}
+  .cap .sub{margin-top:18px;color:var(--dim);font-size:31px}
+  body.p0 .c0,body.p1 .c1,body.p2 .c2{opacity:1}
+
+  svg{position:absolute;top:0;left:0;width:1080px;height:1920px}
+  .fedge{stroke:#1c2a1c;stroke-width:1.5;opacity:0;transition:opacity .8s}
+  body.p0 .fedge,body.p1 .fedge,body.p2 .fedge{opacity:.9}
+  .star{fill:#22311f;opacity:0;transition:opacity .6s}
+  body.p0 .star,body.p1 .star,body.p2 .star{opacity:1}
+  .ledge{stroke:var(--grn);stroke-width:3;opacity:0;filter:drop-shadow(0 0 5px var(--grn));transition:opacity .4s}
+  body.p1 .ledge,body.p2 .ledge{opacity:.95;transition-delay:var(--d,0s)}
+  .lit{opacity:0}
+  body.p1 .lit,body.p2 .lit{opacity:1;animation:pop .4s ease forwards;animation-delay:var(--d,0s)}
+  @keyframes pop{to{opacity:1}}
+  .lit.seed{fill:var(--grn);filter:drop-shadow(0 0 22px var(--grn))}
+  .lit:not(.seed){fill:var(--grn);filter:drop-shadow(0 0 14px var(--grn))}
+  body.p1 .lit circle,body.p2 .lit circle{animation:throb 1.2s ease-in-out infinite;animation-delay:var(--d,0s)}
+  @keyframes throb{0%,100%{filter:drop-shadow(0 0 8px var(--grn))}50%{filter:drop-shadow(0 0 22px var(--grn))}}
+
+  .stat{position:absolute;left:0;right:0;bottom:120px;text-align:center;opacity:0;transition:opacity .5s;font-size:42px}
+  body.p2 .stat{opacity:1}
+  .stat b{color:var(--grn);font-weight:800}
+</style>
+</head>
+<body class="p0">
+<div id="stage">
+  <div id="mark"><b>repo-graph</b> · scale</div>
+  <div class="capbox">
+    <div class="cap c0"><h1>Your <em>whole</em> codebase</h1><div class="sub">thousands of nodes · every connection</div></div>
+    <div class="cap c1"><h1>one question</h1><div class="sub">it lights the few that actually matter</div></div>
+    <div class="cap c2"><h1><em>9</em> of <em>2,887</em></h1><div class="sub">the needle — found instantly</div></div>
+  </div>
+  <svg viewBox="0 0 1080 1920" id="field"></svg>
+  <div class="stat"><b>9</b> nodes lit · of <b>2,887</b> · in <b>~250ms</b></div>
+  <div id="bar"></div>
+</div>
+<script>
+  const stage=document.getElementById('stage'),bar=document.getElementById('bar'),svg=document.getElementById('field');
+  function fit(){const s=Math.min(innerWidth/1080,innerHeight/1920);
+    stage.style.transform=`translate(${(innerWidth-1080*s)/2}px,${(innerHeight-1920*s)/2}px) scale(${s})`;}
+  addEventListener('resize',fit);fit();
+
+  // ── generate the constellation ──────────────────────────────────────────
+  const N=175, pts=[];
+  // scatter, avoiding the caption band (y 120–430) and the very edges
+  for(let i=0;i<N;i++){
+    let x,y; do{ x=60+Math.random()*960; y=470+Math.random()*1300; }while(false);
+    pts.push({x,y,r:3+Math.random()*4});
+  }
+  const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
+  // faint edges: each point to its nearest neighbour (dedup by index order)
+  const fe=[];
+  pts.forEach((p,i)=>{let best=-1,bd=1e9;pts.forEach((q,j)=>{if(i!==j){const d=dist(p,q);if(d<bd){bd=d;best=j;}}});
+    if(best>i)fe.push([i,best]); else if(best<i && !fe.some(e=>e[0]===best&&e[1]===i))fe.push([best,i]);});
+  // a second sparse layer of medium-range links
+  pts.forEach((p,i)=>{if(Math.random()<.35){let cands=pts.map((q,j)=>({j,d:dist(p,q)})).filter(o=>o.j!==i&&o.d<240).sort((a,b)=>a.d-b.d);
+    if(cands[1])fe.push([i,cands[1].j]);}});
+  // seed = nearest to centre; lit = seed + 8 nearest
+  const c={x:540,y:1050}; let seed=0,sd=1e9; pts.forEach((p,i)=>{const d=dist(p,c);if(d<sd){sd=d;seed=i;}});
+  const near=pts.map((p,i)=>({i,d:dist(p,pts[seed])})).filter(o=>o.i!==seed).sort((a,b)=>a.d-b.d).slice(0,8).map(o=>o.i);
+  const lit=new Set([seed,...near]);
+
+  let s='';
+  // faint edges
+  fe.forEach(([a,b])=>{ if(lit.has(a)&&lit.has(b))return;
+    s+=`<line class="fedge" x1="${pts[a].x}" y1="${pts[a].y}" x2="${pts[b].x}" y2="${pts[b].y}"/>`; });
+  // lit edges seed→each near (staggered by rank)
+  near.forEach((j,k)=>{ s+=`<line class="ledge" style="--d:${(k*0.1).toFixed(2)}s" x1="${pts[seed].x}" y1="${pts[seed].y}" x2="${pts[j].x}" y2="${pts[j].y}"/>`; });
+  // background stars
+  pts.forEach((p,i)=>{ if(lit.has(i))return; s+=`<circle class="star" cx="${p.x}" cy="${p.y}" r="${p.r.toFixed(1)}"/>`; });
+  // lit nodes (seed first, then near with stagger)
+  s+=`<g class="lit seed"><circle cx="${pts[seed].x}" cy="${pts[seed].y}" r="12"/></g>`;
+  near.forEach((j,k)=>{ s+=`<g class="lit" style="--d:${(k*0.1+0.1).toFixed(2)}s"><circle cx="${pts[j].x}" cy="${pts[j].y}" r="9"/></g>`; });
+  svg.innerHTML=s;
+
+  const TOTAL=12000,cues=[[0,'p0'],[4000,'p1'],[8500,'p2']];
+  const ph=new URLSearchParams(location.search).get('phase');
+  if(ph){document.body.className=ph;}
+  else{let st=null;(function f(ts){if(st===null)st=ts;const t=(ts-st)%TOTAL;
+    let cc='p0';for(const[a,k]of cues)if(t>=a)cc=k;if(!document.body.classList.contains(cc))document.body.className=cc;
+    bar.style.width=(t/TOTAL*1080)+'px';requestAnimationFrame(f);})(0);}
+</script>
+</body>
+</html>
