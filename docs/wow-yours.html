@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>repo-graph — make it yours</title>
+<style>
+  :root{--bg:#0a0a0a;--ink:#e8ffe8;--dim:#5a6b5a;--grn:#8effc0;--grn2:#3ad17a;--gold:#c9a227;--line:#26331f;
+    --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;}
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;background:#000;overflow:hidden;font-family:var(--mono)}
+  #stage{position:absolute;top:0;left:0;width:1080px;height:1920px;
+    background:radial-gradient(120% 80% at 50% 0%,#0e150e 0%,var(--bg) 55%);transform-origin:top left;color:var(--ink);overflow:hidden}
+  #mark{position:absolute;top:56px;left:0;right:0;text-align:center;color:var(--dim);font-size:27px;letter-spacing:.4em;text-transform:uppercase}
+  #mark b{color:var(--grn)}
+  #bar{position:absolute;left:0;bottom:0;height:8px;width:0;background:var(--grn);box-shadow:0 0 12px var(--grn)}
+  .capbox{position:absolute;top:140px;left:0;right:0;height:210px;padding:0 70px}
+  .cap{position:absolute;left:70px;right:70px;top:0;text-align:center;opacity:0;transition:opacity .5s}
+  .cap h1{font-size:60px;line-height:1.12;font-weight:700} .cap h1 em{color:var(--grn);font-style:normal}
+  .cap .sub{margin-top:14px;color:var(--dim);font-size:30px}
+  body.p0 .c0,body.p1 .c1,body.p2 .c2{opacity:1}
+
+  .panel{position:absolute;top:400px;left:110px;right:110px;background:#0b110b;border:1px solid var(--line);border-radius:18px;
+    overflow:hidden;opacity:0;transition:opacity .5s}
+  .panel .hd{background:#0e160e;border-bottom:1px solid var(--line);padding:18px 28px;color:var(--dim);font-size:26px}
+  .panel pre{padding:28px 32px;font-size:30px;line-height:1.6;white-space:pre}
+  .kw{color:var(--grn)} .cm{color:var(--dim)} .v{color:var(--ink)} .skip{color:#c98}
+  body.p0 .cfg{opacity:1} body.p1 .fresh{opacity:1} body.p2 .repo{opacity:1}
+
+  .chips{display:flex;flex-wrap:wrap;gap:14px;padding:0 32px 30px}
+  .chip{background:#0e160e;border:1px solid var(--line);border-radius:10px;padding:12px 20px;font-size:24px;color:var(--dim)}
+  .fresh .ok{color:var(--grn);font-weight:700;font-size:30px;padding:6px 32px 24px}
+  .stat{position:absolute;left:0;right:0;bottom:110px;text-align:center;font-size:34px;opacity:0;transition:opacity .5s}
+  body.p0 .s0,body.p1 .s1,body.p2 .s2{opacity:1} .stat b{color:var(--grn);font-weight:800}
+</style></head>
+<body class="p0"><div id="stage">
+  <div id="mark"><b>repo-graph</b> · make it yours</div>
+  <div class="capbox">
+    <div class="cap c0"><h1>scope it <em>your way</em></h1><div class="sub">one tiny config.yaml</div></div>
+    <div class="cap c1"><h1>stays fresh<br>on its <em>own</em></h1><div class="sub">no pre-commit hook needed</div></div>
+    <div class="cap c2"><h1>any repo,<br>any <em>stack</em></h1><div class="sub">one line, local or git URL</div></div>
+  </div>
+
+  <div class="panel cfg">
+    <div class="hd">.ai/repo-graph/config.yaml</div>
+    <pre><span class="cm"># point it at your real source roots</span>
+<span class="kw">roots:</span>
+  - <span class="v">services/</span>
+  - <span class="v">web/src</span>
+  - <span class="v">packages/shared</span>
+<span class="kw">skip:</span>
+  - <span class="skip">vendor/</span>
+  - <span class="skip">generated/</span></pre>
+    <div class="chips" style="padding-top:0"><span class="chip" style="color:var(--grn2)">＋ unions with the smart defaults — never replaces them</span></div>
+  </div>
+
+  <div class="panel fresh">
+    <div class="hd">you edit · commit · switch branches</div>
+    <pre><span class="v">friends_controller.go</span>  <span class="cm">changed</span>
+<span class="grn" style="color:var(--grn)">→ re-parsed 1 file (mtime), rest cached</span></pre>
+    <div class="ok">✓ the map never lags behind your edits</div>
+    <div class="chips">
+      <span class="chip">auto-skips .git</span><span class="chip">node_modules</span><span class="chip">target</span>
+      <span class="chip">.venv</span><span class="chip">__pycache__</span><span class="chip">.ai/</span>
+    </div>
+  </div>
+
+  <div class="panel repo">
+    <div class="hd">works on anything</div>
+    <pre><span class="cm"># your local project</span>
+<span class="kw">uvx</span> mcp-repo-graph <span class="v">--repo .</span>
+
+<span class="cm"># or any public repo, cloned on demand</span>
+<span class="kw">uvx</span> mcp-repo-graph <span class="v">--repo https://github.com/org/repo</span></pre>
+  </div>
+
+  <div class="stat s0"><b>roots</b> + <b>skip</b> · your repo, your rules</div>
+  <div class="stat s1">incremental + mtime · <b>zero</b> wiring</div>
+  <div class="stat s2"><b>20</b> languages · local or remote · one command</div>
+  <div id="bar"></div>
+</div>
+<script>
+  const stage=document.getElementById('stage'),bar=document.getElementById('bar');
+  function fit(){const s=Math.min(innerWidth/1080,innerHeight/1920);
+    stage.style.transform=`translate(${(innerWidth-1080*s)/2}px,${(innerHeight-1920*s)/2}px) scale(${s})`;}
+  addEventListener('resize',fit);fit();
+  // each panel sits in the same spot; only the active phase's is opaque
+  const sty=document.createElement('style');
+  sty.textContent='.panel{opacity:0}';document.head.appendChild(sty);
+  const TOTAL=12500,cues=[[0,'p0'],[4200,'p1'],[8500,'p2']];
+  const ph=new URLSearchParams(location.search).get('phase');
+  if(ph){document.body.className=ph;}
+  else{let st=null;(function f(ts){if(st===null)st=ts;const t=(ts-st)%TOTAL;let c='p0';for(const[a,k]of cues)if(t>=a)c=k;
+    if(!document.body.classList.contains(c))document.body.className=c;bar.style.width=(t/TOTAL*1080)+'px';requestAnimationFrame(f);})(0);}
+</script></body></html>
