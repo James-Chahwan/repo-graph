@@ -64,7 +64,7 @@ repo_graph/
   __init__.py empty
 ```
 
-The Rust engine lives in a separate repo (`glia` at `/home/ivy/Code/glia`) as of 2026-05-09. The `rust/` subtree in this repo is a stale snapshot — engine source-of-truth is in glia.
+The Rust engine lives in a separate repo (`glia` at `/home/ivy/Code/glia`) as of 2026-05-09. This repo no longer carries a `rust/` subtree — it was removed on 2026-06-10 once the glia CI wheel matrix was green and `repo-graph-py>=0.4.16` shipped all five platform wheels. This repo is purely the Python MCP wrapper; the engine consumes the published `repo-graph-py` wheel.
 
 ### MCP tool tiers
 
@@ -87,7 +87,7 @@ Do not port Rust logic back to Python. The Python side is intentionally minimal 
 
 Two packages ship from this repo:
 
-- `repo-graph-py` — pyo3 wheel built by maturin (from `rust/py/`)
+- `repo-graph-py` — pyo3 wheel built by maturin (from `py/` in the glia repo)
 - `mcp-repo-graph` — pure-Python MCP server (from root)
 
 Also registered on the MCP Registry as `io.github.James-Chahwan/repo-graph`.
@@ -162,5 +162,5 @@ Always push to both: `git push github main && git push gitlab main`
 ## Roadmap
 
 - **0.4.13** — PyPI wheel matrix via maturin GitHub Actions (linux x86_64/aarch64, macos x86_64/arm64, windows x86_64 × Python 3.11–3.14). Latent-vector hook in candle; SWE-bench Lite N=20–30 run on Runpod 4090 with Qwen 2.5 Coder 7B.
-- **Post-0.4.13** — split `rust/` into its own `glia` repo via `git filter-repo`. This repo stays as the Python MCP wrapper.
+- **Post-0.4.13** — ✅ done. Split `rust/` into its own `glia` repo (2026-05-09) and removed the stale subtree from this repo (2026-06-10). This repo stays as the Python MCP wrapper.
 - **0.5.0** — rename this package in lockstep with the glia split maturing into a multi-domain engine (code is first primitive; video/molecules/policy slot in via registries).
