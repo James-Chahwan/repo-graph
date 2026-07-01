@@ -209,7 +209,9 @@ def prepare_repo(repo: dict) -> tuple[Path, Path] | None:
     for d in (clean, withd):
         if d.exists():
             shutil.rmtree(d)
-        shutil.copytree(src, d, ignore=ignore)
+        # symlinks=True + ignore_dangling: some templates ship broken skill symlinks
+        # (e.g. .claude/skills/*) that would otherwise crash copytree.
+        shutil.copytree(src, d, ignore=ignore, symlinks=True, ignore_dangling_symlinks=True)
     # Seed the "with" arm: build graph + inject the CLAUDE.md nudge.
     env = dict(os.environ, REPO_GRAPH_WATCH="0")
     subprocess.run(["repo-graph-init", "--repo", str(withd)], env=env,
