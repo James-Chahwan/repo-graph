@@ -803,6 +803,14 @@ def _render_node_tree(g: RustGraph, query: str, depth: int) -> str:
 def main():
     import argparse
 
+    # `repo-graph install` / `repo-graph uninstall` (also via `uvx mcp-repo-graph
+    # install`) route to the installer before the server's own arg parsing. Any
+    # other invocation starts the MCP server as normal.
+    argv = sys.argv[1:]
+    if argv and argv[0] in ("install", "uninstall"):
+        from .installer import main as installer_main
+        raise SystemExit(installer_main(argv))
+
     parser = argparse.ArgumentParser(description="repo-graph MCP server")
     parser.add_argument(
         "--repo",
