@@ -1,0 +1,23 @@
+name: install-matrix
+
+# Fresh-machine validation: builds the clean-room image and runs `repo-graph
+# install` for all 9 agents end to end, asserting config + instructions land, the
+# graph builds, a query works, and uninstall reverses it. Catches any regression
+# that would break a fresh install.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  install-matrix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Build clean-room image
+        run: docker build -f docker/Dockerfile -t repo-graph-install-matrix .
+      - name: Run install matrix
+        run: docker run --rm repo-graph-install-matrix

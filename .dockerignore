@@ -1,0 +1,19 @@
+# Keep the build context small and the "clean machine" clean.
+.git
+.venv
+venv
+**/__pycache__
+**/*.pyc
+.pytest_cache
+.mypy_cache
+.ruff_cache
+dist
+build
+*.egg-info
+.ai
+node_modules
+vscode-extension/node_modules
+vscode-extension/dist
+**/*.mp4
+demo/*.mp4
+mcpb/*.mcpb
