@@ -50,6 +50,30 @@ def _write_mcp_configs() -> None:
     }))
 
 
+MAX_RETRIES = 8               # per run, across rate-limit waits + transient errors
+_RL_PHRASES = ("rate limit", "usage limit", "rate_limit", "resets at",
+               "too many requests", "429", "overloaded")
+
+
+def _looks_rate_limited(text: str) -> bool:
+    t = (text or "").lower()
+    return any(p in t for p in _RL_PHRASES)
+
+
+def _rate_limit_from_events(events: list, result: dict | None) -> tuple[bool, int | None]:
+    limited, resets = False, None
+    for e in events:
+        if e.get("type") == "rate_limit_event":
+            info = e.get("rate_limit_info", {})
+            if info.get("status") not in (None, "allowed"):
+                limited = True
+            if info.get("resetsAt"):
+                resets = info.get("resetsAt")
+    if result and result.get("is_error") and _looks_rate_limited(result.get("result", "")):
+        limited = True
+    return limited, resets
+
+
 def run_agent(prompt: str, workdir: Path, arm: str, model: str, max_turns: int) -> dict:
     """Run one headless Claude session; return parsed metrics (or {'error':...})."""
     mcp_cfg = RG_MCP if arm == "with" else EMPTY_MCP
@@ -67,18 +91,47 @@ def run_agent(prompt: str, workdir: Path, arm: str, model: str, max_turns: int) 
     proc = subprocess.run(cmd, cwd=str(workdir), env=env, capture_output=True, text=True)
     wall = time.time() - t0
     if proc.returncode != 0 and not proc.stdout.strip():
-        return {"error": (proc.stderr or "no output")[:300], "wall": wall}
+        err = proc.stderr or "no output"
+        return {"error": err[:300], "wall": wall,
+                "rate_limited": _looks_rate_limited(err), "resets_at": None}
     try:
         events = json.loads(proc.stdout)
     except json.JSONDecodeError:
-        return {"error": "unparseable JSON output", "wall": wall}
+        return {"error": "unparseable JSON output", "wall": wall,
+                "rate_limited": _looks_rate_limited(proc.stdout + proc.stderr), "resets_at": None}
     return _metrics(events, wall)
+
+
+def run_with_retries(prompt: str, wd: Path, arm: str, model: str, max_turns: int) -> dict:
+    """Run one session, waiting out rate limits (until reset) and retrying
+    transient errors, so an unattended full matrix completes whenever it can."""
+    m: dict = {}
+    for attempt in range(1, MAX_RETRIES + 1):
+        m = run_agent(prompt, wd, arm, model, max_turns)
+        if m.get("rate_limited"):
+            now = time.time()
+            resets = m.get("resets_at")
+            wait = (resets - now + 30) if (resets and resets > now) else 900
+            wait = max(60, min(wait, 6 * 3600))
+            print(f"      rate limited; sleeping {int(wait)}s until reset "
+                  f"(attempt {attempt}/{MAX_RETRIES}) ...", flush=True)
+            time.sleep(wait)
+            continue
+        if m.get("error") and attempt < MAX_RETRIES:
+            print(f"      error: {str(m['error'])[:120]} -- retry in 30s "
+                  f"(attempt {attempt}/{MAX_RETRIES})", flush=True)
+            time.sleep(30)
+            continue
+        return m
+    return m
 
 
 def _metrics(events: list, wall: float) -> dict:
     result = next((e for e in reversed(events) if e.get("type") == "result"), None)
     if result is None:
-        return {"error": "no result event", "wall": wall}
+        limited, resets = _rate_limit_from_events(events, None)
+        return {"error": "no result event", "wall": wall,
+                "rate_limited": limited, "resets_at": resets}
     explore = graph = 0
     reads: list[str] = []
     for e in events:
@@ -97,6 +150,7 @@ def _metrics(events: list, wall: float) -> dict:
                     if k in inp:
                         reads.append(str(inp[k]))
     usage = result.get("usage", {})
+    limited, resets = _rate_limit_from_events(events, result)
     return {
         "error": None if not result.get("is_error") else (result.get("result") or "error")[:200],
         "cost": result.get("total_cost_usd", 0.0),
@@ -107,6 +161,8 @@ def _metrics(events: list, wall: float) -> dict:
         "duration_ms": result.get("duration_ms", int(wall * 1000)),
         "result_text": result.get("result", ""),
         "footprint": " ".join(reads),
+        "rate_limited": limited,
+        "resets_at": resets,
     }
 
 
@@ -236,6 +292,7 @@ def main() -> int:
     ap.add_argument("--model", default=None, help="override the pinned model")
     ap.add_argument("--out", default=str(BENCH_DIR / "RESULTS.md"))
     ap.add_argument("--max-turns", type=int, default=40)
+    ap.add_argument("--fresh", action="store_true", help="ignore any checkpoint and start over")
     args = ap.parse_args()
 
     if shutil.which("claude") is None:
@@ -246,19 +303,47 @@ def main() -> int:
     model = args.model or cfg["model"]
     runs = args.runs or cfg.get("runs", 4)
     _write_mcp_configs()
+    CACHE.mkdir(parents=True, exist_ok=True)
 
-    rows = []
+    # Resume from a checkpoint so a killed/throttled long run continues instead of
+    # rerunning completed cells. Keyed by model so switching models starts clean.
+    ckpt_path = CACHE / "checkpoint.json"
+    ckpt = {}
+    if not args.fresh and ckpt_path.is_file():
+        try:
+            ckpt = json.loads(ckpt_path.read_text())
+        except Exception:
+            ckpt = {}
+    if ckpt.get("model") != model:
+        ckpt = {"model": model, "cells": {}}
+    cells = ckpt.setdefault("cells", {})
+
+    when = os.environ.get("BENCH_DATE") or time.strftime("%Y-%m-%d", time.gmtime())
+
+    def flush() -> None:
+        ckpt_path.write_text(json.dumps(ckpt, indent=2))
+        Path(args.out).write_text(render_markdown(list(cells.values()), model, when))
+
+    total = sum(len(r["tasks"]) for r in cfg["repos"])
+    done = 0
     for repo in cfg["repos"]:
+        pending = [t for t in repo["tasks"] if f"{repo['name']}/{t['id']}" not in cells]
+        done += len(repo["tasks"]) - len(pending)
+        if not pending:
+            print(f"== {repo['name']} == (all {len(repo['tasks'])} cells cached)", flush=True)
+            continue
         prepared = prepare_repo(repo)
         if prepared is None:
             continue
         clean, withd = prepared
-        for task in repo["tasks"]:
-            print(f"== {repo['name']} / {task['id']} ==", flush=True)
+        for task in pending:
+            key = f"{repo['name']}/{task['id']}"
+            done += 1
+            print(f"== {key} == (cell {done}/{total}) ==", flush=True)
             arm_runs = {"without": [], "with": []}
             for arm, wd in (("without", clean), ("with", withd)):
                 for i in range(runs):
-                    m = run_agent(task["prompt"], wd, arm, model, args.max_turns)
+                    m = run_with_retries(task["prompt"], wd, arm, model, args.max_turns)
                     m["correct"] = is_correct(m, task["targets"])
                     arm_runs[arm].append(m)
                     tag = "OK" if m["correct"] else ("ERR" if m.get("error") else "miss")
@@ -266,17 +351,16 @@ def main() -> int:
                           f"${m.get('cost',0):.3f} turns={m.get('turns','?')} "
                           f"explore={m.get('explore_calls','?')} graph={m.get('graph_calls','?')}",
                           flush=True)
-            rows.append({
+            cells[key] = {
                 "repo": repo["name"], "task": task["id"],
                 "without": summarize(arm_runs["without"]),
                 "with": summarize(arm_runs["with"]),
-            })
+            }
+            flush()  # checkpoint + incremental RESULTS.md after every cell
 
-    when = time.strftime("%Y-%m-%d", time.gmtime()) if os.environ.get("BENCH_DATE") is None else os.environ["BENCH_DATE"]
-    md = render_markdown(rows, model, when)
-    Path(args.out).write_text(md)
-    print("\n" + md)
-    print(f"wrote {args.out}")
+    flush()
+    print("\n" + Path(args.out).read_text())
+    print(f"wrote {args.out}  (checkpoint: {ckpt_path})")
     return 0
 
 
