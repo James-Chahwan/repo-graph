@@ -1,0 +1,18 @@
+{
+  "model": "claude-haiku-4-5-20251001",
+  "runs": 1,
+  "repos": [
+    {
+      "name": "repo-graph-self",
+      "dir": ".",
+      "tasks": [
+        {
+          "id": "entry-point",
+          "type": "easy-locate",
+          "prompt": "Where is the MCP server's main entry point function defined? Name the file and the function.",
+          "targets": ["server.py", "main"]
+        }
+      ]
+    }
+  ]
+}

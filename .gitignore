@@ -16,3 +16,6 @@ dev-notes/0.4.11-sweep/repos-10.txt
 dev-notes/0.4.11-sweep/results-10.jsonl
 dev-notes/0.4.11-sweep/sweep-10.log
 scripts/demo/shorts/
+
+# benchmark clones/work (local only)
+bench/.cache/

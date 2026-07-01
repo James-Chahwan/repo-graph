@@ -1,0 +1,106 @@
+{
+  "model": "claude-opus-4-8",
+  "runs": 4,
+  "repos": [
+    {
+      "name": "fastapi-fullstack",
+      "url": "https://github.com/fastapi/full-stack-fastapi-template",
+      "ref": "master",
+      "tasks": [
+        {
+          "id": "locate-entry",
+          "type": "easy-locate",
+          "prompt": "Where is the FastAPI application instance created and the server entry point defined? Name the file(s).",
+          "targets": ["main.py", "app"]
+        },
+        {
+          "id": "find-routes",
+          "type": "needle-in-monorepo",
+          "prompt": "Which files define the HTTP API routes/endpoints for this backend? Name them.",
+          "targets": ["routes", "api", "router"]
+        },
+        {
+          "id": "trace-to-data",
+          "type": "cross-stack-trace",
+          "prompt": "Trace how an API request reaches the database layer: name the route file, the CRUD/service layer, and the model/schema files involved.",
+          "targets": ["models", "crud", "schemas"]
+        }
+      ]
+    },
+    {
+      "name": "gin-examples",
+      "url": "https://github.com/gin-gonic/examples",
+      "ref": "master",
+      "tasks": [
+        {
+          "id": "locate-entry",
+          "type": "easy-locate",
+          "prompt": "Find a runnable example's entry point: which file has the main() that starts a Gin server? Name it.",
+          "targets": ["main.go"]
+        },
+        {
+          "id": "find-routes",
+          "type": "needle-in-monorepo",
+          "prompt": "Find where HTTP routes are registered on a Gin engine (router.GET/POST etc). Name a file that does this.",
+          "targets": [".go", "router", "gin"]
+        },
+        {
+          "id": "trace-handler",
+          "type": "cross-stack-trace",
+          "prompt": "Pick one example: trace a route to the handler function it calls. Name the route registration and the handler.",
+          "targets": ["func", ".go"]
+        }
+      ]
+    },
+    {
+      "name": "nestjs-starter",
+      "url": "https://github.com/nestjs/typescript-starter",
+      "ref": "master",
+      "tasks": [
+        {
+          "id": "locate-entry",
+          "type": "easy-locate",
+          "prompt": "Where does this NestJS app bootstrap? Name the entry file and the root module.",
+          "targets": ["main.ts", "app.module.ts"]
+        },
+        {
+          "id": "find-controller",
+          "type": "needle-in-monorepo",
+          "prompt": "Which file defines the HTTP controller and its route handlers? Name it.",
+          "targets": ["controller.ts"]
+        },
+        {
+          "id": "trace-service",
+          "type": "cross-stack-trace",
+          "prompt": "Trace a controller endpoint to the service method it calls. Name the controller and the service files.",
+          "targets": ["controller.ts", "service.ts"]
+        }
+      ]
+    },
+    {
+      "name": "django-oscar",
+      "url": "https://github.com/django-oscar/django-oscar",
+      "ref": "master",
+      "tasks": [
+        {
+          "id": "locate-entry",
+          "type": "easy-locate",
+          "prompt": "Where is Django settings and the top-level URL configuration for this project? Name the files.",
+          "targets": ["settings", "urls.py"]
+        },
+        {
+          "id": "find-models",
+          "type": "needle-in-monorepo",
+          "prompt": "Where are the core order/product models defined? Name the models file(s).",
+          "targets": ["models"]
+        },
+        {
+          "id": "trace-view",
+          "type": "cross-stack-trace",
+          "prompt": "Trace a URL to the view that handles it and the model it touches. Name the urls, view, and model files.",
+          "targets": ["urls.py", "views", "models"]
+        }
+      ]
+    }
+  ]
+}
