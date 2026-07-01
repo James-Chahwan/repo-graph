@@ -8,6 +8,14 @@ repo-graph gives LLMs a map of your codebase — entities, relationships, and fl
 
 Instead of flooding an LLM's context window with your entire codebase (or hoping it guesses right), repo-graph builds a lightweight graph of what exists, how things connect, and where the entry points are. The LLM queries the graph, finds the minimal set of files it needs, and reads only those.
 
+**Install in one click:**
+
+[![Install in VS Code](https://img.shields.io/badge/VS_Code-Install-0098FF?style=flat-square&logo=visualstudiocode&logoColor=white)](https://vscode.dev/redirect/mcp/install?name=repo-graph&config=%7B%22command%22%3A%22uvx%22%2C%22args%22%3A%5B%22mcp-repo-graph%22%2C%22--repo%22%2C%22.%22%5D%7D)
+[![Install in VS Code Insiders](https://img.shields.io/badge/VS_Code_Insiders-Install-24bfa5?style=flat-square&logo=visualstudiocode&logoColor=white)](https://insiders.vscode.dev/redirect/mcp/install?name=repo-graph&config=%7B%22command%22%3A%22uvx%22%2C%22args%22%3A%5B%22mcp-repo-graph%22%2C%22--repo%22%2C%22.%22%5D%7D&quality=insiders)
+[![Add to Cursor](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/install-mcp?name=repo-graph&config=eyJjb21tYW5kIjoidXZ4IiwiYXJncyI6WyJtY3AtcmVwby1ncmFwaCIsIi0tcmVwbyIsIi4iXX0%3D)
+
+Or one command in your terminal wires up every agent you have: `uvx mcp-repo-graph install` (see [Install](#install)).
+
 ## Demo
 
 https://github.com/user-attachments/assets/a1e4171b-b225-40d4-9210-39453e14b76a
@@ -60,7 +68,7 @@ repo-graph scans your codebase once and builds a graph of:
 - **Relationships**: imports, calls, handles, defines, contains, cross-stack HTTP
 - **Flows**: end-to-end paths from entry point to data layer
 
-Then it exposes 11 MCP tools that let the LLM:
+Then it exposes 13 MCP tools that let the LLM:
 
 1. **Orient** — "What languages are in this repo? What are the main features?"
 2. **Navigate** — "Trace the login flow from route to database" / "What's the shortest path between UserService and the payments API?"
@@ -106,9 +114,35 @@ Multiple languages can match one repo (e.g., Go backend + Angular frontend + SCS
 
 ## Install
 
-The package name **is** the run command — `uvx mcp-repo-graph` just works. No prior
-`pip install`, nothing to keep on `PATH`. This is the same command VS Code, Cursor,
-and the MCP registry use under the hood.
+### One command
+
+```bash
+uvx mcp-repo-graph install
+```
+
+This detects the AI coding agents you have installed (Claude Code, Claude Desktop,
+Cursor, Windsurf, VS Code, Codex, Gemini CLI, opencode, Kiro), writes each one's
+MCP config, and adds a short usage block to its instructions file so the agent
+reaches for the graph before it greps. Where the agent supports it, it also grants
+auto-allow so repo-graph tools don't prompt on every call.
+
+It's safe to re-run, and `uvx mcp-repo-graph uninstall` reverses everything
+(config, instructions, permissions) while leaving your graph data in place.
+
+```bash
+uvx mcp-repo-graph install --agents all          # every supported agent, not just detected
+uvx mcp-repo-graph install --scope user          # your global config, not this project
+uvx mcp-repo-graph install --dry-run             # show what it would write, change nothing
+uvx mcp-repo-graph install --yes                 # no prompt (scripts and CI)
+uvx mcp-repo-graph install --print-config cursor # print one agent's config, write nothing
+```
+
+### Manual, per client
+
+If you'd rather wire it up yourself, the package name **is** the run command.
+`uvx mcp-repo-graph` just works. No prior `pip install`, nothing to keep on
+`PATH`. This is the same command VS Code, Cursor, and the MCP registry use under
+the hood.
 
 **Requirements:** Python 3.11+, and [`uv`](https://docs.astral.sh/uv/) if you use the
 `uvx` path. Prebuilt wheels ship for the Rust engine on Linux (x86_64, aarch64),
