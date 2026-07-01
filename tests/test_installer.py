@@ -9,6 +9,7 @@ user-scope writes never touch the real home.
 from __future__ import annotations
 
 import json
+import shutil
 import tomllib
 from pathlib import Path
 
@@ -290,3 +291,163 @@ def test_cli_print_config(sandbox, capsys):
 def test_cli_unknown_agent_exits_two(sandbox, capsys):
     rc = core.main(["install", "--repo", str(sandbox), "--agents", "bogus", "--yes"])
     assert rc == 2
+
+
+def test_cli_rejects_git_url(sandbox, capsys):
+    rc = core.main(["install", "--repo", "https://github.com/foo/bar.git", "--yes"])
+    assert rc == 2
+
+
+def test_cli_rejects_missing_path(tmp_path, capsys):
+    rc = core.main(["install", "--repo", str(tmp_path / "nope"), "--yes"])
+    assert rc == 2
+
+
+# ── review regressions: JSONC/BOM safety, no data loss ────────────────────────
+
+
+def test_strip_jsonc_is_string_aware():
+    from repo_graph.installer.fileio import strip_jsonc
+    # // and /* */ and commas INSIDE string values must survive.
+    txt = '{\n  "url": "//cdn.example.com/a", // trailing comment\n  "p": "file:///x",\n  "b": "a/*z", /* c */\n  "msg": "hi, ]",\n}'
+    parsed = json.loads(strip_jsonc(txt))
+    assert parsed["url"] == "//cdn.example.com/a"
+    assert parsed["p"] == "file:///x"
+    assert parsed["b"] == "a/*z"
+    assert parsed["msg"] == "hi, ]"
+
+
+def test_load_json_bom_and_unparseable(tmp_path):
+    from repo_graph.installer.fileio import load_json, ConfigError
+    p = tmp_path / "c.json"
+    p.write_text("﻿" + json.dumps({"mcpServers": {}}), encoding="utf-8")
+    assert load_json(p) == {"mcpServers": {}}  # BOM tolerated
+    p.write_text("", encoding="utf-8")
+    assert load_json(p) == {}  # empty -> {}
+    p.write_text('{ "mcpServers": broken not json', encoding="utf-8")
+    with pytest.raises(ConfigError):
+        load_json(p)
+
+
+def test_bom_config_not_wiped(sandbox):
+    p = sandbox / ".cursor/mcp.json"
+    p.parent.mkdir(parents=True)
+    p.write_text("﻿" + json.dumps({"mcpServers": {"other": {"command": "x", "args": []}}}),
+                 encoding="utf-8")
+    install(sandbox, [REGISTRY["cursor"]], scope="project", dry=False)
+    cfg = json.loads(p.read_text(encoding="utf-8-sig"))
+    assert "other" in cfg["mcpServers"] and SERVER_NAME in cfg["mcpServers"]
+
+
+def test_unparseable_config_refused_not_overwritten(sandbox):
+    p = sandbox / ".cursor/mcp.json"
+    p.parent.mkdir(parents=True)
+    original = '{ "mcpServers": { "other": broken '
+    p.write_text(original, encoding="utf-8")
+    changes = install(sandbox, [REGISTRY["cursor"]], scope="project", dry=False)
+    assert any(c.kind == "mcp" and c.action == "error" for c in changes)
+    assert p.read_text(encoding="utf-8") == original  # untouched
+
+
+def test_jsonc_other_server_and_values_preserved(sandbox):
+    p = sandbox / ".vscode/mcp.json"
+    p.parent.mkdir(parents=True)
+    p.write_text('{\n  // my servers\n  "servers": {\n'
+                 '    "other": {"command": "x", "args": ["//keepme"]},\n  }\n}\n',
+                 encoding="utf-8")
+    install(sandbox, [REGISTRY["vscode"]], scope="project", dry=False)
+    cfg = json.loads((sandbox / ".vscode/mcp.json").read_text(encoding="utf-8-sig"))
+    assert cfg["servers"]["other"]["args"] == ["//keepme"]  # value not corrupted
+    assert SERVER_NAME in cfg["servers"]
+
+
+def test_non_dict_wrapper_coerced_no_crash(sandbox):
+    p = sandbox / ".mcp.json"
+    p.write_text(json.dumps({"mcpServers": ["oops"]}))
+    install(sandbox, [REGISTRY["claude-code"]], scope="project",
+            permissions=False, instructions=False, dry=False)
+    cfg = json.loads(p.read_text())
+    assert cfg["mcpServers"][SERVER_NAME]["command"] == "uvx"
+
+
+def test_non_dict_permissions_no_crash(sandbox):
+    s = sandbox / ".claude/settings.json"
+    s.parent.mkdir(parents=True)
+    s.write_text(json.dumps({"permissions": "oops"}))
+    install(sandbox, [REGISTRY["claude-code"]], scope="project", instructions=False, dry=False)
+    data = json.loads(s.read_text())
+    assert f"mcp__{SERVER_NAME}__*" in data["permissions"]["allow"]
+
+
+def test_uninstall_keeps_frontmatter_only_user_file(sandbox):
+    agents = sandbox / "AGENTS.md"
+    agents.write_text("---\nname: My Guide\n---\n", encoding="utf-8")
+    install(sandbox, [REGISTRY["codex"]], scope="project", dry=False)
+    assert has_section(agents.read_text())
+    uninstall(sandbox, [REGISTRY["codex"]], dry=False)
+    assert agents.exists() and "My Guide" in agents.read_text()  # NOT deleted
+    assert not has_section(agents.read_text())
+
+
+def test_print_config_user_only_target_is_absolute(sandbox):
+    out = core._print_config("claude-desktop", sandbox)
+    entry = json.loads(out)["mcpServers"][SERVER_NAME]
+    assert entry["args"][-1] == str(sandbox)  # absolute repo, not "."
+    assert entry["command"] != "uvx" or shutil.which("uvx") is None  # absolute uvx at user scope
+
+
+def test_uninstall_prunes_created_claude_settings(sandbox):
+    install(sandbox, [REGISTRY["claude-code"]], scope="project", instructions=False, dry=False)
+    settings = sandbox / ".claude/settings.json"
+    assert settings.exists()
+    uninstall(sandbox, [REGISTRY["claude-code"]], dry=False)
+    assert not settings.exists()  # we created it with only our rule -> removed
+
+
+def test_uninstall_prunes_empty_dirs(sandbox):
+    install(sandbox, [REGISTRY["cursor"]], scope="project", dry=False)
+    assert (sandbox / ".cursor/rules").exists()
+    uninstall(sandbox, [REGISTRY["cursor"]], dry=False)
+    assert not (sandbox / ".cursor").exists()  # pruned
+
+
+def test_write_error_isolated_from_other_targets(sandbox, monkeypatch):
+    boom = REGISTRY["gemini"]
+
+    def raise_oserror(*a, **k):
+        raise OSError("read-only fs")
+
+    monkeypatch.setattr(type(boom), "write_mcp", raise_oserror)
+    changes = install(sandbox, [boom, REGISTRY["claude-code"]], scope="project",
+                      permissions=False, instructions=False, dry=False)
+    assert any(c.action == "error" for c in changes)
+    assert (sandbox / ".mcp.json").exists()  # later target still installed
+
+
+def test_dry_count_matches_applied_for_shared_file(sandbox):
+    tg = [REGISTRY["codex"], REGISTRY["opencode"]]  # both use AGENTS.md
+    preview = install(sandbox, tg, scope="project", permissions=False, dry=True)
+    applied = install(sandbox, tg, scope="project", permissions=False, dry=False)
+
+    def touched(cs):
+        return sum(1 for c in cs if c.action in ("created", "updated", "removed"))
+
+    assert touched(preview) == touched(applied)
+
+
+def test_remove_toml_preserves_next_table_comment():
+    from repo_graph.installer.fileio import remove_toml_table
+    text = ('[mcp_servers.repo-graph]\ncommand = "uvx"\n\n'
+            '# weather needs an API key\n[mcp_servers.weather]\nx = 1\n')
+    new, removed = remove_toml_table(text, "mcp_servers.repo-graph")
+    assert removed
+    assert "# weather needs an API key" in new
+    assert "[mcp_servers.weather]" in new
+    assert "repo-graph" not in new
+
+
+def test_upsert_newline_only_diff_is_unchanged():
+    block = instructions_block()
+    content = "intro\n\n" + block  # block at EOF, no trailing newline
+    same, status = upsert_section(content, block)
+    assert status == "unchanged" and same == content

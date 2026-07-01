@@ -6,9 +6,21 @@ tool added/removed in the server can't silently drift the auto-allow lists the
 installer writes into each agent's config.
 """
 
+import re
+
 # MCP server name — the key every agent config maps its entry under, and the
 # `mcp__<server>__*` permission prefix for Claude Code.
 SERVER_NAME = "repo-graph"
+
+# A `--repo` value can be a local path or a git URL (the server clones it). Mirror
+# server.py's detection so the installer writes URLs verbatim instead of mangling
+# them through Path().resolve().
+_GIT_URL_RE = re.compile(r"^(https?://|git@|ssh://|git\+)", re.IGNORECASE)
+
+
+def looks_like_git_url(spec: str) -> bool:
+    """True if `spec` is a git remote URL rather than a local path."""
+    return bool(_GIT_URL_RE.match(spec)) or spec.endswith(".git")
 
 # PyPI package launched by `uvx` (also the console-script name).
 PACKAGE = "mcp-repo-graph"

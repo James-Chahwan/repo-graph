@@ -1,10 +1,16 @@
-"""Non-destructive config file IO for JSON, JSONC, and TOML.
+"""Config file IO for JSON, JSONC, and TOML.
 
-Every write here preserves whatever the user already has: other MCP servers,
-comments, unrelated keys. JSON/JSONC configs are parsed tolerantly (some clients
-— opencode, VS Code — allow ``//`` comments and trailing commas), mutated, and
-re-serialised as clean JSON. TOML (Codex) has no stdlib writer, so we read with
-``tomllib`` to detect presence and splice the server's table as text.
+Writes preserve the user's other content: other MCP servers, unrelated keys, and
+(for TOML) surrounding comments. JSON is re-serialised via ``json.dumps``, so
+``//`` and ``/* */`` comments in a JSONC file (VS Code, opencode) are NOT
+round-tripped back — only keys and values survive. Comment-bearing JSONC is
+parsed with a string-aware scanner so comment/trailing-comma stripping never
+corrupts a string value.
+
+Safety contract: ``load_json`` distinguishes "file missing or empty" (returns
+``{}``) from "file present but unparseable" (raises ``ConfigError``). Callers must
+never overwrite a config they could not parse — doing so would silently drop the
+user's other servers. TOML (Codex) is text-spliced, never re-serialised.
 """
 
 from __future__ import annotations
@@ -16,33 +22,109 @@ from pathlib import Path
 from typing import Any
 
 
+class ConfigError(Exception):
+    """A config file exists and is non-empty but could not be parsed."""
+
+
 # ── JSON / JSONC ──────────────────────────────────────────────────────────────
 
-# Strip // line comments and /* */ block comments, then trailing commas. Good
-# enough for the config files we touch; we never round-trip comments back.
-_LINE_COMMENT_RE = re.compile(r'(?<!:)//[^\n"]*')
-_BLOCK_COMMENT_RE = re.compile(r"/\*.*?\*/", re.DOTALL)
-_TRAILING_COMMA_RE = re.compile(r",(\s*[}\]])")
+
+def _scan_strip_comments(text: str) -> str:
+    """Remove // line and /* */ block comments, skipping string literals."""
+    out: list[str] = []
+    i, n = 0, len(text)
+    in_str = False
+    quote = ""
+    while i < n:
+        c = text[i]
+        if in_str:
+            out.append(c)
+            if c == "\\" and i + 1 < n:
+                out.append(text[i + 1])
+                i += 2
+                continue
+            if c == quote:
+                in_str = False
+            i += 1
+            continue
+        if c in ('"', "'"):
+            in_str, quote = True, c
+            out.append(c)
+            i += 1
+            continue
+        if c == "/" and i + 1 < n and text[i + 1] == "/":
+            j = text.find("\n", i)
+            if j == -1:
+                break
+            i = j
+            continue
+        if c == "/" and i + 1 < n and text[i + 1] == "*":
+            j = text.find("*/", i + 2)
+            i = (j + 2) if j != -1 else n
+            continue
+        out.append(c)
+        i += 1
+    return "".join(out)
+
+
+def _scan_strip_trailing_commas(text: str) -> str:
+    """Drop commas that are immediately followed by } or ], skipping strings."""
+    out: list[str] = []
+    i, n = 0, len(text)
+    in_str = False
+    quote = ""
+    while i < n:
+        c = text[i]
+        if in_str:
+            out.append(c)
+            if c == "\\" and i + 1 < n:
+                out.append(text[i + 1])
+                i += 2
+                continue
+            if c == quote:
+                in_str = False
+            i += 1
+            continue
+        if c in ('"', "'"):
+            in_str, quote = True, c
+            out.append(c)
+            i += 1
+            continue
+        if c == ",":
+            j = i + 1
+            while j < n and text[j] in " \t\r\n":
+                j += 1
+            if j < n and text[j] in "}]":
+                i += 1  # drop the trailing comma
+                continue
+        out.append(c)
+        i += 1
+    return "".join(out)
 
 
 def strip_jsonc(text: str) -> str:
-    """Best-effort strip of JSONC comments and trailing commas."""
-    text = _BLOCK_COMMENT_RE.sub("", text)
-    # Only strip // when it's not inside a URL like http:// — the (?<!:) guard
-    # above handles the common case; a full lexer is overkill for these files.
-    text = _LINE_COMMENT_RE.sub("", text)
-    text = _TRAILING_COMMA_RE.sub(r"\1", text)
-    return text
+    """String-aware strip of JSONC comments and trailing commas.
+
+    Only content outside string literals is touched, so a value like
+    ``"file:///x"`` or ``"a, ]"`` is left intact.
+    """
+    return _scan_strip_trailing_commas(_scan_strip_comments(text))
 
 
 def load_json(path: Path) -> dict[str, Any]:
-    """Load a JSON/JSONC file into a dict; ``{}`` if missing or unparseable."""
+    """Load a JSON/JSONC file into a dict.
+
+    Returns ``{}`` for a missing or whitespace-only file. Raises ``ConfigError``
+    if the file exists, is non-empty, and cannot be parsed even after stripping
+    JSONC comments — so a caller never mistakes "unparseable" for "empty" and
+    overwrites the user's config. Tolerates a UTF-8 BOM.
+    """
     if not path.is_file():
         return {}
     try:
-        raw = path.read_text(encoding="utf-8")
-    except OSError:
-        return {}
+        raw = path.read_text(encoding="utf-8-sig")
+    except OSError as e:
+        raise ConfigError(f"could not read {path}: {e}") from e
     if not raw.strip():
         return {}
     try:
@@ -50,8 +132,8 @@ def load_json(path: Path) -> dict[str, Any]:
     except json.JSONDecodeError:
         try:
             return json.loads(strip_jsonc(raw))
-        except json.JSONDecodeError:
-            return {}
+        except json.JSONDecodeError as e:
+            raise ConfigError(f"could not parse {path}: {e}") from e
 
 
 def write_json(path: Path, data: dict[str, Any]) -> None:
@@ -68,7 +150,7 @@ def load_toml(path: Path) -> dict[str, Any]:
     if not path.is_file():
         return {}
     try:
-        return tomllib.loads(path.read_text(encoding="utf-8"))
+        return tomllib.loads(path.read_text(encoding="utf-8-sig"))
     except (OSError, tomllib.TOMLDecodeError):
         return {}
 
@@ -99,29 +181,43 @@ def render_toml_table(table: str, entries: dict[str, Any]) -> str:
     return out
 
 
+_TOML_HEADER_RE = re.compile(r"^\s*\[\[?([^\]]+)\]\]?\s*$")
+
+
 def remove_toml_table(text: str, table: str) -> tuple[str, bool]:
     """Remove ``[table]`` and any ``[table.sub]`` blocks from TOML `text`.
 
-    Returns ``(new_text, removed)``. Removal spans from a matching header line to
-    the next top-level ``[`` header or EOF.
+    Returns ``(new_text, removed)``. Blank/comment lines that trail the removed
+    table but precede the *next* table belong to that next table and are
+    preserved (re-emitted); the table's own key/value lines are dropped. Only the
+    excised region is touched, so unrelated user spacing is left alone.
     """
     lines = text.splitlines(keepends=True)
     out: list[str] = []
     removed = False
     skipping = False
-    header_re = re.compile(r"^\s*\[\[?([^\]]+)\]\]?\s*$")
+    buf: list[str] = []  # blank/comment lines that may belong to the next table
     for line in lines:
-        m = header_re.match(line)
+        m = _TOML_HEADER_RE.match(line)
         if m:
             name = m.group(1).strip()
             if name == table or name.startswith(table + "."):
                 skipping = True
                 removed = True
+                buf = []
                 continue
-            skipping = False
-        if not skipping:
+            if skipping:  # foreign header ends the skip; its leading comments survive
+                out.extend(buf)
+                buf = []
+                skipping = False
             out.append(line)
-    new_text = "".join(out)
-    # Collapse blank runs left by the excision.
-    new_text = re.sub(r"\n{3,}", "\n\n", new_text)
-    return new_text, removed
+            continue
+        if skipping:
+            s = line.strip()
+            if s == "" or s.startswith("#"):
+                buf.append(line)  # might precede the next table
+            else:
+                buf = []  # a key/value line of our table -> drop, reset
+            continue
+        out.append(line)
+    return "".join(out), removed

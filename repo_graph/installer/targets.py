@@ -20,8 +20,9 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from .constants import SERVER_NAME, PACKAGE, TOOL_NAMES, instructions_block
+from .constants import SERVER_NAME, PACKAGE, TOOL_NAMES, instructions_block, looks_like_git_url
 from .fileio import (
+    ConfigError,
     load_json,
     write_json,
     load_toml,
@@ -55,7 +56,10 @@ def _uvx(eff_scope: str) -> str:
 
 def _repo_arg(repo_abs: str, eff_scope: str) -> str:
     """`--repo` value: portable `.` at project scope, absolute path at user scope
-    (a global config has no notion of the current project)."""
+    (a global config has no notion of the current project). A git URL is written
+    verbatim at any scope — the server clones it."""
+    if looks_like_git_url(repo_abs):
+        return repo_abs
     return "." if eff_scope == "project" else repo_abs
 
 
@@ -92,14 +96,39 @@ def _is_effectively_empty(content: str) -> bool:
     return not body
 
 
-def _write_or_unlink_json(path: Path, data: dict) -> None:
+def _prune_empty_parents(path: Path, ceilings: set[Path]) -> None:
+    """Best-effort remove empty parent dirs of `path`, stopping at any ceiling
+    (repo root / home) or the first non-empty or unremovable dir. So uninstall
+    cleans up dirs it created (.cursor/rules, .kiro/steering) without ever
+    touching a dir that still holds another tool's files."""
+    p = path.parent
+    for _ in range(4):  # bounded walk
+        if p in ceilings or p == p.parent:
+            return
+        try:
+            if any(p.iterdir()):
+                return
+            p.rmdir()
+        except OSError:
+            return
+        p = p.parent
+
+
+def _write_or_unlink_json(path: Path, data: dict, ceilings: set[Path] | None = None) -> None:
     """Write `data`, or delete the file if `data` is now empty — so removing our
     only entry from a config we created leaves no empty ``{}`` behind. A config
     with the user's other content is never deleted, only rewritten."""
     if not data:
         path.unlink(missing_ok=True)
+        if ceilings is not None:
+            _prune_empty_parents(path, ceilings)
     else:
         write_json(path, data)
+
+
+def _ceilings(repo: Path) -> set[Path]:
+    """Directories dir-pruning must never remove or cross above."""
+    return {repo.resolve(), _home().resolve()}
 
 
 # ── base target ───────────────────────────────────────────────────────────────
@@ -160,26 +189,38 @@ class Target:
         path, eff = _pick(scope, self._mcp_project(repo), self._mcp_user(repo))
         if not path:
             return []
-        data = load_json(path)
-        existing = data.get(self.config_key, {}).get(SERVER_NAME) if isinstance(data.get(self.config_key), dict) else None
+        try:
+            data = load_json(path)  # refuse to overwrite a config we can't parse
+        except ConfigError:
+            return [Change(self.id, "mcp", str(path), "error")]
+        wrapper = data.get(self.config_key)
+        existing = wrapper.get(SERVER_NAME) if isinstance(wrapper, dict) else None
         entry = self.build_entry(str(repo), eff, permissions)
         action = "unchanged" if existing == entry else ("updated" if existing else "created")
         if not dry and action != "unchanged":
-            data.setdefault(self.config_key, {})[SERVER_NAME] = entry
+            if not isinstance(data.get(self.config_key), dict):
+                data[self.config_key] = {}  # coerce a malformed non-dict wrapper
+            data[self.config_key][SERVER_NAME] = entry
             write_json(path, data)
         return [Change(self.id, "mcp", str(path), action)]
 
     def remove_mcp(self, repo: Path, dry: bool) -> list[Change]:
         changes: list[Change] = []
         for path in _both(self._mcp_project(repo), self._mcp_user(repo)):
-            data = load_json(path)
+            if not path.is_file():
+                continue
+            try:
+                data = load_json(path)
+            except ConfigError:
+                changes.append(Change(self.id, "mcp", str(path), "error"))
+                continue
             servers = data.get(self.config_key)
             if isinstance(servers, dict) and SERVER_NAME in servers:
                 if not dry:
                     del servers[SERVER_NAME]
                     if not servers:
                         data.pop(self.config_key, None)
-                    _write_or_unlink_json(path, data)
+                    _write_or_unlink_json(path, data, _ceilings(repo))
                 changes.append(Change(self.id, "mcp", str(path), "removed"))
         return changes
 
@@ -211,10 +252,13 @@ class Target:
             if status == "not-found":
                 continue
             if not dry:
-                # Delete the file if nothing of the user's is left (only our block
-                # and, for owned .mdc files, YAML frontmatter). Otherwise rewrite.
-                if _is_effectively_empty(new):
+                # Delete only if nothing of the user's remains. For files we fully
+                # own (Cursor .mdc) that means "block + frontmatter only"; for
+                # shared files (CLAUDE.md/AGENTS.md/...) it means pure whitespace,
+                # so a user's frontmatter-only doc is never deleted.
+                if (self.instr_owned and _is_effectively_empty(new)) or not new.strip():
                     path.unlink()
+                    _prune_empty_parents(path, _ceilings(repo))
                 else:
                     path.write_text(new, encoding="utf-8")
             changes.append(Change(self.id, "instructions", str(path), "removed"))
@@ -235,11 +279,17 @@ def _home() -> Path:
     return Path.home()
 
 
+def _appdata() -> Path:
+    """Windows Roaming AppData, with a correct fallback when APPDATA is unset or
+    empty (stripped service/CI shells) — never the bare home dir."""
+    return Path(os.environ.get("APPDATA") or (_home() / "AppData" / "Roaming"))
+
+
 def _claude_desktop_config() -> Path:
     if sys.platform == "darwin":
         return _home() / "Library/Application Support/Claude/claude_desktop_config.json"
     if os.name == "nt":
-        return Path(os.environ.get("APPDATA", _home())) / "Claude/claude_desktop_config.json"
+        return _appdata() / "Claude/claude_desktop_config.json"
     return _home() / ".config/Claude/claude_desktop_config.json"  # unofficial on Linux
 
 
@@ -247,7 +297,7 @@ def _vscode_user_dir() -> Path:
     if sys.platform == "darwin":
         return _home() / "Library/Application Support/Code/User"
     if os.name == "nt":
-        return Path(os.environ.get("APPDATA", _home())) / "Code/User"
+        return _appdata() / "Code/User"
     return _home() / ".config/Code/User"
 
 
@@ -280,14 +330,20 @@ class ClaudeCode(Target):
 
     def write_permissions(self, repo, scope, dry):
         path = self._settings(repo, scope if scope in ("project", "user") else "project")
-        data = load_json(path)
-        perms = data.setdefault("permissions", {}) if not dry else dict(data.get("permissions", {}))
-        allow = list(perms.get("allow", []))
+        try:
+            data = load_json(path)
+        except ConfigError:
+            return [Change(self.id, "permissions", str(path), "error")]
+        perms = data.get("permissions") if isinstance(data.get("permissions"), dict) else {}
+        allow = perms.get("allow") if isinstance(perms.get("allow"), list) else []
         rule = f"mcp__{SERVER_NAME}__*"
         if rule in allow:
             return [Change(self.id, "permissions", str(path), "unchanged")]
         if not dry:
-            data.setdefault("permissions", {}).setdefault("allow", [])
+            if not isinstance(data.get("permissions"), dict):
+                data["permissions"] = {}
+            if not isinstance(data["permissions"].get("allow"), list):
+                data["permissions"]["allow"] = []
             data["permissions"]["allow"].append(rule)
             write_json(path, data)
         return [Change(self.id, "permissions", str(path), "created")]
@@ -296,12 +352,22 @@ class ClaudeCode(Target):
         changes = []
         rule = f"mcp__{SERVER_NAME}__*"
         for path in (_home() / ".claude/settings.json", repo / ".claude/settings.json"):
-            data = load_json(path)
+            if not path.is_file():
+                continue
+            try:
+                data = load_json(path)
+            except ConfigError:
+                changes.append(Change(self.id, "permissions", str(path), "error"))
+                continue
             allow = data.get("permissions", {}).get("allow") if isinstance(data.get("permissions"), dict) else None
             if isinstance(allow, list) and rule in allow:
                 if not dry:
                     allow.remove(rule)
-                    write_json(path, data)
+                    if not allow:  # prune the scaffold we created
+                        data["permissions"].pop("allow", None)
+                        if not data["permissions"]:
+                            data.pop("permissions", None)
+                    _write_or_unlink_json(path, data, _ceilings(repo))
                 changes.append(Change(self.id, "permissions", str(path), "removed"))
         return changes
 
@@ -406,7 +472,7 @@ class Codex(Target):
         path, eff = _pick(scope, proj, usr)
         if not path:
             return []
-        text = path.read_text(encoding="utf-8") if path.is_file() else ""
+        text = path.read_text(encoding="utf-8-sig") if path.is_file() else ""
         data = load_toml(path)
         table = f"mcp_servers.{SERVER_NAME}"
         entry = {"command": _uvx(eff), "args": [PACKAGE, "--repo", _repo_arg(str(repo), eff)]}
@@ -428,7 +494,7 @@ class Codex(Target):
         for path in self._toml_paths(repo):
             if not path.is_file():
                 continue
-            text = path.read_text(encoding="utf-8")
+            text = path.read_text(encoding="utf-8-sig")
             new, removed = remove_toml_table(text, table)
             if removed:
                 if not dry:
@@ -436,6 +502,7 @@ class Codex(Target):
                         path.write_text(new, encoding="utf-8")
                     else:
                         path.unlink(missing_ok=True)  # we created an otherwise-empty config.toml
+                        _prune_empty_parents(path, _ceilings(repo))
                 changes.append(Change(self.id, "mcp", str(path), "removed"))
         return changes
 
@@ -495,7 +562,10 @@ class Opencode(Target):
         path, _ = _pick(scope, self._mcp_project(repo), self._mcp_user(repo))
         if not path:
             return []
-        data = load_json(path)
+        try:
+            data = load_json(path)
+        except ConfigError:
+            return [Change(self.id, "permissions", str(path), "error")]
         perm = data.get("permission")
         glob = self._perm_glob()
         if isinstance(perm, dict) and perm.get(glob) == "allow":
@@ -511,14 +581,20 @@ class Opencode(Target):
         changes = []
         glob = self._perm_glob()
         for path in _both(self._mcp_project(repo), self._mcp_user(repo)):
-            data = load_json(path)
+            if not path.is_file():
+                continue
+            try:
+                data = load_json(path)
+            except ConfigError:
+                changes.append(Change(self.id, "permissions", str(path), "error"))
+                continue
             perm = data.get("permission")
             if isinstance(perm, dict) and glob in perm:
                 if not dry:
                     del perm[glob]
                     if not perm:
                         data.pop("permission", None)
-                    _write_or_unlink_json(path, data)
+                    _write_or_unlink_json(path, data, _ceilings(repo))
                 changes.append(Change(self.id, "permissions", str(path), "removed"))
         return changes
 

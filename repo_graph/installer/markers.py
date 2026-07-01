@@ -13,8 +13,7 @@ import re
 from .constants import MARKER_START, MARKER_END
 
 # Matches the whole fenced region, markers included, across lines. Non-greedy so
-# only the first block is taken; a trailing newline is swallowed if present so
-# repeated upserts don't accumulate blank lines.
+# only the first block is taken; a trailing newline is swallowed if present.
 _SECTION_RE = re.compile(
     re.escape(MARKER_START) + r".*?" + re.escape(MARKER_END) + r"\n?",
     re.DOTALL,
@@ -26,14 +25,15 @@ def upsert_section(content: str, block: str) -> tuple[str, str]:
 
     Returns ``(new_content, status)`` where status is ``created`` (appended for
     the first time), ``updated`` (an existing block was replaced with different
-    text), or ``unchanged`` (the block was already present and identical).
+    text), or ``unchanged`` (identical, or differing only by a trailing newline —
+    so re-install never triggers a redundant write).
     """
-    if _SECTION_RE.search(content):
-        replaced = _SECTION_RE.sub(lambda _: block + "\n", content, count=1)
-        # Normalise: strip a doubled trailing newline the sub may introduce.
-        if replaced.endswith("\n\n") and not content.endswith("\n\n"):
-            replaced = replaced[:-1]
-        if replaced == content:
+    m = _SECTION_RE.search(content)
+    if m:
+        replaced = content[: m.start()] + block + "\n" + content[m.end():]
+        # A block that sat at EOF without a trailing newline is byte-different
+        # only by that newline; treat as unchanged and keep the original.
+        if replaced == content or replaced.rstrip("\n") == content.rstrip("\n"):
             return content, "unchanged"
         return replaced, "updated"
 
@@ -47,14 +47,23 @@ def remove_section(content: str) -> tuple[str, str]:
     """Strip the fenced block from `content`.
 
     Returns ``(new_content, status)`` with status ``removed`` or ``not-found``.
-    Collapses the blank line left behind so uninstall is a clean reversal.
+    Only the seam left by the block is tidied; blank lines the user authored
+    elsewhere are left exactly as they were.
     """
-    if not _SECTION_RE.search(content):
+    m = _SECTION_RE.search(content)
+    if not m:
         return content, "not-found"
-    stripped = _SECTION_RE.sub("", content, count=1)
-    # Tidy up a doubled blank line where the block used to sit.
-    stripped = re.sub(r"\n{3,}", "\n\n", stripped)
-    return stripped, "removed"
+    before = content[: m.start()].rstrip("\n")
+    after = content[m.end():].lstrip("\n")
+    if before and after:
+        joined = before + "\n\n" + after
+    elif before:
+        joined = before + "\n"
+    elif after:
+        joined = after if after.endswith("\n") else after + "\n"
+    else:
+        joined = ""
+    return joined, "removed"
 
 
 def has_section(content: str) -> bool:
