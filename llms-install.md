@@ -13,8 +13,16 @@ to the right files instead of reading everything first.
 
 ## Install
 
-Add this server to the MCP configuration. The command **is** the package — `uvx`
-fetches and runs it on first use; there is nothing to `pip install` first.
+If you have terminal access, the fastest path is one command that configures every
+agent on the machine (writes MCP config + a usage block per agent):
+
+```bash
+uvx mcp-repo-graph install
+```
+
+Otherwise, add the server to the MCP configuration directly. The command **is** the
+package. `uvx` fetches and runs it on first use; there is nothing to `pip install`
+first.
 
 ```json
 {

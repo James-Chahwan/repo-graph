@@ -10,6 +10,16 @@ repo-graph is an MCP server that hands your AI assistant a structural graph of a
 
 It works across 20+ languages and frameworks, frontend to backend, including cross-stack links. The engine (`repo-graph-py`) is Rust plus tree-sitter.
 
+## One command, every agent
+
+If you just want it set up everywhere, run:
+
+```bash
+uvx mcp-repo-graph install
+```
+
+It detects the AI coding agents you have (Claude Code, Claude Desktop, Cursor, Windsurf, VS Code, Codex, Gemini CLI, opencode, Kiro), writes each one's MCP config, and adds a short usage block to its instructions file so the agent reaches for the graph before it greps. `uvx mcp-repo-graph uninstall` reverses it. The rest of this page is the manual, per-client version.
+
 ## Pick your client
 
 Each line below installs the server pointed at the current directory (`--repo .`). `uvx` runs it with zero install.
