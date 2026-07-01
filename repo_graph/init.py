@@ -1,86 +1,25 @@
-"""
-repo-graph-init — first-run setup for a target repository.
+"""repo-graph-init — first-run setup for a target repository.
 
-1. Generates the structural graph (via Rust engine)
-2. Adds repo-graph MCP server to .mcp.json
-3. Adds usage instructions to CLAUDE.md
+1. Builds the structural graph and caches it (so the first query is instant)
+2. Wires repo-graph into Claude Code via the shared installer: MCP config
+   (.mcp.json), the CLAUDE.md usage block, and auto-allow permissions
 
-Idempotent — safe to run multiple times.
+Idempotent — safe to run multiple times. For other agents (Cursor, VS Code,
+Codex, Gemini, ...) or user-scope setup, use `repo-graph install`.
 """
 
 import argparse
-import json
 import os
 import sys
 from pathlib import Path
 
 import repo_graph_py
 
-# ── CLAUDE.md block ──────────────────────────────────────────────────────────
+from .installer import install, format_report, REGISTRY
+from .installer.constants import MARKER_START
 
-CLAUDE_MD_MARKER = "<!-- repo-graph -->"
-
-CLAUDE_MD_BLOCK = f"""{CLAUDE_MD_MARKER}
-## repo-graph
-
-A structural map of this codebase is available via MCP tools.
-
-1. **Always start** with `status`, then `dense_text` for full context or `activate` to find relevant nodes from seeds.
-2. **Trust the results.** Read only the files repo-graph identifies. Do not grep, glob, or explore beyond them unless they don't contain the answer.
-3. **Fix and stop.** Do not explore related code, verify call sites, or investigate beyond the immediate task.
-<!-- /repo-graph -->"""
-
-
-# ── .mcp.json ────────────────────────────────────────────────────────────────
-
-
-def _update_mcp_json(repo_root: Path) -> bool:
-    mcp_path = repo_root / ".mcp.json"
-
-    if mcp_path.exists():
-        try:
-            config = json.loads(mcp_path.read_text())
-        except (json.JSONDecodeError, OSError):
-            config = {}
-    else:
-        config = {}
-
-    servers = config.setdefault("mcpServers", {})
-
-    if "repo-graph" in servers:
-        return False
-
-    servers["repo-graph"] = {
-        "type": "stdio",
-        "command": "repo-graph",
-        "args": ["--repo", str(repo_root)],
-    }
-
-    mcp_path.write_text(json.dumps(config, indent=2) + "\n")
-    return True
-
-
-# ── CLAUDE.md ────────────────────────────────────────────────────────────────
-
-
-def _update_claude_md(repo_root: Path) -> bool:
-    claude_md = repo_root / "CLAUDE.md"
-
-    if claude_md.exists():
-        content = claude_md.read_text()
-        if CLAUDE_MD_MARKER in content:
-            return False
-        if not content.endswith("\n"):
-            content += "\n"
-        content += "\n" + CLAUDE_MD_BLOCK + "\n"
-    else:
-        content = CLAUDE_MD_BLOCK + "\n"
-
-    claude_md.write_text(content)
-    return True
-
-
-# ── Main ─────────────────────────────────────────────────────────────────────
+# Back-compat: tests and older callers import this. The installer owns the block.
+CLAUDE_MD_MARKER = MARKER_START
 
 
 def init(repo_root: Path) -> None:
@@ -92,27 +31,31 @@ def init(repo_root: Path) -> None:
 
     print(f"Generating graph for {repo_root}...")
     pg = repo_graph_py.generate(str(repo_root))
+    # Cache the .gmap so the first server query is instant and the documented
+    # pre-commit `git add .ai/repo-graph/` has something to stage.
+    if hasattr(pg, "save_to_default"):
+        try:
+            pg.save_to_default(str(repo_root))
+        except Exception:
+            pass  # read-only fs / perms shouldn't fail the bootstrap
     print(f"  {pg.node_count()} nodes, {pg.edge_count()} edges, "
           f"{pg.cross_edge_count()} cross-stack edges")
     print(f"  Engine: repo-graph-py {repo_graph_py.version()}")
 
-    if _update_mcp_json(repo_root):
-        print("  Added repo-graph to .mcp.json")
-    else:
-        print("  .mcp.json already configured")
-
-    if _update_claude_md(repo_root):
-        print("  Added repo-graph section to CLAUDE.md")
-    else:
-        print("  CLAUDE.md already has repo-graph section")
+    # Single code path for config + instructions + permissions (Claude Code).
+    targets = [REGISTRY["claude-code"]]
+    changes = install(repo_root, targets, scope="project",
+                      permissions=True, instructions=True, dry=False)
+    print(format_report(changes, targets, dry=False))
 
     print()
     print("Done. Start a new Claude Code session to use repo-graph.")
+    print("Tip: `repo-graph install` also wires up Cursor, VS Code, Codex, Gemini, and more.")
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Initialize repo-graph for a repository"
+        description="Initialize repo-graph for a repository (build graph + wire Claude Code)"
     )
     parser.add_argument(
         "--repo",

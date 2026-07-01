@@ -36,7 +36,9 @@ def test_init_creates_mcp_json(target_repo, capsys):
     assert "mcpServers" in config
     assert "repo-graph" in config["mcpServers"]
     entry = config["mcpServers"]["repo-graph"]
-    assert entry["command"] == "repo-graph"
+    # init now delegates to the shared installer -> zero-install uvx launch.
+    assert entry["command"] == "uvx"
+    assert "mcp-repo-graph" in entry["args"]
     assert "--repo" in entry["args"]
 
 
