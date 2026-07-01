@@ -451,3 +451,46 @@ def test_upsert_newline_only_diff_is_unchanged():
     content = "intro\n\n" + block  # block at EOF, no trailing newline
     same, status = upsert_section(content, block)
     assert status == "unchanged" and same == content
+
+
+# ── git hook (Phase 2 fallback) ───────────────────────────────────────────────
+
+
+def test_git_hook_install_idempotent_and_remove(sandbox):
+    import os as _os
+    from repo_graph.installer.githook import install_hook, remove_hook
+    (sandbox / ".git").mkdir()
+    assert install_hook(sandbox).action == "created"
+    hook = sandbox / ".git/hooks/pre-commit"
+    assert hook.is_file() and _os.access(hook, _os.X_OK)
+    assert "repo-graph pre-commit" in hook.read_text()
+    assert install_hook(sandbox).action == "unchanged"
+    r = remove_hook(sandbox)
+    assert r is not None and r.action == "removed"
+    assert not hook.exists()  # we created a shebang-only hook -> removed entirely
+
+
+def test_git_hook_preserves_existing_hook(sandbox):
+    from repo_graph.installer.githook import install_hook, remove_hook
+    hooks = sandbox / ".git/hooks"
+    hooks.mkdir(parents=True)
+    (hooks / "pre-commit").write_text("#!/bin/sh\necho existing\n")
+    install_hook(sandbox)
+    txt = (hooks / "pre-commit").read_text()
+    assert "echo existing" in txt and "repo-graph pre-commit" in txt
+    remove_hook(sandbox)
+    txt2 = (hooks / "pre-commit").read_text()
+    assert "echo existing" in txt2 and "repo-graph pre-commit" not in txt2
+
+
+def test_git_hook_not_found_without_git(sandbox):
+    from repo_graph.installer.githook import install_hook
+    assert install_hook(sandbox).action == "not-found"
+
+
+def test_cli_git_hook_only(sandbox):
+    (sandbox / ".git").mkdir()
+    rc = core.main(["install", "--repo", str(sandbox), "--agents", "none",
+                    "--git-hook", "--yes"])
+    assert rc == 0
+    assert (sandbox / ".git/hooks/pre-commit").is_file()

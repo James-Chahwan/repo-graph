@@ -14,6 +14,7 @@ import sys
 import shutil
 import hashlib
 import tempfile
+import threading
 import subprocess
 from collections import Counter
 from typing import Annotated
@@ -42,6 +43,10 @@ mcp = FastMCP(
 )
 
 _graph: RustGraph | None = None
+
+# Serializes graph rebuilds so the background watcher and a manual `reload` (or a
+# concurrent tool call's cold build) can't race on the `_graph` global.
+_rebuild_lock = threading.Lock()
 
 
 _GIT_URL_RE = re.compile(r"^(https?://|git@|ssh://|git\+)", re.IGNORECASE)
@@ -89,16 +94,27 @@ def _build_graph(target: str, incremental: bool = True) -> RustGraph:
     Shared by `get_graph` (cold regen), `generate`, and `reload`.
     """
     global _graph, REPO_PATH
-    pg = repo_graph_py.generate(target, incremental=incremental)
-    if hasattr(pg, "save_to_default"):
-        try:
-            pg.save_to_default(target)
-        except Exception:
-            # Best-effort: read-only fs / perms shouldn't break the live graph.
-            pass
-    REPO_PATH = target
-    _graph = RustGraph(pg, target)
-    return _graph
+    with _rebuild_lock:
+        pg = repo_graph_py.generate(target, incremental=incremental)
+        if hasattr(pg, "save_to_default"):
+            try:
+                pg.save_to_default(target)
+            except Exception:
+                # Best-effort: read-only fs / perms shouldn't break the live graph.
+                pass
+        REPO_PATH = target
+        _graph = RustGraph(pg, target)
+        return _graph
+
+
+def _watch_rebuild() -> None:
+    """Watcher callback: incrementally rebuild the graph after source edits.
+    Logs to stderr (safe for the MCP stdio channel); never raises."""
+    try:
+        g = _build_graph(REPO_PATH, incremental=True)
+        print(f"[watch] rebuilt: {g.pygraph.node_count()} nodes", file=sys.stderr)
+    except Exception as e:
+        print(f"[watch] rebuild failed: {e}", file=sys.stderr)
 
 
 def get_graph() -> RustGraph:
@@ -824,6 +840,14 @@ def main():
     # status, reload, ...) sees a real directory — not just the lazy get_graph path.
     REPO_PATH = _resolve_repo(args.repo)
     os.environ["REPO_GRAPH_REPO"] = REPO_PATH
+
+    # Live freshness: watch the repo and incrementally rebuild on edits, unless
+    # disabled (REPO_GRAPH_WATCH=0) or watchdog isn't installed.
+    if os.environ.get("REPO_GRAPH_WATCH", "1") != "0":
+        from .watcher import start_watcher
+        if start_watcher(REPO_PATH, _watch_rebuild) is not None:
+            print(f"[watch] watching {REPO_PATH} for changes", file=sys.stderr)
+
     mcp.run()
 
 

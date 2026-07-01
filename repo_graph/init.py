@@ -22,7 +22,7 @@ from .installer.constants import MARKER_START
 CLAUDE_MD_MARKER = MARKER_START
 
 
-def init(repo_root: Path) -> None:
+def init(repo_root: Path, graph_only: bool = False) -> None:
     repo_root = repo_root.resolve()
 
     if not repo_root.is_dir():
@@ -41,6 +41,10 @@ def init(repo_root: Path) -> None:
     print(f"  {pg.node_count()} nodes, {pg.edge_count()} edges, "
           f"{pg.cross_edge_count()} cross-stack edges")
     print(f"  Engine: repo-graph-py {repo_graph_py.version()}")
+
+    if graph_only:
+        # Used by the pre-commit hook: refresh + cache the graph, nothing else.
+        return
 
     # Single code path for config + instructions + permissions (Claude Code).
     targets = [REGISTRY["claude-code"]]
@@ -62,8 +66,14 @@ def main():
         default=os.environ.get("REPO_GRAPH_REPO", os.getcwd()),
         help="Path to the target repository",
     )
+    parser.add_argument(
+        "--graph-only",
+        action="store_true",
+        help="Only (re)build and cache the graph; skip agent config/instructions "
+             "(used by the pre-commit hook).",
+    )
     args = parser.parse_args()
-    init(Path(args.repo))
+    init(Path(args.repo), graph_only=args.graph_only)
 
 
 if __name__ == "__main__":

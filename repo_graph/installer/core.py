@@ -16,6 +16,7 @@ import sys
 from pathlib import Path
 
 from .constants import SERVER_NAME, PACKAGE, looks_like_git_url
+from .githook import install_hook, remove_hook
 from .targets import (
     Change,
     Codex,
@@ -81,6 +82,7 @@ def install(
     scope: str = "project",
     permissions: bool = True,
     instructions: bool = True,
+    git_hook: bool = False,
     dry: bool = False,
 ) -> list[Change]:
     changes: list[Change] = []
@@ -93,6 +95,11 @@ def install(
                 changes += t.write_permissions(repo, scope, dry)
         except OSError as e:
             changes.append(Change(t.id, "write", f"(error: {e})", "error"))
+    if git_hook:
+        try:
+            changes.append(install_hook(repo, dry))
+        except OSError as e:
+            changes.append(Change("git-hook", "hook", f"(error: {e})", "error"))
     return _dedupe(changes)
 
 
@@ -105,6 +112,12 @@ def uninstall(repo: Path, targets: list[Target], *, dry: bool = False) -> list[C
             changes += t.remove_permissions(repo, dry)
         except OSError as e:
             changes.append(Change(t.id, "write", f"(error: {e})", "error"))
+    try:  # always reverse the hook, regardless of how install was run
+        hook = remove_hook(repo, dry)
+        if hook is not None:
+            changes.append(hook)
+    except OSError:
+        pass
     return _dedupe(changes)
 
 
@@ -198,6 +211,8 @@ def _build_parser() -> argparse.ArgumentParser:
                      help="skip injecting the usage block into agent instructions files")
     ins.add_argument("--no-permissions", action="store_true",
                      help="skip granting auto-allow permissions")
+    ins.add_argument("--git-hook", action="store_true",
+                     help="also install a pre-commit hook that refreshes + stages the graph")
     ins.add_argument("--yes", "-y", action="store_true", help="do not prompt for confirmation")
     ins.add_argument("--dry-run", action="store_true", help="show what would change, write nothing")
     ins.add_argument("--print-config", metavar="AGENT", default=None,
@@ -247,12 +262,13 @@ def main(argv: list[str] | None = None) -> int:
         except ValueError as e:
             print(f"error: {e}", file=sys.stderr)
             return 2
-        if not targets:
+        if not targets and not args.git_hook:
             print("No agents selected.")
             return 0
         kw = dict(scope=args.scope,
                   permissions=not args.no_permissions,
-                  instructions=not args.no_instructions)
+                  instructions=not args.no_instructions,
+                  git_hook=args.git_hook)
         print(f"repo-graph install -> {repo}")
         print(format_report(install(repo, targets, dry=True, **kw), targets, dry=True))
         if args.dry_run:

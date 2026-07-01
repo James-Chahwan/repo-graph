@@ -220,27 +220,28 @@ The AI assistant now has access to all 13 tools. Example queries it can answer:
 - *"Give me the full graph context cheaply"* → `dense_text` tool
 - *"Show me the auth flow visually"* → `graph_view` tool
 
-### 3. Keep it fresh with a git hook (recommended)
+### 3. Freshness (automatic)
 
-The graph auto-refreshes on cold start whenever the source tree has changed since the
-cached `.gmap` was written, so it's never stale when your assistant connects. To
-pre-warm the cache on every commit instead — so even the first query is instant — add
-a pre-commit hook:
+The graph stays current on its own. While the server is running it watches the repo
+and does an incremental rebuild a moment after you save, so a structural question
+right after an edit reflects the change with no manual `reload`. On top of that, the
+graph refreshes on cold start whenever the source tree changed since the cached
+`.gmap` was written, so it's never stale when your assistant connects.
+
+The watcher is on by default. Set `REPO_GRAPH_WATCH=0` to disable it (the cold-start
+refresh still applies). It needs the `watchdog` package, which ships as a dependency.
+
+Want the cache pre-built and committed so teammates and CI get it too? Add the
+pre-commit hook automatically:
 
 ```bash
-# .git/hooks/pre-commit (or add to your existing hook)
-#!/bin/sh
-uvx --from mcp-repo-graph repo-graph-init --repo .   # or: repo-graph-init --repo .
-git add .ai/repo-graph/
+uvx mcp-repo-graph install --agents none --git-hook
 ```
 
-```bash
-chmod +x .git/hooks/pre-commit
-```
+That installs a marker-fenced `pre-commit` hook that refreshes the graph and stages
+`.ai/repo-graph/` on every commit. `uvx mcp-repo-graph uninstall` removes it again.
 
-Every commit keeps the graph current. The LLM always has a fresh map without wasting a single token on `generate`.
-
-> **Tip:** If you don't want graph data in version control, add `.ai/repo-graph/` to `.gitignore` and skip the `git add` line — the graph will just live locally.
+> **Tip:** If you don't want graph data in version control, add `.ai/repo-graph/` to `.gitignore` and skip the hook — the watcher and cold-start refresh keep it fresh locally.
 
 ## MCP tools reference
 
