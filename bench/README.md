@@ -48,11 +48,22 @@ the agent touched.
 
 ## Cost and time
 
-The full default matrix is **4 repos × 3 tasks × 2 arms × 4 runs = 96 Opus
-sessions**. Real agent sessions on real repos are the expensive part: budget on
-the order of **$50–150 and 1–2 hours** depending on repo size and how much the
-without-arm explores. Trim `runs`, the repo list, or `--max-turns` to cut it down;
-`--model` overrides the pinned model for a cheaper dry run.
+The full default matrix is **4 repos × 3 tasks × 2 arms × 4 runs = 96 sessions**,
+pinned to `claude-sonnet-5`.
+
+What that costs depends on how you're authenticated (check `apiKeySource` in the
+session JSON):
+
+- **Metered API key** — you pay per token. The `total_cost_usd` in each result is
+  the real bill. Ballpark for 96 Sonnet sessions on real repos: low tens of
+  dollars; on Opus it's several times that.
+- **Claude subscription** (`apiKeySource: none`) — no per-run charge. The runs
+  consume your 5-hour / weekly usage limits instead, so the real cost is wall time
+  and possible throttling, not money. With overage disabled you can't be billed
+  past the plan.
+
+Either way, trim it with fewer `runs`, fewer repos, or a lower `--max-turns`.
+`--model opus` (or any alias / exact id) overrides the pinned model.
 
 ## Controls and honest limitations
 
