@@ -21,7 +21,7 @@ export function activate(context: vscode.ExtensionContext) {
       }
       // Positional constructor: (label, command, args, env?, version?)
       return [
-        new vscode.McpStdioServerDefinition('repo-graph', 'uvx', args, undefined, '0.4.16'),
+        new vscode.McpStdioServerDefinition('repo-graph', 'uvx', args, undefined, '0.4.20'),
       ];
     },
   };
