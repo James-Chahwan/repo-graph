@@ -104,14 +104,14 @@ def test_source_change_invalidates_cache(server_isolated, target_repo, monkeypat
     assert g2.pygraph.node_count() == g1.pygraph.node_count()
 
 
-def test_generate_tool_writes_cache(server_isolated, target_repo):
+def test_refresh_tool_writes_cache(server_isolated, target_repo):
     gmap_dir = repo_graph_py.default_gmap_dir(str(target_repo))
     assert repo_graph_py.is_stale(gmap_dir, str(target_repo))
 
-    out = server_isolated.generate()
-    assert "Generated:" in out
+    out = server_isolated.refresh()
+    assert out.startswith("Rebuilt")
     assert not repo_graph_py.is_stale(gmap_dir, str(target_repo)), \
-        "generate() tool should persist the cache"
+        "refresh() tool should persist the cache"
 
 
 def test_cache_load_matches_fresh_generate(target_repo):
@@ -182,16 +182,16 @@ def test_incremental_false_matches_incremental(target_repo):
 
 
 @incremental
-def test_reload_tool_reflects_edits(server_isolated, target_repo):
-    """The reload MCP tool re-generates from source (not just a gmap reload),
+def test_refresh_tool_reflects_edits(server_isolated, target_repo):
+    """The refresh MCP tool re-generates from source (not just a gmap reload),
     so an edit between calls shows up."""
-    out1 = server_isolated.generate()
+    out1 = server_isolated.refresh()
     n1 = server_isolated.get_graph().pygraph.node_count()
-    assert "Generated:" in out1
+    assert out1.startswith("Rebuilt")
 
     src = target_repo / "backend" / "server" / "server.go"
-    src.write_text(src.read_text() + "\nfunc ReloadToolProbe() {}\n")
+    src.write_text(src.read_text() + "\nfunc RefreshToolProbe() {}\n")
 
-    out2 = server_isolated.reload()
-    assert "Reloaded:" in out2
+    out2 = server_isolated.refresh()
+    assert out2.startswith("Rebuilt")
     assert server_isolated.get_graph().pygraph.node_count() == n1 + 1

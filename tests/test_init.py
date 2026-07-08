@@ -51,7 +51,7 @@ def test_init_creates_claude_md(target_repo, capsys):
     content = claude_md.read_text()
     assert CLAUDE_MD_MARKER in content
     assert "repo-graph" in content
-    assert "status" in content  # core tool reference
+    assert "orient" in content  # core tool reference
 
 
 def test_init_is_idempotent(target_repo, capsys):

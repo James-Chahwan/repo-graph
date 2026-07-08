@@ -28,19 +28,12 @@ PACKAGE = "mcp-repo-graph"
 # Every MCP tool the server exposes. Kept in registration order. Locked to the
 # live registry by the installer test.
 TOOL_NAMES = (
-    "generate",
-    "status",
-    "dense_text",
-    "flow",
-    "trace",
-    "impact",
-    "neighbours",
-    "read",
-    "activate",
+    "orient",
     "find",
-    "locate",
-    "graph_view",
-    "reload",
+    "impact",
+    "trace",
+    "read",
+    "refresh",
 )
 
 # Marker sentinels for the injected instructions block. HTML comments so they're
@@ -53,22 +46,35 @@ MARKER_END = "<!-- repo-graph:end -->"
 # line makes it a safe no-op at user/global scope: in a repo without a graph the
 # agent is told to ignore it.
 INSTRUCTIONS_BODY = """\
-## repo-graph
+## repo-graph — structural map (use it before grepping)
 
-This project has a structural map available through the repo-graph MCP tools:
-entities, relationships, and feature flows across the whole codebase. When the
-tools are available, use them before grep/find/ripgrep or reading files top to
-bottom.
+This project ships a repo-graph map of its own code — entities, relationships,
+and cross-stack flows — exposed as six MCP tools. It answers where / what-uses /
+how-does-X-reach-Y / what-breaks-if-I-change-this without reading many files.
 
-- Start with `status` to orient. Then `dense_text` for the full map, or
-  `activate` / `find` / `locate` to jump straight to the relevant nodes.
-- Debugging an error? Paste the stacktrace, failing-test id, or diff into
-  `locate`, then `read` the top node's source. No grepping first.
-- Trust the results. Read only what repo-graph points at, and stop once you have
-  the answer instead of exploring further.
+FIRST, make sure the tools are loaded. If you do NOT see `repo-graph` tools
+(`mcp__repo-graph__*`) in your available tools, they may be deferred — search
+your tool list and load them before you start, instead of falling back to grep.
 
-If this project has no `.ai/repo-graph/` directory and the repo-graph tools are
-not connected, ignore this section."""
+Then, for any structural question, use the graph before grepping across files:
+- `orient` — first call on the repo: counts, entry points, and a `blind spots`
+  note telling you which languages/edges the graph under-links (grep those).
+- `find <text>` — turn a symbol, keyword, stacktrace, failing test, or diff into
+  the ranked nodes that matter. Every row carries `path:line`.
+- `impact <node>` — blast radius: what a change affects / depends on, ranked,
+  located, with likely-dead code flagged `⊘`. This is where the graph wins.
+- `trace <feature>` — a feature end to end across the stack (or `trace A B` for
+  the path between two nodes), with each hop's mechanism labelled.
+- `read <node>` — a node's exact source (comma-separate several to read a ranked
+  set in one call).
+- `refresh` — rebuild after a big refactor (routine edits are auto-picked-up).
+
+Trust the graph's results — don't re-verify every node with grep, except where
+`orient`'s blind-spots note says extraction is partial. Only a trivial
+single-file lookup is faster with grep; anything structural starts here.
+
+If this project has no `.ai/repo-graph/` directory and the tools aren't connected,
+ignore this section."""
 
 
 def instructions_block() -> str:

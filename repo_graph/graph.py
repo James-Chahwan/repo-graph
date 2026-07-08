@@ -135,16 +135,9 @@ class RustGraph:
         ids = self.pygraph.find_nodes_by_qname(query)
         return [self.nodes[nid] for nid in ids if nid in self.nodes]
 
-    def neighbours(self, node_id: int) -> dict:
-        out = [
-            {"node": self.nodes.get(nid, {"id": nid, "kind": "?", "name": str(nid)}), "edge": cat}
-            for nid, cat in self.adjacency_out.get(node_id, [])
-        ]
-        inc = [
-            {"node": self.nodes.get(nid, {"id": nid, "kind": "?", "name": str(nid)}), "edge": cat}
-            for nid, cat in self.adjacency_in.get(node_id, [])
-        ]
-        return {"outbound": out, "inbound": inc}
+    # Liveness / dead-code is now the engine's: blast_radius records carry a
+    # `live` flag from `entrypoint_reachable` (correct once INJECTS/dynamic edges
+    # exist). The wrapper no longer re-derives it. See dev-notes reverse-handoff §5.
 
     def nodes_for_feature(self, feature: str) -> list[dict]:
         slug = feature.lower().replace("-", "_").replace(" ", "_")

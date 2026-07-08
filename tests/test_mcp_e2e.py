@@ -36,11 +36,7 @@ pytestmark = pytest.mark.e2e
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 
-EXPECTED_TOOLS = {
-    "generate", "status", "dense_text", "flow", "trace",
-    "impact", "neighbours", "read", "activate", "find", "locate",
-    "graph_view", "reload",
-}
+EXPECTED_TOOLS = {"orient", "find", "impact", "trace", "read", "refresh"}
 
 
 @pytest.fixture(scope="module")
@@ -70,7 +66,7 @@ async def _connect(target_repo: Path):
 
 
 async def test_initialize_and_list_tools(target_repo):
-    """Server handshakes and advertises the expected 13 tools with schemas."""
+    """Server handshakes and advertises exactly the 6 tools with schemas."""
     async with _connect(target_repo) as session:
         result = await session.list_tools()
 
@@ -102,94 +98,61 @@ def _text(result) -> str:
     return "\n".join(parts)
 
 
-async def test_status_over_wire(target_repo):
+async def test_orient_over_wire(target_repo):
     async with _connect(target_repo) as session:
-        result = await session.call_tool("status", {})
-        body = _text(result)
+        body = _text(await session.call_tool("orient", {}))
         assert "repo-graph" in body
         assert "Engine:" in body
         assert "Node kinds:" in body
 
 
-async def test_dense_text_over_wire(target_repo):
+async def test_orient_full_map_over_wire(target_repo):
     async with _connect(target_repo) as session:
-        result = await session.call_tool("dense_text", {})
-        body = _text(result)
-        assert body, "dense_text returned empty"
-        # Sigil notation header from projection-text crate
+        body = _text(await session.call_tool("orient", {"full": True}))
+        assert body, "orient full map returned empty"
         assert len(body) > 50
 
 
 async def test_find_known_over_wire(target_repo):
     async with _connect(target_repo) as session:
-        # First, get a real node name via status
-        status_body = _text(await session.call_tool("status", {}))
-        # Pick a node by querying find with a common partial.
-        # http_stack_smoke has a "server" file → likely "main" or "Server" symbols
         result = await session.call_tool("find", {"query": "User"})
         body = _text(result)
         # Either matches or politely says no matches — both are valid wire-shape
-        assert "Found" in body or "No nodes found" in body
+        assert "matching" in body or "No nodes matched" in body
 
 
 async def test_find_unknown_over_wire(target_repo):
     async with _connect(target_repo) as session:
         result = await session.call_tool("find", {"query": "zzz_no_such_thing_xxx"})
         body = _text(result)
-        assert "No nodes found" in body
+        assert "No nodes matched" in body
 
 
-async def test_activate_over_wire(target_repo):
+async def test_find_expand_over_wire(target_repo):
     async with _connect(target_repo) as session:
-        # Find a real symbol first
         find_body = _text(await session.call_tool("find", {"query": "User"}))
-        if "No nodes found" in find_body:
+        if "No nodes matched" in find_body:
             pytest.skip("fixture had no symbol matching 'User'")
-
-        result = await session.call_tool("activate", {"seeds": "User", "top_k": 5})
+        result = await session.call_tool("find", {"query": "User", "expand": True, "top_k": 5})
         body = _text(result)
-        assert "Activation from" in body or "No seed nodes found" in body
-
-
-async def test_activate_empty_seeds_over_wire(target_repo):
-    async with _connect(target_repo) as session:
-        result = await session.call_tool("activate", {"seeds": "", "top_k": 5})
-        body = _text(result)
-        assert "No seed nodes found" in body
-
-
-async def test_graph_view_overview_over_wire(target_repo):
-    async with _connect(target_repo) as session:
-        result = await session.call_tool("graph_view", {})
-        body = _text(result)
-        assert "repo-graph" in body
-        assert "Node kinds:" in body
+        assert "expanded" in body or "relevant" in body or "No nodes matched" in body
 
 
 async def test_impact_unknown_over_wire(target_repo):
     async with _connect(target_repo) as session:
-        result = await session.call_tool(
-            "impact", {"nodes": "xxx_unknown_xxx"}
-        )
+        result = await session.call_tool("impact", {"nodes": "xxx_unknown_xxx"})
         body = _text(result)
         assert "No nodes found" in body
 
 
-async def test_flow_unknown_over_wire(target_repo):
+async def test_trace_feature_unknown_over_wire(target_repo):
     async with _connect(target_repo) as session:
-        result = await session.call_tool("flow", {"feature": "definitely_not_a_real_feature"})
+        result = await session.call_tool("trace", {"from_node": "definitely_not_a_real_feature"})
         body = _text(result)
-        assert "No flow found" in body
+        assert "No trace found" in body or "Trace:" in body or "Flow:" in body
 
 
-async def test_reload_over_wire(target_repo):
-    async with _connect(target_repo) as session:
-        result = await session.call_tool("reload", {})
-        body = _text(result)
-        assert body.startswith("Reloaded:")
-
-
-async def test_trace_unknown_over_wire(target_repo):
+async def test_trace_path_unknown_over_wire(target_repo):
     async with _connect(target_repo) as session:
         result = await session.call_tool(
             "trace", {"from_node": "xxx_bogus", "to_node": "yyy_bogus"}
@@ -198,24 +161,29 @@ async def test_trace_unknown_over_wire(target_repo):
         assert "Node not found" in body
 
 
+async def test_refresh_over_wire(target_repo):
+    async with _connect(target_repo) as session:
+        result = await session.call_tool("refresh", {})
+        body = _text(result)
+        assert body.startswith("Rebuilt")
+
+
 # ── Cross-call invariants ───────────────────────────────────────────────────
 
 
-async def test_status_and_dense_text_agree_on_engine_version(target_repo):
+async def test_orient_and_refresh_agree_on_engine_version(target_repo):
     """Both surfaces must report the same engine version — drift here would
-    mean status renders a stale cached value somewhere."""
+    mean orient renders a stale cached value somewhere."""
     async with _connect(target_repo) as session:
-        status_body = _text(await session.call_tool("status", {}))
-        # Engine line in status reads "Engine: repo-graph-py X.Y.Z (Rust + ...)"
+        orient_body = _text(await session.call_tool("orient", {}))
         import re
-        m = re.search(r"repo-graph-py (\S+)", status_body)
-        assert m, f"status did not advertise an engine version: {status_body[:200]}"
+        m = re.search(r"repo-graph-py (\S+)", orient_body)
+        assert m, f"orient did not advertise an engine version: {orient_body[:200]}"
         version = m.group(1)
-        # The same version string must be in the generate output too
-        gen_body = _text(await session.call_tool("generate", {}))
-        assert version in gen_body, (
-            f"version drift across tools: status says {version!r}, "
-            f"generate says: {gen_body[-200:]}"
+        refresh_body = _text(await session.call_tool("refresh", {}))
+        assert version in refresh_body, (
+            f"version drift across tools: orient says {version!r}, "
+            f"refresh says: {refresh_body[-200:]}"
         )
 
 
@@ -224,25 +192,21 @@ async def test_all_tools_callable_no_errors(target_repo):
     and returns isError=False. Catches schema validation or routing breakage."""
     async with _connect(target_repo) as session:
         # Warm the graph
-        await session.call_tool("status", {})
+        await session.call_tool("orient", {})
 
-        # Per-tool minimal args. trace/impact/neighbours/etc need a real node;
-        # we pass a clearly-unknown one — they should return "Node not found"
-        # as data, NOT as a protocol error.
+        # Per-tool minimal args. trace/impact need a real node; we pass a
+        # clearly-unknown one — they should return "Node not found"/"No nodes
+        # found" as DATA, not a protocol error.
         invocations = [
-            ("generate", {}),
-            ("status", {}),
-            ("dense_text", {}),
-            ("flow", {"feature": "anything"}),
-            ("trace", {"from_node": "x", "to_node": "y"}),
-            ("impact", {"nodes": "x"}),
-            ("neighbours", {"node": "x"}),
-            ("read", {"node": "x"}),
-            ("activate", {"seeds": "x"}),
+            ("orient", {}),
+            ("orient", {"full": True}),
             ("find", {"query": "x"}),
-            ("locate", {"signal": "x", "kind": "test"}),
-            ("graph_view", {}),
-            ("reload", {}),
+            ("find", {"query": "x", "expand": True}),
+            ("impact", {"nodes": "x"}),
+            ("trace", {"from_node": "x"}),
+            ("trace", {"from_node": "x", "to_node": "y"}),
+            ("read", {"node": "x"}),
+            ("refresh", {}),
         ]
 
         for name, args in invocations:

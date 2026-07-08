@@ -1,8 +1,16 @@
 """
 repo-graph MCP server.
 
-Structural navigation, context budgeting, and codebase health tools.
-Powered by the Rust repo-graph engine via PyO3 bindings.
+Structural navigation, context budgeting, and codebase health over any codebase,
+powered by the Rust repo-graph engine (repo-graph-py) via PyO3.
+
+Six tools, each a natural verb backed by an engine primitive:
+    orient   — overview + full/scoped map + coverage blind-spots (status/dense_text/graph_view/coverage)
+    find     — any text → ranked located nodes (find/locate/activate → resolve)
+    impact   — blast radius: ranked, live-filtered, self-explaining (impact/neighbours → blast_radius)
+    trace    — feature flow or A→B path across the stack (flow/trace → cross_stack_trace)
+    read     — exact source for one or more nodes (batch)
+    refresh  — (re)build the graph (generate/reload)
 
 Usage:
     repo-graph --repo /path/to/your/repo
@@ -11,6 +19,7 @@ Usage:
 import os
 import re
 import sys
+import json
 import shutil
 import hashlib
 import tempfile
@@ -32,19 +41,20 @@ REPO_PATH = os.environ.get("REPO_GRAPH_REPO", os.getcwd())
 mcp = FastMCP(
     "repo-graph",
     instructions=(
-        "Structural map of this codebase — entities, relationships, and feature flows. "
-        "BEFORE grepping or reading files, call `status` to orient, then `dense_text` for "
-        "full graph context or `activate`/`find` to surface relevant nodes. "
-        "Debugging an error? Paste the stacktrace, failing-test id, or diff into `locate` to "
-        "jump straight to the code that matters, then `read` to pull a node's exact source. "
-        "Also: feature flows (`flow`), shortest paths (`trace`), and blast radius before a "
-        "change (`impact`). Works with any language/framework."
+        "Structural map of this codebase (entities, relationships, cross-stack flows) via MCP. "
+        "Use it BEFORE grepping for any structural question. Six tools: `orient` to get the lay "
+        "of the land (counts, entry points, and where the graph is blind), `find` to turn any text "
+        "— a symbol, keyword, stacktrace, failing test, or diff — into the ranked nodes that matter, "
+        "`impact` for blast radius (what a change affects/depends on — ranked, located, dead code "
+        "flagged ⊘), `trace` for a feature end-to-end or a path between two nodes, and `read` for a "
+        "node's exact source. `refresh` rebuilds after big refactors. If these tools aren't loaded, "
+        "search your tool list for them instead of grepping. A trivial single-file lookup? Just grep."
     ),
 )
 
 _graph: RustGraph | None = None
 
-# Serializes graph rebuilds so the background watcher and a manual `reload` (or a
+# Serializes graph rebuilds so the background watcher and a manual `refresh` (or a
 # concurrent tool call's cold build) can't race on the `_graph` global.
 _rebuild_lock = threading.Lock()
 
@@ -88,10 +98,10 @@ def _resolve_repo(spec: str) -> str:
 def _build_graph(target: str, incremental: bool = True) -> RustGraph:
     """Generate `target`'s graph, persist the `.gmap` cache, install it as live.
 
-    `incremental` (default True, repo-graph-py >= 0.4.16) reuses the per-file
-    parse cache at `<repo>/.ai/repo-graph/parse_cache.bin` so unchanged files
-    skip tree-sitter re-parsing; `incremental=False` forces a full reparse.
-    Shared by `get_graph` (cold regen), `generate`, and `reload`.
+    `incremental` (default True) reuses the per-file parse cache at
+    `<repo>/.ai/repo-graph/parse_cache.bin` so unchanged files skip tree-sitter
+    re-parsing; `incremental=False` forces a full reparse. Shared by `get_graph`
+    (cold regen), the watcher, and `refresh`.
     """
     global _graph, REPO_PATH
     with _rebuild_lock:
@@ -121,8 +131,7 @@ def get_graph() -> RustGraph:
     """Return the in-memory graph, lazy-loading on first access.
 
     Load order: cached `.gmap` if fresh → incremental `generate()` otherwise
-    (reusing the parse cache so the regen is cheap). The cache-load path uses the
-    `default_gmap_dir` convention introduced in repo-graph-py 0.4.14.
+    (reusing the parse cache so the regen is cheap).
     """
     global _graph, REPO_PATH
     if _graph is not None:
@@ -145,12 +154,7 @@ def get_graph() -> RustGraph:
 
 
 def _truncate(text: str, budget: int, what: str = "output") -> str:
-    """Cap `text` at `budget` chars (line-aligned) with a marker. budget <= 0 = no cap.
-
-    The shared char ceiling for the read tools so a result fits a small-model
-    context window. Per-tool item caps still apply as sane defaults; this is the
-    optional hard limit on top.
-    """
+    """Cap `text` at `budget` chars (line-aligned) with a marker. budget <= 0 = no cap."""
     if budget <= 0 or len(text) <= budget:
         return text
     cut = text.rfind("\n", 0, budget)
@@ -163,271 +167,399 @@ def _truncate(text: str, budget: int, what: str = "output") -> str:
     )
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Tier 0 — Generation
-# ─────────────────────────────────────────────────────────────────────────────
-
-
-@mcp.tool(annotations=ToolAnnotations(title="Generate Graph", readOnlyHint=False, openWorldHint=True))
-def generate(
-    repo_path: Annotated[str, Field(description="Absolute path to the repository to scan. Defaults to the repo the server was started with.", default="")] = "",
-    incremental: Annotated[bool, Field(description="Reuse the per-file parse cache so unchanged files skip re-parsing (default True). Set False to force a full reparse.", default=True)] = True,
-) -> str:
-    """Scan the codebase and (re)build the structural graph using tree-sitter AST parsing. Auto-detects 20 languages and frameworks. Runs cross-stack resolvers (HTTP, gRPC, GraphQL, WebSocket, queues, events, CLI). Incremental by default — reuses a per-file parse cache so only changed files re-parse. Accepts a local path or a git URL (cloned on demand). Call on first use or after major refactors."""
+def _jload(val) -> list:
+    """Parse an engine JSON-string result into a list (engine primitives return
+    JSON arrays as strings). Empty/malformed → []."""
+    if not val:
+        return []
     try:
-        # Resolve a git URL (e.g. https://github.com/org/repo.git) to a local
-        # clone before handing it to the engine, which only takes a directory.
-        target = _resolve_repo(repo_path or REPO_PATH)
-        g = _build_graph(target, incremental)
-    except Exception as e:
-        return f"Generation failed: {e}"
-
-    pg = g.pygraph
-    kind_counts: dict[str, int] = Counter(n["kind"] for n in g.nodes.values())
-    type_summary = ", ".join(f"{count} {k}" for k, count in kind_counts.most_common())
-
-    return (
-        f"Generated: {pg.node_count()} nodes, {pg.edge_count()} edges, "
-        f"{pg.cross_edge_count()} cross-stack edges\n"
-        f"Kinds: {type_summary}\n"
-        f"Flows: {len(g.flows)} auto-detected entry points\n"
-        f"Engine: repo-graph-py {repo_graph_py.version()} (Rust + tree-sitter)"
-    )
+        data = json.loads(val) if isinstance(val, str) else val
+    except (ValueError, TypeError):
+        return []
+    return data if isinstance(data, list) else []
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Tier 1 — Navigation
+# orient — overview + map + coverage blind-spots
+#   (subsumes: status, dense_text, graph_view)
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-@mcp.tool(annotations=ToolAnnotations(title="Repo Status", readOnlyHint=True))
-def status() -> str:
-    """Repo overview: node/edge counts, detected kinds, entry points, and a dense text preview. Call this first to orient before using other tools."""
-    g = get_graph()
-    return _render_overview(g)
-
-
-# Cap dense_text so a large monorepo's full dump can't blow past MCP-client
-# tool-result limits (e.g. Claude Desktop's 25k tokens). Default ~50k chars stays
-# well under it; override with REPO_GRAPH_DENSE_MAX_CHARS (0 = uncapped) for clients
-# with bigger context budgets.
+# Cap the full dense_text dump so a large monorepo can't blow past MCP-client
+# tool-result limits (e.g. Claude Desktop's 25k tokens). Override with
+# REPO_GRAPH_DENSE_MAX_CHARS (0 = uncapped) for clients with bigger budgets.
 try:
     DENSE_TEXT_MAX_CHARS = int(os.environ.get("REPO_GRAPH_DENSE_MAX_CHARS", "50000"))
 except ValueError:
     DENSE_TEXT_MAX_CHARS = 50_000
 
 
-@mcp.tool(annotations=ToolAnnotations(title="Dense Graph Text", readOnlyHint=True))
-def dense_text(
-    seed: Annotated[str, Field(description="Optional node/qname to scope the map around (its activated neighbourhood). Blank = whole graph.", default="")] = "",
-    budget: Annotated[int, Field(description="Max chars in the result. 0 = default cap (~50k, or REPO_GRAPH_DENSE_MAX_CHARS).", default=0, ge=0)] = 0,
+@mcp.tool(annotations=ToolAnnotations(title="Orient", readOnlyHint=True))
+def orient(
+    seed: Annotated[str, Field(description="Optional node/qname to scope the map around (its activated neighbourhood). Blank = repo overview.", default="")] = "",
+    full: Annotated[bool, Field(description="With no seed: return the whole-repo dense structural map instead of the counts overview. Ignored when seed is given.", default=False)] = False,
+    budget: Annotated[int, Field(description="Max chars in the result. 0 = default cap (~50k for the full map, uncapped otherwise).", default=0, ge=0)] = 0,
 ) -> str:
-    """Structural graph in dense sigil notation — the map of entities, relationships, and scopes. The primary context tool: feed it to the LLM so it can navigate without reading files. With `seed`, returns just that node's activated neighbourhood (scoped map) instead of the whole graph; otherwise the full map, truncated to budget."""
+    """Get the lay of the land — ALWAYS the first call on a codebase. With no arguments: a counts + entry-points overview plus a `blind spots` note flagging which (language, edge-kind) extractions are partial so you know where to fall back to grep. With `seed=<node>`: the dense structural map scoped to that node's neighbourhood. With `full=true`: the whole-repo dense map (the full context dump). Orient first, then `find` to jump to nodes, `impact` for blast radius, `trace` for flows."""
     g = get_graph()
 
     if seed:
         resolved = g.find_node(seed)
         if not resolved:
-            return f"Seed node not found: '{seed}'"
+            return f"Seed node not found: '{seed}'. Try `find` with a keyword."
         scores = g.pygraph.activate([resolved["id"]], 50)
         node_ids = [nid for nid, _ in scores] or [resolved["id"]]
         text = g.pygraph.dense_text_subset(node_ids)
-        cap = budget  # scoped output is already small; honour explicit budget only
-    else:
-        text = g.pygraph.dense_text()
-        cap = budget or DENSE_TEXT_MAX_CHARS
+        return _truncate(text, budget, "scoped map")
 
-    what = "scoped dense_text" if seed else "dense_text"
-    return _truncate(text, cap, what)
+    if full:
+        return _truncate(g.pygraph.dense_text(), budget or DENSE_TEXT_MAX_CHARS, "dense map")
+
+    return _render_overview(g)
 
 
-@mcp.tool(annotations=ToolAnnotations(title="Feature Flow", readOnlyHint=True))
-def flow(
-    feature: Annotated[str, Field(description="Feature name or keyword to match against entry points. Case-insensitive, supports partial matching.")],
+# ─────────────────────────────────────────────────────────────────────────────
+# find — any text → ranked located nodes
+#   (subsumes: find, locate, activate)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def _looks_like_signal(text: str) -> bool:
+    """Heuristic: does `text` look like a failure signal (stacktrace / failing-test
+    id / diff) rather than a bare symbol or keyword? Signals get engine `resolve`;
+    plain names get keyword lookup first."""
+    if "\n" in text:
+        return True
+    t = text.strip()
+    if "::" in t or t.startswith("@@") or t.startswith("diff --git"):
+        return True
+    # `path/to/file.py:123` or `File "...", line N`
+    if re.search(r"\.\w{1,4}[:\s\"]", t) and re.search(r"\bline\b|:\d", t):
+        return True
+    return False
+
+
+def _render_located(header: str, records: list[dict], g: RustGraph, budget: int) -> str:
+    """Render engine-located records ({qname,name,kind,score?,file,line,live?}) as
+    a ranked, path-anchored list."""
+    lines = [header, ""]
+    for r in records:
+        kind = str(r.get("kind", "?")).lower()
+        icon = _kind_icon(kind)
+        score = r.get("score")
+        score_s = f"{score:.4f}  " if isinstance(score, (int, float)) else ""
+        lines.append(
+            f"    {score_s}{icon} {r.get('name', '?')}  [{kind}]  {r.get('qname', '')}"
+            f"{_eloc(r)}{_elive(r)}"
+        )
+    return _truncate("\n".join(lines), budget, "find")
+
+
+@mcp.tool(annotations=ToolAnnotations(title="Find Nodes", readOnlyHint=True))
+def find(
+    query: Annotated[str, Field(description="What to locate: a symbol/keyword (e.g. `User`, `checkout`), OR a failure signal — paste a raw stacktrace, a failing-test id (path::test), or a unified diff / changed-file list.")],
+    expand: Annotated[bool, Field(description="Return the relevant neighbourhood (Personalized-PageRank ranked) around the matches, not just the matches themselves. Use to discover what surrounds a seed.", default=False)] = False,
+    kind: Annotated[str, Field(description="Force the signal type: 'symbol', 'stacktrace', 'test', 'diff', or 'auto' (sniff the shape).", default="auto")] = "auto",
+    top_k: Annotated[int, Field(description="Max results. Default 20.", default=20, ge=1, le=100)] = 20,
     budget: Annotated[int, Field(description="Max chars in the result. 0 = no cap.", default=0, ge=0)] = 0,
 ) -> str:
-    """End-to-end flow for a feature: entry point through service layer to data store, rendered as layered tiers. Call after `status` to drill into a specific feature."""
+    """Turn any text into the ranked nodes that matter — the on-ramp to the graph. A symbol or keyword returns matching nodes; a pasted stacktrace / failing-test id / diff is resolved to the code it implicates and ranked by relevance. Set `expand=true` to fan out to the surrounding neighbourhood (spreading activation). Every row carries `path:line`, so `read` the top hits directly — no grep."""
     g = get_graph()
-    feature_lower = feature.lower().strip()
+    q = query.strip()
+    if not q:
+        return "Empty query."
 
-    flow_nodes = g.nodes_for_feature(feature_lower)
-    if not flow_nodes:
-        available = ", ".join(sorted(g.flows.keys())[:30])
-        return f"No flow found for '{feature}'. Available entry points: {available}"
+    seed_ids: list[int] = []
+    header: str
 
-    return _truncate(_render_nodes_layered(feature, flow_nodes[:30], g), budget, "flow")
+    use_signal = kind not in ("symbol",) and (kind != "auto" or _looks_like_signal(q))
+    if use_signal:
+        # Failure signal → engine resolve (stacktrace/test/diff → located ranked nodes).
+        sig_kind = kind if kind in ("stacktrace", "test", "diff") else "auto"
+        try:
+            recs = _jload(g.pygraph.resolve(q, sig_kind, top_k))
+        except (ValueError, RuntimeError):
+            recs = []
+        if recs:
+            seed_ids = [r["id"] for r in recs if "id" in r]
+            if not expand:
+                return _render_located(
+                    f"  Resolved {len(recs)} node(s) from signal:", recs, g, budget)
+        # else fall through to keyword lookup
 
+    if not seed_ids:
+        # Keyword / symbol lookup.
+        matches = g.find_nodes(q)
+        if not matches:
+            single = g.find_node(q)
+            matches = [single] if single else []
+        if not matches:
+            return (f"No nodes matched '{query}'. If this was a stacktrace/diff, none of its "
+                    f"frames mapped to a node — try `orient` or a keyword.")
+        seed_ids = [m["id"] for m in matches]
+        if not expand:
+            recs = [_node_record(g, m) for m in matches[:top_k]]
+            return _render_located(
+                f"  {len(matches)} node(s) matching '{query}':", recs, g, budget)
 
-@mcp.tool(annotations=ToolAnnotations(title="Trace Path", readOnlyHint=True))
-def trace(
-    from_node: Annotated[str, Field(description="Starting node name or qname pattern.")],
-    to_node: Annotated[str, Field(description="Target node name or qname pattern.")],
-) -> str:
-    """Shortest path between two nodes, showing each hop with tier transitions."""
-    g = get_graph()
-
-    from_resolved = g.find_node(from_node)
-    to_resolved = g.find_node(to_node)
-
-    if not from_resolved:
-        return f"Node not found: '{from_node}'"
-    if not to_resolved:
-        return f"Node not found: '{to_node}'"
-
-    path = g.shortest_path(from_resolved["id"], to_resolved["id"])
-    if path is None:
-        return f"No path between {from_resolved['name']} and {to_resolved['name']}"
-
-    lines = [f"  Trace: {from_resolved['name']} -> {to_resolved['name']} ({len(path)} hops)", ""]
-
-    prev_tier = None
-    for i, node in enumerate(path):
-        icon = _kind_icon(node["kind"])
-        tier = _classify_tier(node["kind"])
-        conf = _confidence_icon(node.get("confidence", "medium"))
-
-        if tier != prev_tier:
-            if prev_tier is not None:
-                lines.append("      |")
-                lines.append("      v")
-            lines.append(f"  [{tier}]")
-            prev_tier = tier
-
-        arrow = "  -> " if i > 0 else "     "
-        lines.append(f"  {arrow}{icon} {conf} {node['name']}  [{node['kind']}]")
-
-    return "\n".join(lines)
+    # expand=True → PPR-ranked neighbourhood around the seeds.
+    scores = g.pygraph.activate(seed_ids, top_k)
+    recs = []
+    for nid, sc in scores:
+        node = g.nodes.get(nid)
+        if node:
+            rec = _node_record(g, node)
+            rec["score"] = sc
+            recs.append(rec)
+    return _render_located(
+        f"  {len(recs)} node(s) relevant to '{query}' (expanded):", recs, g, budget)
 
 
-@mcp.tool(annotations=ToolAnnotations(title="Impact Analysis", readOnlyHint=True))
+# ─────────────────────────────────────────────────────────────────────────────
+# impact — blast radius (ranked, live-filtered, self-explaining)
+#   (subsumes: impact, neighbours)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+# Old direction vocabulary → engine's. downstream=what it affects=forward;
+# upstream=what it depends on=backward.
+_DIRECTION_ALIAS = {"downstream": "forward", "upstream": "backward",
+                    "forward": "forward", "backward": "backward", "both": "both"}
+
+
+@mcp.tool(annotations=ToolAnnotations(title="Impact / Blast Radius", readOnlyHint=True))
 def impact(
-    nodes: Annotated[str, Field(description="One or more node names/qnames, comma-separated. A diff touching N files is one call.")],
-    direction: Annotated[str, Field(description="'downstream' (what it affects) or 'upstream' (what it depends on).", default="downstream")] = "downstream",
-    depth: Annotated[int, Field(description="How many hops to traverse. Default 3.", default=3, ge=1, le=10)] = 3,
-    mode: Annotated[str, Field(description="'table' (tiered list) or 'prose' (primed prose for LLM context).", default="table")] = "table",
+    nodes: Annotated[str, Field(description="One or more node names/qnames, comma-separated. A diff touching N symbols is one call.")],
+    direction: Annotated[str, Field(description="'forward' (what it affects), 'backward' (what it depends on / who uses it), or 'both'. (Aliases: downstream=forward, upstream=backward.)", default="both")] = "both",
+    depth: Annotated[int, Field(description="How many hops to fan out. Default 4.", default=4, ge=1, le=10)] = 4,
+    live_only: Annotated[bool, Field(description="Drop nodes not reachable from any entry point (likely-dead code). Default False = show all, marking dead ones ⊘.", default=False)] = False,
+    top_k: Annotated[int, Field(description="Cap the ranked result. 0 = no cap.", default=0, ge=0, le=200)] = 0,
     budget: Annotated[int, Field(description="Max chars in the result. 0 = no cap.", default=0, ge=0)] = 0,
 ) -> str:
-    """Blast radius analysis: fan out from one or more nodes to see everything they affect (downstream) or depend on (upstream), grouped by tier. Pass several comma-separated nodes to assess a whole diff at once."""
+    """Blast radius in one call: fan out from one or more nodes to everything they affect (forward) or depend on / are used by (backward), returned as a complete, deduped, Personalized-PageRank-ranked, located closure. Each row carries `path:line`, the edge `via` reason it's in scope, and a `⊘` when the engine finds it unreachable from any entry point (likely dead). Structural import/containment fan-out is excluded — no noise. Depth-1 in both directions is a node's immediate neighbours. Pass several comma-separated nodes to assess a whole diff at once."""
     g = get_graph()
+    dir_engine = _DIRECTION_ALIAS.get(direction.lower().strip(), "both")
 
-    seeds = []
+    seed_qnames: list[str] = []
+    seed_ids: set[int] = set()
     for s in nodes.split(","):
         s = s.strip()
         if not s:
             continue
         r = g.find_node(s)
         if r:
-            seeds.append(r)
-    if not seeds:
+            seed_qnames.append(r["qname"])
+            seed_ids.add(r["id"])
+    if not seed_qnames:
         return f"No nodes found for: '{nodes}'"
 
-    # Union per-seed traversals; keep the closest depth per affected node and
-    # drop the seeds themselves from the result set.
-    seed_ids = {s["id"] for s in seeds}
-    closest: dict[int, dict] = {}
-    for s in seeds:
-        results = g.upstream(s["id"], depth) if direction == "upstream" else g.downstream(s["id"], depth)
-        for r in results:
-            if r["id"] in seed_ids:
+    # Union the per-seed engine blast_radius closures; keep the best score per node.
+    best: dict[int, dict] = {}
+    for qn in seed_qnames:
+        try:
+            recs = _jload(g.pygraph.blast_radius(qn, dir_engine, depth, None, live_only))
+        except Exception as e:
+            return f"Blast-radius failed for '{qn}': {e}"
+        for r in recs:
+            nid = r.get("id")
+            if nid is None or nid in seed_ids:
                 continue
-            prev = closest.get(r["id"])
-            if prev is None or r.get("depth", 0) < prev.get("depth", 0):
-                closest[r["id"]] = r
-    affected = list(closest.values())
+            prev = best.get(nid)
+            if prev is None or r.get("score", 0) > prev.get("score", 0):
+                best[nid] = r
 
-    seed_label = ", ".join(s["name"] for s in seeds)
+    affected = sorted(best.values(), key=lambda r: -r.get("score", 0.0))
+    seed_label = ", ".join(seed_qnames[:4]) + (" …" if len(seed_qnames) > 4 else "")
     if not affected:
-        return f"No {direction} nodes found from {seed_label} (depth={depth})"
+        scope = "live " if live_only else ""
+        msg = f"No {scope}{dir_engine} nodes found from {seed_label} (depth={depth})."
+        # A module/package connects almost entirely via structural edges
+        # (contains/imports/defines), which blast-radius excludes to avoid
+        # fan-out noise — so a module seed legitimately yields nothing. Point the
+        # agent at a real symbol inside it.
+        if all(g.nodes.get(sid, {}).get("kind") in ("module", "package") for sid in seed_ids):
+            msg += (" (Seed is a module/package — blast radius excludes structural "
+                    "import/containment edges. Seed a function, class, route, or handler "
+                    "inside it instead.)")
+        return msg
 
-    if mode == "prose":
-        node_ids = list(seed_ids) + [r["id"] for r in affected]
-        return _truncate(g.pygraph.prose(node_ids), budget, "impact prose")
+    if top_k:
+        affected = affected[:top_k]
 
-    lines = [f"  Impact {direction} from {seed_label} (depth={depth})", ""]
-
-    by_tier: dict[str, list[dict]] = {}
+    lines = [f"  Impact ({dir_engine}) from {seed_label} — depth {depth}", ""]
     for r in affected:
-        by_tier.setdefault(_classify_tier(r["kind"]), []).append(r)
+        kind = str(r.get("kind", "?")).lower()
+        icon = _kind_icon(kind)
+        score = r.get("score")
+        score_s = f"{score:.3f}  " if isinstance(score, (int, float)) else ""
+        via = f"  via {r['reason']}" if r.get("reason") else ""
+        d = r.get("depth")
+        depth_s = f"  ·{d}" if isinstance(d, int) else ""
+        lines.append(
+            f"    {score_s}{icon} {r.get('name', '?')}  [{kind}]{_eloc(r)}{_elive(r)}{via}{depth_s}")
 
-    for tier_name in ["ENTRY", "SERVICE", "HANDLER", "DATA"]:
-        items = by_tier.get(tier_name, [])
-        if not items:
-            continue
-        lines.append(f"  [{tier_name}] ({len(items)} affected)")
-        for n in items[:15]:
-            icon = _kind_icon(n["kind"])
-            conf = _confidence_icon(n.get("confidence", "medium"))
-            lines.append(f"    {icon} {conf} {n['name']}  [{n['kind']}]")
-        if len(items) > 15:
-            lines.append(f"    ... and {len(items) - 15} more")
-
+    dead = sum(1 for r in affected if r.get("live") is False)
     lines.append("")
-    lines.append(f"  -- {len(affected)} nodes affected")
+    note = f"  -- {len(affected)} nodes in blast radius"
+    if dead and not live_only:
+        note += (f"  ({dead} marked ⊘ are not reachable from a known entry point — likely dead, "
+                 f"or an entry kind the engine doesn't yet recognise; re-run with live_only=true to drop them)")
+    lines.append(note)
 
     return _truncate("\n".join(lines), budget, "impact")
 
 
-@mcp.tool(annotations=ToolAnnotations(title="Node Neighbours", readOnlyHint=True))
-def neighbours(
-    node: Annotated[str, Field(description="Node name or qname pattern to inspect.")],
+# ─────────────────────────────────────────────────────────────────────────────
+# trace — feature flow, or path between two nodes
+#   (subsumes: flow, trace)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+_MECH_ICON = {"CALLS": "→", "HTTP_CALLS": "⇒", "HANDLED_BY": "⇒", "QUEUE_FLOWS": "⇥",
+              "EVENT_FLOWS": "↯", "INJECTS": "⊕", "ACCESSES_DATA": "⊟", "TESTS": "✓"}
+
+
+@mcp.tool(annotations=ToolAnnotations(title="Trace", readOnlyHint=True))
+def trace(
+    from_node: Annotated[str, Field(description="A feature/keyword to trace end-to-end (one arg), OR the start node when tracing a path to `to_node`.")],
+    to_node: Annotated[str, Field(description="Optional target node. Given → shortest path from_node→to_node. Blank → trace `from_node` as a feature across the stack.", default="")] = "",
+    depth: Annotated[int, Field(description="Max hops for the cross-stack feature trace. Default 6.", default=6, ge=1, le=12)] = 6,
     budget: Annotated[int, Field(description="Max chars in the result. 0 = no cap.", default=0, ge=0)] = 0,
 ) -> str:
-    """All direct connections to and from a node, one hop in each direction."""
+    """Follow the code across boundaries. One argument: trace a feature end-to-end — the ordered path from entry through the stack, each hop labelled with its mechanism (call / HTTP / queue / event / data), crossing service boundaries (frontend→backend). Two arguments: the shortest path between two specific nodes, hop by hop. This is where the graph beats reading many files — it knows the cross-stack links grep can't see."""
     g = get_graph()
+
+    if to_node.strip():
+        return _trace_path(g, from_node, to_node, budget)
+
+    # Feature trace via the engine's cross-stack tracer. It raises when the
+    # feature resolves to no node — treat that as "no cross-stack path" and fall
+    # through to the flow fallback below.
+    feature = from_node.strip()
+    try:
+        hops = _jload(g.pygraph.cross_stack_trace(feature, depth))
+    except (ValueError, RuntimeError):
+        hops = []
+    if hops:
+        lines = [f"  Trace: {feature}  ({len(hops)} hops)", ""]
+        for h in hops:
+            mech = h.get("mechanism", "")
+            arrow = _MECH_ICON.get(mech, "→")
+            xs = "  ⧉ cross-service" if h.get("cross_service") else ""
+            to_kind = str(h.get("to_kind", "")).lower()
+            frm = h.get("from_qname", "?")
+            to = h.get("to_qname", "?")
+            loc = _eloc({"file": h.get("to_file"), "line": h.get("to_line")})
+            lines.append(f"    {frm}\n      {arrow} [{mech}] {to}  [{to_kind}]{loc}{xs}")
+        return _truncate("\n".join(lines), budget, "trace")
+
+    # Fall back to the wrapper's flow layering (entry-point keyword → downstream).
+    flow_nodes = g.nodes_for_feature(feature.lower())
+    if not flow_nodes:
+        available = ", ".join(sorted(g.flows.keys())[:30])
+        return (f"No trace found for '{feature}'. It matched no cross-stack path and no entry "
+                f"point. Available entry points: {available}")
+    return _truncate(_render_nodes_layered(feature, flow_nodes[:30], g), budget, "trace")
+
+
+def _trace_path(g: RustGraph, from_node: str, to_node: str, budget: int) -> str:
+    """Shortest path between two named nodes, hop by hop with tier transitions."""
+    frm = g.find_node(from_node)
+    to = g.find_node(to_node)
+    if not frm:
+        return f"Node not found: '{from_node}'"
+    if not to:
+        return f"Node not found: '{to_node}'"
+
+    path = g.shortest_path(frm["id"], to["id"])
+    if path is None:
+        return f"No path between {frm['name']} and {to['name']}"
+
+    lines = [f"  Trace: {frm['name']} -> {to['name']} ({len(path)} hops)", ""]
+    prev_tier = None
+    for i, node in enumerate(path):
+        icon = _kind_icon(node["kind"])
+        tier = _classify_tier(node["kind"])
+        conf = _confidence_icon(node.get("confidence", "medium"))
+        if tier != prev_tier:
+            if prev_tier is not None:
+                lines.append("      |")
+                lines.append("      v")
+            lines.append(f"  [{tier}]")
+            prev_tier = tier
+        arrow = "  -> " if i > 0 else "     "
+        lines.append(f"  {arrow}{icon} {conf} {node['name']}  [{node['kind']}]{_loc(node)}")
+    return _truncate("\n".join(lines), budget, "trace")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# read — exact source for one or more nodes (batch)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+# node_cells (repo-graph-py) — structured facets beyond the source span. `read`
+# surfaces the high-value ones: HTTP method, cross-stack callers (ENDPOINT_HIT),
+# covering tests (TEST), and semantic cells (intent/decision/constraint/failure).
+try:
+    _CELL_TYPE_NAMES = {i: n for i, n in repo_graph_py.cell_type_names()}
+except Exception:
+    _CELL_TYPE_NAMES = {}
+
+_READ_CELL_LABELS = {
+    5: "method", 6: "called by (cross-stack)", 7: "tested by", 4: "intent",
+    11: "decision", 10: "constraint", 9: "failure mode", 8: "attention", 16: "imports",
+}
+
+
+def _node_context(g: RustGraph, node_id: int, per_cell: int = 400) -> str:
+    """High-value `node_cells` facets shown under a read — method, cross-stack
+    callers, covering tests, semantic cells. '' when the node has none."""
+    try:
+        cells = g.pygraph.node_cells(node_id)
+    except Exception:
+        return ""
+    rows = []
+    for tid, content in cells:
+        label = _READ_CELL_LABELS.get(tid)
+        if not label:
+            continue
+        text = " ".join(str(content).split())
+        if len(text) > per_cell:
+            text = text[:per_cell] + " …"
+        rows.append(f"    · {label}: {text}")
+    return ("\n  context:\n" + "\n".join(rows)) if rows else ""
+
+
+def _governing_docs_note(g: RustGraph, qname: str) -> str:
+    """Doc sections that DOCUMENT this symbol (engine `governing_docs`) — 'the
+    rules for X'. '' when nothing governs it or the repo has no ingested docs."""
+    try:
+        recs = _jload(g.pygraph.governing_docs(qname))
+    except Exception:
+        return ""
+    if not recs:
+        return ""
+    rows = [f"    · {r.get('name') or r.get('qname', '?')}{_eloc(r)}" for r in recs[:5]]
+    return "\n  governed by (docs):\n" + "\n".join(rows)
+
+
+def _read_one(g: RustGraph, node: str, context_lines: int) -> str:
+    """Source block for a single node, or a one-line reason it can't be read."""
     resolved = g.find_node(node)
     if not resolved:
         return f"Node not found: '{node}'"
 
-    n = g.neighbours(resolved["id"])
-    r_icon = _kind_icon(resolved["kind"])
-    lines = [
-        f"  {r_icon} {resolved['name']}",
-        f"  |   [{resolved['kind']}] {resolved['qname']}",
-    ]
-
-    if n["outbound"]:
-        lines.append("  |")
-        lines.append(f"  +-->> Outbound ({len(n['outbound'])}):")
-        for entry in n["outbound"][:20]:
-            nn = entry["node"]
-            icon = _kind_icon(nn.get("kind", "?"))
-            lines.append(f"  |     {icon} {nn.get('name', '?')} --({entry['edge']})")
-        if len(n["outbound"]) > 20:
-            lines.append(f"  |     ... and {len(n['outbound']) - 20} more")
-
-    if n["inbound"]:
-        lines.append("  |")
-        lines.append(f"  +--<< Inbound ({len(n['inbound'])}):")
-        for entry in n["inbound"][:20]:
-            nn = entry["node"]
-            icon = _kind_icon(nn.get("kind", "?"))
-            lines.append(f"        {icon} {nn.get('name', '?')} --({entry['edge']})")
-        if len(n["inbound"]) > 20:
-            lines.append(f"        ... and {len(n['inbound']) - 20} more")
-
-    if not n["outbound"] and not n["inbound"]:
-        lines.append("  (isolated node -- no connections)")
-
-    return _truncate("\n".join(lines), budget, "neighbours")
-
-
-@mcp.tool(annotations=ToolAnnotations(title="Read Source", readOnlyHint=True))
-def read(
-    node: Annotated[str, Field(description="Node name or qname to read the source for.")],
-    context_lines: Annotated[int, Field(description="Lines of padding above and below the node's span. Default 0.", default=0, ge=0, le=200)] = 0,
-    budget: Annotated[int, Field(description="Max chars in the result. 0 = no cap.", default=0, ge=0)] = 0,
-) -> str:
-    """Return the source code for a node, sliced from its file by the graph's line span. Use after `locate`/`find`/`activate` to read the exact code without grepping. Returns a code block headed by the qname and `path:start-end`."""
-    g = get_graph()
-    resolved = g.find_node(node)
-    if not resolved:
-        return f"Node not found: '{node}'"
-
+    ctx = _node_context(g, resolved["id"]) + _governing_docs_note(g, resolved["qname"])
     path = resolved.get("path")
     start = resolved.get("start_line")
     end = resolved.get("end_line") or start
     if not path or not start:
-        return f"{resolved['name']} has no source span (synthetic or cross-stack node) — nothing to read."
+        # No source span (a synthetic / cross-stack node — route, endpoint, data
+        # entity). Still surface its structural cells (method, callers, tests).
+        head = f"  {resolved['qname']}  [{resolved['kind']}]  (no source span)"
+        return head + ctx if ctx else (
+            f"{resolved['name']} has no source span (synthetic or cross-stack node) "
+            f"— nothing to read.")
 
     file_path = g.repo_path / path
     if not file_path.is_file():
@@ -445,169 +577,51 @@ def read(
         f"  {resolved['qname']}  [{resolved['kind']}]\n"
         f"  {path}:{start}-{end}\n"
     )
-    return _truncate(f"{header}\n```\n{snippet}\n```", budget, "source")
+    return f"{header}\n```\n{snippet}\n```" + ctx
+
+
+@mcp.tool(annotations=ToolAnnotations(title="Read Source", readOnlyHint=True))
+def read(
+    node: Annotated[str, Field(description="Node name or qname to read. Comma-separate several (e.g. the top-ranked nodes from `find`/`impact`) to slice them all in one call.")],
+    context_lines: Annotated[int, Field(description="Lines of padding above and below the node's span. Default 0.", default=0, ge=0, le=200)] = 0,
+    budget: Annotated[int, Field(description="Max chars in the result (shared across all nodes when several are given). 0 = no cap.", default=0, ge=0)] = 0,
+) -> str:
+    """Return the source code for one or more nodes, sliced from their files by the graph's line spans. Use after `find`/`impact` to read the exact code without grepping — comma-separate several node names to read the whole ranked set in a single call. Each node is a code block headed by its qname and `path:start-end`, plus a `context:` footer with structural facts the source alone doesn't show: HTTP method, cross-stack callers, covering tests, and intent/decision/constraint cells when present."""
+    g = get_graph()
+    names = [s.strip() for s in node.split(",") if s.strip()]
+    if not names:
+        return "No node given."
+    blocks = [_read_one(g, name, context_lines) for name in names]
+    return _truncate("\n\n".join(blocks), budget, "source")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Tier 2 — Activation & Context
+# refresh — (re)build the graph
+#   (subsumes: generate, reload)
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-_PROFILES = {"default", "repair", "review", "onboard"}
-
-
-@mcp.tool(annotations=ToolAnnotations(title="Spreading Activation", readOnlyHint=True))
-def activate(
-    seeds: Annotated[str, Field(description="Comma-separated node names or qname patterns to seed activation from.")],
-    top_k: Annotated[int, Field(description="Number of top results to return. Default 20.", default=20, ge=1, le=100)] = 20,
-    profile: Annotated[str, Field(description="Edge-weight preset: 'default', 'repair' (up-weights call/data), 'review', or 'onboard' (up-weights entry/module).", default="default")] = "default",
-    mode: Annotated[str, Field(description="'table' (ranked list) or 'prose' (primed prose for LLM context).", default="table")] = "table",
-    budget: Annotated[int, Field(description="Max chars in the result. 0 = no cap.", default=0, ge=0)] = 0,
+@mcp.tool(annotations=ToolAnnotations(title="Refresh Graph", readOnlyHint=False, openWorldHint=True))
+def refresh(
+    repo_path: Annotated[str, Field(description="Path or git URL to (re)scan. Blank = the repo the server is serving. A different path/URL retargets the server at it.", default="")] = "",
+    full: Annotated[bool, Field(description="Force a full reparse instead of reusing the per-file parse cache. Default False (incremental — only changed files re-parse, so this is cheap after edits).", default=False)] = False,
 ) -> str:
-    """Spreading activation from seed nodes — finds the most relevant nodes in the graph relative to your seeds. Uses Personalized PageRank with domain-tuned edge weights. `profile` retunes the weights for a task (repair/review/onboard). `mode=prose` returns the ranked subgraph as primed prose instead of a score table."""
-    g = get_graph()
-
-    seed_ids = []
-    seed_names = []
-    for s in seeds.split(","):
-        s = s.strip()
-        if not s:
-            continue
-        resolved = g.find_node(s)
-        if resolved:
-            seed_ids.append(resolved["id"])
-            seed_names.append(resolved["name"])
-
-    if not seed_ids:
-        return f"No seed nodes found for: {seeds}"
-
-    prof = profile if profile in _PROFILES and profile != "default" else None
-    scores = g.pygraph.activate(seed_ids, top_k, profile=prof)
-
-    if mode == "prose":
-        node_ids = [nid for nid, _ in scores] or seed_ids
-        return _truncate(g.pygraph.prose(node_ids), budget, "activation prose")
-
-    header = f"  Activation from: {', '.join(seed_names)}"
-    if prof:
-        header += f"  (profile={profile})"
-    lines = [header, f"  Top {len(scores)} results:", ""]
-
-    for nid, score in scores:
-        node = g.nodes.get(nid)
-        if not node:
-            continue
-        icon = _kind_icon(node["kind"])
-        conf = _confidence_icon(node.get("confidence", "medium"))
-        lines.append(f"    {score:.4f}  {icon} {conf} {node['name']}  [{node['kind']}]  {node['qname']}")
-
-    return _truncate("\n".join(lines), budget, "activation")
-
-
-@mcp.tool(annotations=ToolAnnotations(title="Find Nodes", readOnlyHint=True))
-def find(
-    query: Annotated[str, Field(description="Node name or qname pattern to search for. Supports partial matching.")],
-    budget: Annotated[int, Field(description="Max chars in the result. 0 = no cap.", default=0, ge=0)] = 0,
-) -> str:
-    """Find nodes by name or qualified name pattern. Returns matching nodes with their kinds and qnames."""
-    g = get_graph()
-
-    results = g.find_nodes(query)
-    if not results:
-        single = g.find_node(query)
-        if single:
-            results = [single]
-
-    if not results:
-        return f"No nodes found matching '{query}'"
-
-    lines = [f"  Found {len(results)} nodes matching '{query}':", ""]
-    for node in results[:30]:
-        icon = _kind_icon(node["kind"])
-        conf = _confidence_icon(node.get("confidence", "medium"))
-        lines.append(f"    {icon} {conf} {node['name']}  [{node['kind']}]  {node['qname']}")
-
-    if len(results) > 30:
-        lines.append(f"    ... and {len(results) - 30} more")
-
-    return _truncate("\n".join(lines), budget, "find")
-
-
-@mcp.tool(annotations=ToolAnnotations(title="Locate", readOnlyHint=True))
-def locate(
-    signal: Annotated[str, Field(description="Raw stacktrace, failing-test id (path::test_name), or a unified diff / changed-file list.")],
-    kind: Annotated[str, Field(description="'stacktrace', 'test', 'diff', or 'auto' (sniff the shape).", default="auto")] = "auto",
-    top_k: Annotated[int, Field(description="Number of ranked nodes to return. Default 20.", default=20, ge=1, le=100)] = 20,
-    mode: Annotated[str, Field(description="'table' (ranked list) or 'prose' (primed prose for LLM context).", default="table")] = "table",
-    budget: Annotated[int, Field(description="Max chars in the result. 0 = no cap.", default=0, ge=0)] = 0,
-) -> str:
-    """Resolve a failure signal — a stacktrace, a failing-test id, or a diff/changed-file list — to the most relevant nodes in the graph. Sniffs the signal shape, maps frames/symbols/paths to seed nodes, then ranks the surrounding subgraph by Personalized PageRank. The on-ramp for debugging: paste the error, get the code that matters."""
-    g = get_graph()
+    """(Re)build the structural graph with tree-sitter AST parsing across 20 languages, running the cross-stack resolvers (HTTP, gRPC, GraphQL, WebSocket, queues, events, CLI). Incremental by default — only changed files re-parse — so it's cheap to call after edits; set `full=true` to force a clean reparse. Accepts a local path or a git URL (cloned on demand). Call after a major refactor; routine edits are picked up automatically by the file watcher."""
     try:
-        seed_ids = g.pygraph.resolve_signal(signal, kind)
+        target = _resolve_repo(repo_path or REPO_PATH)
+        g = _build_graph(target, incremental=not full)
     except Exception as e:
-        return f"Locate failed: {e}"
+        return f"Refresh failed: {e}"
 
-    if not seed_ids:
-        return (
-            f"No graph nodes resolved from the {kind} signal — none of its frames/"
-            f"symbols/paths matched a node. Fall back to `find` or `activate` with a keyword."
-        )
-
-    scores = g.pygraph.activate(seed_ids, top_k)
-
-    if mode == "prose":
-        node_ids = [nid for nid, _ in scores] or seed_ids
-        return _truncate(g.pygraph.prose(node_ids), budget, "locate prose")
-
-    lines = [
-        f"  Located from {kind} signal -> {len(seed_ids)} seed node(s)",
-        f"  Top {len(scores)} relevant nodes:",
-        "",
-    ]
-    for nid, score in scores:
-        node = g.nodes.get(nid)
-        if not node:
-            continue
-        icon = _kind_icon(node["kind"])
-        conf = _confidence_icon(node.get("confidence", "medium"))
-        loc = f"  {node['path']}:{node['start_line']}" if node.get("path") else ""
-        lines.append(f"    {score:.4f}  {icon} {conf} {node['name']}  [{node['kind']}]{loc}")
-
-    return _truncate("\n".join(lines), budget, "locate")
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Tier 3 — Health & Admin
-# ─────────────────────────────────────────────────────────────────────────────
-
-
-@mcp.tool(annotations=ToolAnnotations(title="Graph View", readOnlyHint=True))
-def graph_view(
-    node: Annotated[str, Field(description="Node name or qname to render as a tree. Leave blank for full overview.", default="")] = "",
-    depth: Annotated[int, Field(description="Tree depth. Default 2.", default=2, ge=1, le=5)] = 2,
-) -> str:
-    """Visual ASCII graph. With node: tree of children and connections. Without: full overview with counts."""
-    g = get_graph()
-
-    if node:
-        return _render_node_tree(g, node, depth)
-    return _render_overview(g)
-
-
-@mcp.tool(annotations=ToolAnnotations(title="Reload Graph", readOnlyHint=False))
-def reload(
-    incremental: Annotated[bool, Field(description="Reuse the per-file parse cache so unchanged files skip re-parsing (default True). Set False to force a full reparse.", default=True)] = True,
-) -> str:
-    """Re-generate the graph from source. Incremental by default — only changed files re-parse, so this is cheap to call after edits. Set incremental=False to force a full reparse."""
-    try:
-        target = _resolve_repo(REPO_PATH)
-        g = _build_graph(target, incremental)
-    except Exception as e:
-        return f"Reload failed: {e}"
+    pg = g.pygraph
+    kind_counts: dict[str, int] = Counter(n["kind"] for n in g.nodes.values())
+    type_summary = ", ".join(f"{count} {k}" for k, count in kind_counts.most_common(8))
     return (
-        f"Reloaded: {g.pygraph.node_count()} nodes, {g.pygraph.edge_count()} edges, "
-        f"{g.pygraph.cross_edge_count()} cross-stack, {len(g.flows)} flows"
+        f"{'Rebuilt' if not full else 'Rebuilt (full reparse)'}: {pg.node_count()} nodes, "
+        f"{pg.edge_count()} edges, {pg.cross_edge_count()} cross-stack edges, "
+        f"{len(g.flows)} entry points\n"
+        f"Kinds: {type_summary}\n"
+        f"Engine: repo-graph-py {repo_graph_py.version()}"
     )
 
 
@@ -664,6 +678,71 @@ def _confidence_icon(confidence: str) -> str:
     return {"weak": "⚠", "medium": "·", "strong": "●"}.get(confidence, "·")
 
 
+def _loc(node: dict) -> str:
+    """`  path:start-end` suffix for a WRAPPER node dict (blank if no span)."""
+    path = node.get("path")
+    if not path:
+        return ""
+    start = node.get("start_line")
+    if not start:
+        return f"  {path}"
+    end = node.get("end_line") or start
+    span = f"{start}-{end}" if end and end != start else f"{start}"
+    return f"  {path}:{span}"
+
+
+def _eloc(rec: dict) -> str:
+    """`  file:line` suffix for an ENGINE record (blast_radius/resolve/trace carry
+    `file`/`line` from the engine's own locator — no wrapper path-guessing)."""
+    f = rec.get("file")
+    if not f:
+        return ""
+    line = rec.get("line")
+    return f"  {f}:{line}" if line else f"  {f}"
+
+
+def _elive(rec: dict) -> str:
+    """` ⊘` when the engine flags a record not reachable from an entry point.
+
+    Liveness is the engine's `entrypoint_reachable` (only present on records that
+    carry it, e.g. blast_radius). Absent `live` key → no marker (unknown, not dead)."""
+    return " ⊘" if rec.get("live") is False else ""
+
+
+def _node_record(g: RustGraph, node: dict) -> dict:
+    """Project a wrapper node dict into the engine-record shape the located/impact
+    renderers consume (so keyword hits render like resolve/blast_radius rows)."""
+    return {
+        "id": node["id"],
+        "qname": node.get("qname", ""),
+        "name": node.get("name", "?"),
+        "kind": node.get("kind", "?"),
+        "file": node.get("path"),
+        "line": node.get("start_line"),
+    }
+
+
+def _coverage_note(g: RustGraph) -> str:
+    """Compact blind-spot footer from the engine's `coverage()` — where extraction
+    is partial for the languages actually in this repo, so the agent falls back to
+    grep deliberately (P2). '' when the engine build predates coverage."""
+    try:
+        recs = _jload(g.pygraph.coverage())
+    except Exception:
+        return ""
+    if not recs:
+        return ""
+    lines = ["", "  Blind spots (verify these with grep — the graph may under-link them):"]
+    for r in recs[:8]:
+        lang = r.get("language", "*")
+        cat = r.get("edge_category", "?")
+        found = r.get("edges_found")
+        zero = "  [0 found]" if found == 0 else ""
+        note = r.get("note", "")
+        lines.append(f"    ⚠ {cat} ({lang}){zero}: {note}")
+    return "\n".join(lines)
+
+
 def _render_overview(g: RustGraph) -> str:
     kind_counts = Counter(n["kind"] for n in g.nodes.values())
     conf_counts = Counter(n["confidence"] for n in g.nodes.values())
@@ -700,29 +779,24 @@ def _render_overview(g: RustGraph) -> str:
         if len(flow_list) > 20:
             lines.append(f"    ... and {len(flow_list) - 20} more")
 
-    dt = g.pygraph.dense_text()
-    preview_lines = dt.split("\n")[:30]
+    cov = _coverage_note(g)
+    if cov:
+        lines.append(cov)
+
     lines.append("")
-    lines.append("  Dense text preview (first 30 lines):")
-    for line in preview_lines:
-        lines.append(f"    {line}")
-    if len(dt.split("\n")) > 30:
-        lines.append(f"    ... ({len(dt.split(chr(10)))} total lines — use `dense_text` for full output)")
+    lines.append("  Next: `find <symbol|stacktrace|diff>` to jump to nodes, `impact <node>` for "
+                 "blast radius, `trace <feature>` for flows, `orient <node>` / `orient full=true` "
+                 "for the map.")
 
     return "\n".join(lines)
 
 
 def _render_nodes_layered(feature: str, nodes: list[dict], g: RustGraph) -> str:
-    tiers: dict[str, list[dict]] = {
-        "ENTRY": [], "SERVICE": [], "HANDLER": [], "DATA": [],
-    }
-
+    tiers: dict[str, list[dict]] = {"ENTRY": [], "SERVICE": [], "HANDLER": [], "DATA": []}
     for node in nodes:
-        tier = _classify_tier(node["kind"])
-        tiers[tier].append(node)
+        tiers[_classify_tier(node["kind"])].append(node)
 
     lines = [f"  Flow: {feature}", "  " + "=" * (len(feature) + 6), ""]
-
     tier_icons = {"ENTRY": ">>", "SERVICE": "<>", "HANDLER": "[]", "DATA": "()"}
     rendered_any = False
 
@@ -730,89 +804,21 @@ def _render_nodes_layered(feature: str, nodes: list[dict], g: RustGraph) -> str:
         items = tiers[tier_name]
         if not items:
             continue
-
         if rendered_any:
             lines.append("      |")
             lines.append("      v")
-
         lines.append(f"  {tier_icons[tier_name]} {tier_name}")
         lines.append("  " + "-" * 40)
-
         for node in items[:10]:
             icon = _kind_icon(node["kind"])
             conf = _confidence_icon(node.get("confidence", "medium"))
-            lines.append(f"    {icon} {conf} {node['name']}  [{node['kind']}]")
+            lines.append(f"    {icon} {conf} {node['name']}  [{node['kind']}]{_loc(node)}")
         if len(items) > 10:
             lines.append(f"    ... and {len(items) - 10} more")
-
         rendered_any = True
 
     lines.append("")
     lines.append(f"  -- {len(nodes)} nodes in flow")
-    return "\n".join(lines)
-
-
-def _render_node_tree(g: RustGraph, query: str, depth: int) -> str:
-    resolved = g.find_node(query)
-    if not resolved:
-        return f"Node not found: '{query}'"
-
-    node_id = resolved["id"]
-    icon = _kind_icon(resolved["kind"])
-    conf = _confidence_icon(resolved.get("confidence", "medium"))
-
-    lines = [
-        f"  {icon} {conf} {resolved['name']}",
-        f"  |   [{resolved['kind']}] {resolved['qname']}",
-    ]
-
-    _CHILD_EDGES = {"defines", "self_method"}
-    out_edges = g.adjacency_out.get(node_id, [])
-    in_edges = g.adjacency_in.get(node_id, [])
-
-    children = [(tid, et) for tid, et in out_edges if et in _CHILD_EDGES]
-    connections = [(tid, et) for tid, et in out_edges if et not in _CHILD_EDGES]
-
-    if children:
-        lines.append("  |")
-        lines.append("  +-- Children:")
-        for target_id, edge_type in children[:20]:
-            target = g.nodes.get(target_id, {"name": str(target_id), "kind": "?"})
-            t_icon = _kind_icon(target.get("kind", "?"))
-            lines.append(f"  |     {t_icon} {target['name']} [{target.get('kind', '?')}]")
-
-            if depth > 1:
-                sub_children = [(sid, se) for sid, se in g.adjacency_out.get(target_id, []) if se in _CHILD_EDGES]
-                for sub_id, _ in sub_children[:5]:
-                    sub = g.nodes.get(sub_id, {"name": str(sub_id), "kind": "?"})
-                    sub_icon = _kind_icon(sub.get("kind", "?"))
-                    lines.append(f"  |       {sub_icon} {sub['name']}")
-                if len(sub_children) > 5:
-                    lines.append(f"  |       ... +{len(sub_children) - 5}")
-
-        if len(children) > 20:
-            lines.append(f"  |     ... and {len(children) - 20} more")
-
-    if connections:
-        lines.append("  |")
-        lines.append("  +-->> Connects to:")
-        for target_id, edge_type in connections[:15]:
-            target = g.nodes.get(target_id, {"name": str(target_id), "kind": "?"})
-            t_icon = _kind_icon(target.get("kind", "?"))
-            lines.append(f"  |     {t_icon} {target['name']} --({edge_type})")
-        if len(connections) > 15:
-            lines.append(f"  |     ... and {len(connections) - 15} more")
-
-    if in_edges:
-        lines.append("  |")
-        lines.append("  +--<< Used by:")
-        for source_id, edge_type in in_edges[:15]:
-            source = g.nodes.get(source_id, {"name": str(source_id), "kind": "?"})
-            s_icon = _kind_icon(source.get("kind", "?"))
-            lines.append(f"        {s_icon} {source['name']} --({edge_type})")
-        if len(in_edges) > 15:
-            lines.append(f"        ... and {len(in_edges) - 15} more")
-
     return "\n".join(lines)
 
 
@@ -836,8 +842,8 @@ def main():
     args = parser.parse_args()
 
     global REPO_PATH
-    # Resolve a git URL to a local clone once at startup, so every tool (generate,
-    # status, reload, ...) sees a real directory — not just the lazy get_graph path.
+    # Resolve a git URL to a local clone once at startup, so every tool sees a real
+    # directory — not just the lazy get_graph path.
     REPO_PATH = _resolve_repo(args.repo)
     os.environ["REPO_GRAPH_REPO"] = REPO_PATH
 
