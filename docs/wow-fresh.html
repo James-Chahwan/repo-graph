@@ -50,7 +50,7 @@
   <div class="diff"><div class="file">friends_controller.go</div><span class="ctx">  ctx := c.Request.Context()
 </span><span class="add">+ if claims == nil { return }
 </span><span class="ctx">  userRepo := Services.UserRepository()</span></div>
-  <div class="term"><span class="d">$</span> repo-graph reload</div>
+  <div class="term"><span class="d">$</span> repo-graph refresh</div>
   <div class="race">
     <div class="row full"><div class="lbl"><span class="t">full rescan</span><span class="t">2.8s · 412 files</span></div><div class="track"><div class="fill"></div></div></div>
     <div class="row inc"><div class="lbl"><span class="t">incremental</span><span class="t">0.06s · 1 file</span></div><div class="track"><div class="fill"></div></div></div>

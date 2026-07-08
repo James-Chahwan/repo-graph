@@ -45,7 +45,7 @@
   .step{opacity:0;transition:opacity .4s}
   .e1b .s-locate,.e1c .s-locate{opacity:1}
 
-  /* resolved-frame chips (locate result) */
+  /* resolved-frame chips (find result) */
   .chips{margin-top:30px;display:flex;flex-direction:column;gap:18px;opacity:0;transition:opacity .45s}
   .e1b .chips,.e1c .chips{opacity:1}
   .chip{display:flex;align-items:center;gap:18px;background:#10301d;border:1px solid var(--grn2);
@@ -104,16 +104,16 @@
   <!-- captions -->
   <div class="capbox">
     <div class="cap c1a"><span class="num">1</span><h1>Hit an error?</h1><div class="sub">paste the stack trace — don't go grep-hunting</div></div>
-    <div class="cap c1b"><span class="num">1</span><h1><em>locate</em> the trace</h1><div class="sub">frames → the exact nodes, ranked</div></div>
+    <div class="cap c1b"><span class="num">1</span><h1><em>find</em> the trace</h1><div class="sub">frames → the exact nodes, ranked</div></div>
     <div class="cap c1c"><span class="num">1</span><h1>then <em>read</em> it</h1><div class="sub">the real source — no grep, no scrolling</div></div>
     <div class="cap c2a"><span class="num">2</span><h1>Changing something?</h1><div class="sub">check the blast radius first</div></div>
     <div class="cap c2b"><span class="num">2</span><h1><em>impact</em>, cross-stack</h1><div class="sub">everything the change touches — frontend included</div></div>
   </div>
 
-  <!-- example 1: locate → read -->
+  <!-- example 1: find → read -->
   <section id="ex1" class="screen">
     <div class="term">
-      <div><span class="dollar">$</span> <span class="muted">paste error →</span> <span class="cmd step s-locate">repo-graph locate</span></div>
+      <div><span class="dollar">$</span> <span class="muted">paste error →</span> <span class="cmd step s-locate">repo-graph find</span></div>
       <div class="trace">panic: nil pointer dereference
   …/Controllers.SendFriendRequestHandler
     friends_controller.go:112

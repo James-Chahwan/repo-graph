@@ -43,14 +43,15 @@ first.
 
 ## Verify
 
-After the server is connected, call the `status` tool. A successful install returns a
-repo overview (node/edge counts, detected languages, entry points). The server exposes
-**13 tools** across four tiers — generation (`generate`), navigation (`status`, `flow`,
-`trace`, `impact`, `neighbours`, `read`), activation & context (`activate`, `find`,
-`locate`, `dense_text`), and health/admin (`graph_view`, `reload`).
+After the server is connected, call the `orient` tool. A successful install returns a
+repo overview (node/edge counts, detected languages, entry points, and a blind-spots
+note). The server exposes **6 tools**: `orient` (overview / map / coverage), `find`
+(any text → ranked located nodes), `impact` (blast radius, dead code flagged `⊘`),
+`trace` (feature flow or A→B path), `read` (exact source), and `refresh` (rebuild).
 
 ## Usage tip
 
-Before grepping or reading files, call `status` to orient, then `dense_text` for full
-context or `activate`/`find`/`locate` to scope down. For a bug, paste the stacktrace or
-failing test into `locate`, then `read` the top result's source.
+Before grepping or reading files, call `orient` to get the lay of the land, then `find`
+to jump to the nodes that matter — pass a symbol, or paste a stacktrace / failing test /
+diff. `read` the top result's source; use `impact` for blast radius and `trace` for how a
+feature flows across the stack.

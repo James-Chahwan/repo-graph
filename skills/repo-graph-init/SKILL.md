@@ -14,10 +14,10 @@ Build the graph so the other skills have something to read.
 
 ## Steps
 
-1. First use: call `generate` (optionally `repo_path=<local path or git URL>`). It scans with tree-sitter, runs the cross-stack resolvers, and caches the result for fast reloads.
-2. After code changes: call `reload` to re-generate.
+1. First use: call `refresh` (optionally `repo_path=<local path or git URL>`). It scans with tree-sitter, runs the cross-stack resolvers, and caches the result. (The server also builds the graph automatically on first connect, so this is only needed to force it.)
+2. After code changes: call `refresh` again — incremental, so only changed files re-parse. Add `full=true` to force a clean reparse. Routine edits are picked up automatically by the file watcher.
 3. To add repo-graph to a project for good, drop an `.mcp.json` at the repo root:
 
        {"mcpServers":{"repo-graph":{"command":"uvx","args":["mcp-repo-graph","--repo","."]}}}
 
-4. Call `status` to confirm it loaded.
+4. Call `orient` to confirm it loaded.

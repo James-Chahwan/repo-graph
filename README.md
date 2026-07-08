@@ -8,6 +8,8 @@ repo-graph gives LLMs a map of your codebase — entities, relationships, and fl
 
 Instead of flooding an LLM's context window with your entire codebase (or hoping it guesses right), repo-graph builds a lightweight graph of what exists, how things connect, and where the entry points are. The LLM queries the graph, finds the minimal set of files it needs, and reads only those.
 
+It pays off most where that's hardest to do by hand: **large repos, monorepos that span several languages, and multi-service systems** where a feature's path crosses files, stacks, and service boundaries. On a small single-language project a model can just read the files — see [Where it fits best](#where-it-fits-best) for the honest sweet spot.
+
 **Install in one click:**
 
 [![Install in VS Code](https://img.shields.io/badge/VS_Code-Install-0098FF?style=flat-square&logo=visualstudiocode&logoColor=white)](https://vscode.dev/redirect/mcp/install?name=repo-graph&config=%7B%22command%22%3A%22uvx%22%2C%22args%22%3A%5B%22mcp-repo-graph%22%2C%22--repo%22%2C%22.%22%5D%7D)
@@ -30,7 +32,7 @@ Same bug, same model, same prompt — the only difference is whether repo-graph 
 |---|---|---|
 | **Tokens used** | 75,308 | 29,838 |
 | **Time to fix** | 4m 36s | ~30s |
-| **Files explored** | ~15 (grep, read, grep, read...) | 2 (flow lookup + handler file) |
+| **Files explored** | ~15 (grep, read, grep, read...) | 2 (trace lookup + handler file) |
 | **Outcome** | Found and fixed the bug | Found and fixed the bug |
 
 **2.5x fewer tokens. ~9x faster. Same correct fix.**
@@ -45,7 +47,7 @@ Both runs used identical conditions to keep the comparison fair:
 - **No other tools**: CLAUDE.md, plugins, hooks, and all other MCP servers were removed for both runs — the only variable was whether repo-graph was installed
 - **No hints**: the prompt describes the symptom, not the location — Claude has to find `group_controller.go:57` on its own
 
-Without repo-graph, Claude greps for keywords, reads files, greps again, reads more files, and eventually narrows down to the bug. With repo-graph, Claude calls `flow("groups")`, gets back the exact handler function and file, reads it, and fixes it.
+Without repo-graph, Claude greps for keywords, reads files, greps again, reads more files, and eventually narrows down to the bug. With repo-graph, Claude calls `trace("groups")`, gets back the exact handler function and file, reads it, and fixes it.
 
 > Browse [pre-generated examples](examples/) for [FastAPI](examples/fastapi/), [Gin](examples/gin/), [Hono](examples/hono/), and [NestJS](examples/nestjs/) — real graph output you can inspect without installing anything.
 
@@ -68,14 +70,47 @@ repo-graph scans your codebase once and builds a graph of:
 - **Relationships**: imports, calls, handles, defines, contains, cross-stack HTTP
 - **Flows**: end-to-end paths from entry point to data layer
 
-Then it exposes 13 MCP tools that let the LLM:
+Then it exposes 6 MCP tools that let the LLM:
 
-1. **Orient** — "What languages are in this repo? What are the main features?"
+1. **Orient** — "What languages are in this repo? What are the main features? Where is the graph blind?"
 2. **Navigate** — "Trace the login flow from route to database" / "What's the shortest path between UserService and the payments API?"
-3. **Scope** — "How many lines would I need to read to understand this feature?" / "Give me just the files I need for this bug fix"
-4. **Assess** — "What's the blast radius of changing this function?" / "Which files are the biggest maintenance risks?"
+3. **Scope** — "Which nodes matter for this bug?" / "Give me just the files I need for this fix"
+4. **Assess** — "What's the blast radius of changing this function?" / "What here is dead code?"
 
 The LLM gets structural context in a few hundred tokens instead of reading thousands of lines.
+
+## Where it fits best
+
+repo-graph earns its keep when a codebase is bigger or more tangled than the model can hold in its head at once. The payoff scales with three things:
+
+- **Size** — enough files that reading the relevant ones blows the context budget.
+- **Complexity** — rules, indirection, and layers, so "just read it" stops working.
+- **Cross-boundary reach** — the answer spans files, languages, or services that a text search can't link.
+
+Strong fits:
+
+- **Monorepos** — a frontend calling a backend across a language boundary. repo-graph links the HTTP call to the route it hits and the handler behind it — the one thing grep structurally can't do. Point `--repo` at the monorepo root and a single graph spans every project. *(The demo above is exactly this: Go + Angular in one repo.)*
+- **Multi-service / polyrepo systems** — drop the services under one directory and point `--repo` at it; the graph traces a feature across service boundaries in one call.
+- **Large single codebases** — thousands of files where orientation itself is the cost.
+- **Unfamiliar or legacy code** — where you don't yet know what touches what.
+
+Where it *doesn't* pull its weight: a **small, single-language repo with a clear task**. The model can just read the files — grep wins and the graph is overhead. Don't reach for it to shave tokens, either: the MCP layer is a fixed per-turn cost, so on easy tasks it can cost *more*. The token win shows up only when it heads off a grep-read-grep spiral (like the demo above). What it reliably buys you is **correct, complete, cross-boundary answers in a few calls** on code too big or too interconnected to fit in context — yours or the model's. (Don't want the MCP layer at all? [Skip it](#use-it-without-mcp) and call the engine directly.)
+
+## Use it without MCP
+
+The MCP server is the zero-config path, but the graph isn't tied to it. The engine ships as a plain Python wheel — `pip install repo-graph-py` — so you can build the graph and call the same answer primitives directly, from a script or your own tooling, with **none of the per-turn MCP cost**:
+
+```python
+import repo_graph_py as rg
+
+g = rg.generate(".")                            # or rg.load_from_gmap(rg.default_gmap_dir("."))
+print(g.blast_radius("checkout", "both"))       # ranked, located, live-filtered — JSON
+print(g.cross_stack_trace("notifications"))     # feature path across the stack, mechanism-labelled
+print(g.resolve(open("error.log").read()))      # stacktrace / test / diff → the nodes that matter
+print(g.coverage())                             # where extraction is partial (grep those)
+```
+
+Same graph, same answers — just without the tool schemas in your context. It's the same Rust engine ([glia](https://github.com/James-Chahwan/glia)) the MCP server wraps; `repo-graph-py` is its published wheel. Good for CI checks, batch analysis, or wiring the graph into your own agent.
 
 ## Supported languages
 
@@ -209,22 +244,21 @@ this — the server builds the graph on first connect.
 
 ### 2. Use it
 
-The AI assistant now has access to all 13 tools. Example queries it can answer:
+The AI assistant now has access to all 6 tools. Example queries it can answer:
 
-- *"What does this codebase do?"* → `status` tool
-- *"Trace the checkout flow"* → `flow` tool
+- *"What does this codebase do?"* → `orient` tool
+- *"Trace the checkout flow"* → `trace` tool
 - *"What would break if I change UserService?"* → `impact` tool
-- *"Which nodes are relevant to this bug?"* → `activate` / `find` tools
-- *"Here's a stacktrace — where do I look?"* → `locate` tool
+- *"Which nodes are relevant to this bug?"* / *"Here's a stacktrace — where do I look?"* → `find` tool
 - *"Show me that function's source"* → `read` tool
-- *"Give me the full graph context cheaply"* → `dense_text` tool
-- *"Show me the auth flow visually"* → `graph_view` tool
+- *"Give me the full graph context cheaply"* → `orient full=true`
+- *"Rebuild after a big refactor"* → `refresh` tool
 
 ### 3. Freshness (automatic)
 
 The graph stays current on its own. While the server is running it watches the repo
 and does an incremental rebuild a moment after you save, so a structural question
-right after an edit reflects the change with no manual `reload`. On top of that, the
+right after an edit reflects the change with no manual `refresh`. On top of that, the
 graph refreshes on cold start whenever the source tree changed since the cached
 `.gmap` was written, so it's never stale when your assistant connects.
 
@@ -245,42 +279,20 @@ That installs a marker-fenced `pre-commit` hook that refreshes the graph and sta
 
 ## MCP tools reference
 
-repo-graph exposes **13 tools** across four tiers.
-
-### Generation
+repo-graph exposes **6 tools** — one natural verb each, backed by a Rust engine primitive.
 
 | Tool | Parameters | Description |
 |------|-----------|-------------|
-| `generate` | `repo_path` *(optional)*, `incremental` | Scan the codebase with tree-sitter, rebuild the graph, run cross-stack resolvers, and cache it. Incremental by default — only changed files re-parse |
+| `orient` | `seed` *(optional)*, `full`, `budget` | The first call on a repo: node/edge counts, detected kinds, entry points, and a **blind-spots** note flagging which languages/edges are under-linked (so you grep those deliberately). `seed=<node>` → scoped map; `full=true` → whole-repo dense map |
+| `find` | `query`, `expand`, `kind`, `top_k`, `budget` | Turn any text into the ranked nodes that matter — a symbol/keyword, or a pasted stacktrace / failing-test id / diff (resolved to the code it implicates). `expand=true` fans out to the surrounding neighbourhood. Every row carries `path:line` |
+| `impact` | `nodes` *(comma-separated)*, `direction`, `depth`, `live_only`, `top_k`, `budget` | Blast radius: what a change affects (`forward`) or depends on / is used by (`backward`), as a ranked, located closure — each row with the edge `via` reason and a `⊘` when the engine finds it unreachable (likely dead). Pass several nodes for a whole-diff radius |
+| `trace` | `from_node`, `to_node` *(optional)*, `depth`, `budget` | One arg: a feature end-to-end across the stack, each hop labelled with its mechanism (call / HTTP / queue / event) and cross-service hops marked. Two args: the shortest path between two nodes |
+| `read` | `node` *(comma-separated)*, `context_lines`, `budget` | A node's exact source, sliced from its file by the graph's line span, plus a `context:` footer (HTTP method, cross-stack callers, covering tests, governing docs). Comma-separate to batch-read a ranked set |
+| `refresh` | `repo_path` *(optional)*, `full` | Rebuild the graph (incremental by default — only changed files re-parse). `repo_path` retargets a different path or git URL; `full=true` forces a clean reparse. Routine edits are auto-picked-up by the file watcher |
 
-### Navigation
+Most tools also take a `budget` (max chars) so a result fits a small-model context window.
 
-| Tool | Parameters | Description |
-|------|-----------|-------------|
-| `status` | *(none)* | Repo overview: node/edge counts, detected kinds, entry points, dense preview. Call this first to orient |
-| `flow` | `feature` | End-to-end flow for a feature — entry point → service layer → data store, in layered tiers |
-| `trace` | `from_node`, `to_node` | Shortest path between two nodes, hop by hop with tier transitions |
-| `impact` | `nodes` *(comma-separated)*, `direction`, `depth`, `mode` | Blast radius — what nodes affect (downstream) or depend on (upstream). Pass several nodes for a whole-diff radius |
-| `neighbours` | `node` | All direct connections to and from a node, one hop each way |
-| `read` | `node`, `context_lines` | Return a node's source code, sliced from its file by the graph's line span — read the exact code without grepping |
-
-### Activation & context
-
-| Tool | Parameters | Description |
-|------|-----------|-------------|
-| `activate` | `seeds`, `top_k`, `profile`, `mode` | Spreading activation (Personalized PageRank) from seed nodes — the most relevant nodes to your seeds. `profile` retunes for repair/review/onboard |
-| `find` | `query` | Find nodes by name or qualified-name pattern |
-| `locate` | `signal`, `kind` (`stacktrace`/`test`/`diff`/`auto`), `top_k`, `mode` | Resolve a stacktrace, failing-test id, or diff to the most relevant nodes — paste the error, get the code that matters |
-| `dense_text` | `seed` *(optional)*, `budget` | The graph in dense sigil notation — the primary context tool. With `seed`, returns just that node's neighbourhood (scoped map) |
-
-### Health & admin
-
-| Tool | Parameters | Description |
-|------|-----------|-------------|
-| `graph_view` | `node` *(optional)*, `depth` | Visual ASCII map — a node's tree/neighbourhood, or the full overview |
-| `reload` | `incremental` | Re-generate the graph from source after code changes. Incremental by default |
-
-Most read tools also take a `budget` (max chars) so a result fits a small-model context window. `activate` / `impact` / `locate` take `mode=prose` to return the ranked subgraph as primed prose instead of a table.
+> These 6 collapsed from an earlier 13 once the engine (v0.4.18) grew answer-shaped primitives — `blast_radius`, `cross_stack_trace`, `resolve`, `coverage` — that return complete, ranked, located, live-filtered results in one call. Fewer tools = less fixed per-turn overhead and less agent confusion.
 
 ## How it works
 
@@ -290,7 +302,7 @@ Most read tools also take a `budget` (max chars) so a result fits a small-model 
 2. **Extract** — cross-cutting extractors layer on HTTP routes, data sources, CLI entrypoints, gRPC services, queue consumers
 3. **Resolve** — graph builder resolves intra-repo references; cross-graph resolvers link stacks (frontend HTTP calls → backend routes, etc.)
 4. **Store** — merged graph lands in `.ai/repo-graph/` as a zero-copy `.gmap` (rkyv + mmap) plus JSON projections for portability
-5. **Serve** — the MCP server loads the graph into memory and exposes the 13 tools
+5. **Serve** — the MCP server loads the graph into memory and exposes the 6 tools
 
 The Rust engine lives in its own [`glia`](https://github.com/James-Chahwan/glia) repo; `mcp-repo-graph` is the MCP-facing thin wrapper.
 

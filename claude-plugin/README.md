@@ -12,11 +12,15 @@ structure instead of grepping.
 
 ## What it provides
 
-An MCP server (`repo-graph`) exposing 13 tools: `status`, `flow`, `trace`,
-`impact`, `neighbours`, `read`, `activate`, `find`, `locate`, `dense_text`,
-`graph_view`, `generate`, `reload`. `locate` resolves a stacktrace / failing
-test / diff to the relevant nodes; `read` slices a node's source. The server
-maps the workspace it's launched in.
+An MCP server (`repo-graph`) exposing 6 tools: `orient` (repo shape, entry
+points, and where the graph is blind), `find` (any text — symbol, keyword,
+stacktrace, failing test, or diff — → the ranked nodes that matter), `impact`
+(blast radius, ranked and located, dead code flagged `⊘`), `trace` (a feature
+end-to-end, or the path between two nodes), `read` (a node's exact source), and
+`refresh` (rebuild). The server maps the workspace it's launched in.
+
+Plus matching skills (`repo-graph-orient`, `-find`, `-impact`, `-trace`,
+`-debug`, `-init`) that tell the agent when and how to reach for each tool.
 
 ## Validate & submit
 

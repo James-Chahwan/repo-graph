@@ -14,8 +14,8 @@ Paste the error, get the code. The on-ramp when something's broken — instead o
 
 ## Steps
 
-1. Call `locate` with `signal=<the raw stacktrace / test id / unified diff>`. It sniffs the shape (or pass `kind=stacktrace|test|diff`), resolves the frames/symbols/paths to nodes, then ranks the surrounding subgraph by relevance (Personalized PageRank). Pass `mode=prose` for primed prose context instead of a ranked list.
+1. Call `find` with `query=<the raw stacktrace / test id / unified diff>`. It sniffs the shape (or pass `kind=stacktrace|test|diff`), resolves the frames/symbols/paths to nodes, then ranks the surrounding subgraph by relevance (Personalized PageRank). Every row carries `path:line`.
 2. Call `read` with `node=<top result>` to pull that node's exact source, sliced from its file by the graph's line span — no grep, no scrolling. Add `context_lines=N` for padding around it.
-3. Widen if needed: `impact` on the node for blast radius (it takes several comma-separated nodes — feed it the whole changed set), or `neighbours` for direct callers/callees.
+3. Widen if needed: `impact` on the node for blast radius (it takes several comma-separated nodes — feed it the whole changed set) — `direction=both` at `depth=1` for direct callers/callees.
 
-`locate` only resolves frames that actually exist in the graph — if it returns nothing, the signal's paths/symbols don't match this repo; fall back to `find` with a keyword.
+`find` only resolves frames that actually exist in the graph — if it returns nothing, the signal's paths/symbols don't match this repo; fall back to `find` with a plain keyword.

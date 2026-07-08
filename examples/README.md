@@ -22,7 +22,7 @@ To regenerate any example against the latest version of the repo:
 
 ```bash
 git clone --depth 1 https://github.com/tiangolo/fastapi.git /tmp/fastapi
-repo-graph-generate --repo /tmp/fastapi
+repo-graph-init --repo /tmp/fastapi --graph-only
 ```
 
 The output lands in `/tmp/fastapi/.ai/repo-graph/`.

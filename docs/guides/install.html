@@ -62,6 +62,11 @@
 <p class="lede">A 60-second setup that gives your AI coding assistant a structural map of any codebase. Exact command per client, plus how to confirm it loaded.</p>
 <p>repo-graph is an MCP server that hands your AI assistant a structural graph of a codebase: entities, relationships, and feature flows. Instead of grepping and reading files until it finds the right one, the model navigates straight to it. Less context burned, fewer wrong guesses, faster answers.</p>
 <p>It works across 20+ languages and frameworks, frontend to backend, including cross-stack links. The engine (<code>repo-graph-py</code>) is Rust plus tree-sitter.</p>
+<h2>One command, every agent</h2>
+<p>If you just want it set up everywhere, run:</p>
+<pre><code class="language-bash">uvx mcp-repo-graph install
+</code></pre>
+<p>It detects the AI coding agents you have (Claude Code, Claude Desktop, Cursor, Windsurf, VS Code, Codex, Gemini CLI, opencode, Kiro), writes each one's MCP config, and adds a short usage block to its instructions file so the agent reaches for the graph before it greps. <code>uvx mcp-repo-graph uninstall</code> reverses it. The rest of this page is the manual, per-client version.</p>
 <h2>Pick your client</h2>
 <p>Each line below installs the server pointed at the current directory (<code>--repo .</code>). <code>uvx</code> runs it with zero install.</p>
 <p><strong>Claude Code</strong></p>
@@ -91,20 +96,20 @@
 <h2>Confirm it loaded</h2>
 <p>Build the graph, then orient. Tell your assistant:</p>
 <blockquote>
-<p>Generate the repo-graph, then call status.</p>
+<p>Refresh the repo-graph, then call orient.</p>
 </blockquote>
-<p><code>generate</code> scans the repo and builds the graph. It also takes a git URL if you want to point at a remote repo. <code>status</code> reports what it found. If you get a summary back, you're set.</p>
+<p><code>refresh</code> scans the repo and builds the graph. It also takes a git URL if you want to point at a remote repo. <code>orient</code> reports what it found. If you get a summary back, you're set.</p>
 <h2>How you actually use it</h2>
-<p>The pattern: before grepping or reading files, ask the model to call <code>status</code> to orient, then <code>dense_text</code> for full context, or <code>activate</code> / <code>find</code> / <code>flow</code> to scope in. Some prompts and the tool that answers them:</p>
+<p>The pattern: before grepping or reading files, ask the model to call <code>orient</code> first, then <code>orient full=true</code> for the whole-graph map, or <code>find</code> / <code>trace</code> to scope in. Some prompts and the tool that answers them:</p>
 <ul>
-<li>"Where does the groups action hit the backend?" → <code>trace</code> (shortest path between two nodes)</li>
-<li>"Walk me through the checkout feature." → <code>flow</code> (entry → service → data)</li>
-<li>"What breaks if I change this handler?" → <code>impact</code> (downstream/upstream blast radius)</li>
-<li>"What's directly wired to this node?" → <code>neighbours</code> (one-hop connections)</li>
+<li>"Where does the groups action hit the backend?" → <code>trace</code> (two args = shortest path between two nodes)</li>
+<li>"Walk me through the checkout feature." → <code>trace</code> (one arg = a feature end to end, entry → service → data)</li>
+<li>"What breaks if I change this handler?" → <code>impact</code> (forward/backward blast radius)</li>
+<li>"What's directly wired to this node?" → <code>impact</code> at depth 1 (the direct connections)</li>
 <li>"Find the auth middleware." → <code>find</code> (match by name or qname)</li>
-<li>"Give me an ASCII overview." → <code>graph_view</code></li>
+<li>"Give me an ASCII overview." → <code>orient</code> (overview)</li>
 </ul>
-<p>After you change code, <code>reload</code> rebuilds the graph.</p>
+<p>After you change code, <code>refresh</code> rebuilds the graph.</p>
 <h2>What it changes</h2>
 <p>A run on quokka-stack, a Go + Angular monorepo (~566 nodes / 620 edges), fixing a reversed comparison operator. Same bug, same model, same prompt both times:</p>
 <table>
@@ -127,7 +132,7 @@
 <td>With repo-graph</td>
 <td>29,838</td>
 <td>~30s</td>
-<td>2 (a flow lookup + the handler)</td>
+<td>2 (a trace lookup + the handler)</td>
 </tr>
 </tbody>
 </table>

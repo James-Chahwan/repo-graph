@@ -125,28 +125,28 @@
     </div>
   </section>
 
-  <!-- 2 · CONTEXT (scoped dense_text) -->
+  <!-- 2 · CONTEXT (scoped orient) -->
   <section class="clip" data-clip="context" data-steps="2">
     <div class="capbox">
       <div class="cap pn" data-at="0"><span class="num">✗</span><h1>Dumping the <em>whole</em> repo?</h1><div class="sub">50,000 chars · accuracy rots as it fills</div></div>
       <div class="cap" data-at="1"><span class="num">⌁</span><h1><em>scope</em> it to one feature</h1><div class="sub">a fraction of the tokens, all the signal</div></div>
     </div>
     <div class="screen">
-      <div class="term" data-at="0" data-swap><span class="d">$</span> <span class="cmd">repo-graph dense_text</span></div>
+      <div class="term" data-at="0" data-swap><span class="d">$</span> <span class="cmd">repo-graph orient</span> full=true</div>
       <div class="blk full" data-at="0" data-swap><span class="tag">≈50,000 chars</span>RGR = repo_graph::graph::RustGraph
 RS = repo_graph::server
 [TOPOLOGY]
 RGR::__init__ > RGR::_build_flows
 RGR::downstream > RGR::_traverse
-RS::status > RS::get_graph
-RS::activate > RS::get_graph
+RS::orient > RS::get_graph
+RS::find > RS::get_graph
 RS::impact > RS::get_graph
 … 1,300 more nodes …
 endpoint:GET protected/groups
 route:/groups/activities/:groupId
 component:GroupsComponent
 service:UserProfileService …</div>
-      <div class="term" data-at="1" data-swap><span class="d">$</span> <span class="cmd">repo-graph dense_text</span> GroupsComponent</div>
+      <div class="term" data-at="1" data-swap><span class="d">$</span> <span class="cmd">repo-graph orient</span> GroupsComponent</div>
       <div class="blk scoped" data-at="1" data-swap><span class="tag">≈2,600 chars</span>[SCOPES] groups feature
 GroupsComponent > sortMessages
 GroupsComponent > loadActivities
@@ -177,7 +177,7 @@ GroupsController > MongoDB</div>
     </div>
   </section>
 
-  <!-- 4 · FIND (activate cluster) -->
+  <!-- 4 · FIND (expand cluster) -->
   <section class="clip" data-clip="find" data-steps="3">
     <div class="capbox">
       <div class="cap pn" data-at="0"><span class="num">✗</span><h1>Where does it <em>live?</em></h1><div class="sub">grep returns 131 hits — which one?</div></div>
@@ -186,7 +186,7 @@ GroupsController > MongoDB</div>
     </div>
     <div class="screen">
       <div class="pain" data-at="0" data-swap><span class="d">$</span> <span class="g">grep -rn "groups" .</span><div class="n">131 matches across 40 files · no ranking, no idea</div></div>
-      <div class="term" data-at="1"><span class="d">$</span> <span class="cmd">repo-graph activate</span> GroupsComponent</div>
+      <div class="term" data-at="1"><span class="d">$</span> <span class="cmd">repo-graph find</span> GroupsComponent expand=true</div>
       <div data-at="2">
         <div class="chip"><span class="sc">0.62</span><span class="nm">GroupsComponent</span><span class="loc">class</span></div>
         <div class="chip"><span class="sc">0.11</span><span class="nm">sortMessages</span><span class="loc">method</span></div>
@@ -197,16 +197,16 @@ GroupsController > MongoDB</div>
     </div>
   </section>
 
-  <!-- 5 · FLOW (feature flow) -->
+  <!-- 5 · TRACE (feature flow) -->
   <section class="clip" data-clip="flow" data-steps="3">
     <div class="capbox">
       <div class="cap pn" data-at="0"><span class="num">✗</span><h1>Where does this<br>feature <em>start?</em></h1><div class="sub">grep → read → grep → read…</div></div>
-      <div class="cap" data-at="1"><span class="num">⌁</span><h1>one <em>flow</em></h1><div class="sub">name the feature, that's it</div></div>
+      <div class="cap" data-at="1"><span class="num">⌁</span><h1>one <em>trace</em></h1><div class="sub">name the feature, that's it</div></div>
       <div class="cap" data-at="2"><span class="num">⌁</span><h1>entry → data, <em>one call</em></h1><div class="sub">the feature as layered tiers</div></div>
     </div>
     <div class="screen">
       <div class="pain" data-at="0" data-swap><span class="d">$</span> <span class="g">grep "groups" · cat · grep · cat …</span><div class="n">15 files deep, still mapping it in your head</div></div>
-      <div class="term" data-at="1"><span class="d">$</span> <span class="cmd">repo-graph flow</span> groups</div>
+      <div class="term" data-at="1"><span class="d">$</span> <span class="cmd">repo-graph trace</span> groups</div>
       <div data-at="2">
         <div class="tier entry"><div class="lbl">ENTRY</div><div class="pills"><div class="pill">/groups</div><div class="pill">/groups/:id</div></div></div>
         <div class="arrow">↓</div>
@@ -224,7 +224,7 @@ GroupsController > MongoDB</div>
     <div class="capbox">
       <div class="cap" data-at="0"><span class="num">⇣</span><h1>Add it in <em>one line</em></h1><div class="sub">no API key · no account · runs local</div></div>
       <div class="cap" data-at="1"><span class="num">⇣</span><h1>works in <em>every</em> AI client</h1><div class="sub">it's just an MCP server</div></div>
-      <div class="cap" data-at="2"><span class="num">⇣</span><h1>mapped <em>instantly</em></h1><div class="sub">13 tools, ready to navigate</div></div>
+      <div class="cap" data-at="2"><span class="num">⇣</span><h1>mapped <em>instantly</em></h1><div class="sub">6 tools, ready to navigate</div></div>
     </div>
     <div class="screen">
       <div class="term" data-at="0"><span class="d">$</span> <span class="cmd">uvx mcp-repo-graph</span> <span class="m">--repo .</span></div>
@@ -233,7 +233,7 @@ GroupsController > MongoDB</div>
         <div class="pill">OpenAI Codex</div><div class="pill">Gemini CLI</div><div class="pill">Windsurf</div>
         <div class="pill">Antigravity</div><div class="pill">Claude Desktop</div><div class="pill">any MCP client</div>
       </div>
-      <div class="ok" data-at="2"><span class="c">✓</span> scanned <b>2,887 nodes</b> · <b>53</b> cross-stack links · <b>13 tools</b> ready</div>
+      <div class="ok" data-at="2"><span class="c">✓</span> scanned <b>2,887 nodes</b> · <b>53</b> cross-stack links · <b>6 tools</b> ready</div>
     </div>
   </section>
 

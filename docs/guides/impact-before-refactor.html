@@ -4,13 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Know what breaks before you change it · repo-graph</title>
-<meta name="description" content="See the downstream blast radius of a change before editing, grouped by tier, using repo-graph's impact and neighbours tools.">
+<meta name="description" content="See the downstream blast radius of a change before editing, grouped by tier, using repo-graph's impact tool.">
 <link rel="canonical" href="https://repo-graph.com/guides/impact-before-refactor">
 <meta name="theme-color" content="#0a0a0a">
 <meta property="og:type" content="article">
 <meta property="og:site_name" content="repo-graph">
 <meta property="og:title" content="Know what breaks before you change it">
-<meta property="og:description" content="See the downstream blast radius of a change before editing, grouped by tier, using repo-graph's impact and neighbours tools.">
+<meta property="og:description" content="See the downstream blast radius of a change before editing, grouped by tier, using repo-graph's impact tool.">
 <meta property="og:url" content="https://repo-graph.com/guides/impact-before-refactor">
 <meta property="og:image" content="https://repo-graph.com/og.png">
 <meta name="twitter:card" content="summary_large_image">
@@ -59,26 +59,26 @@
 <article><div class="wrap">
 <p class="eyebrow">How-to guide</p>
 <h1>Know what breaks before you change it</h1>
-<p class="lede">See the downstream blast radius of a change before editing, grouped by tier, using repo-graph's impact and neighbours tools.</p>
+<p class="lede">See the downstream blast radius of a change before editing, grouped by tier, using repo-graph's impact tool.</p>
 <p>Changing a function is easy. Knowing what else moves when you change it is the hard part. Without a map, your AI assistant greps for the symbol, reads a file, greps again, reads another, burning context and still missing call sites it never thought to search for.</p>
-<p>repo-graph gives your assistant a structural graph of the codebase, so it reads the blast radius off the graph instead of guessing. Two tools do the work here:</p>
+<p>repo-graph gives your assistant a structural graph of the codebase, so it reads the blast radius off the graph instead of guessing. One tool does the work here, at two depths:</p>
 <ul>
-<li><strong>impact</strong> — the downstream (and upstream) blast radius of a node, grouped by tier.</li>
-<li><strong>neighbours</strong> — the direct one-hop connections, when you only need the immediate ring.</li>
+<li><strong>impact</strong> — the forward (or backward) blast radius of a node, grouped by tier. Each row shows a <code>via &lt;reason&gt;</code> edge label and flags likely-dead code with <code>⊘</code>.</li>
+<li><strong>impact at depth 1</strong> — the direct one-hop connections, when you only need the immediate ring.</li>
 </ul>
 <h2>The pattern</h2>
 <p>Orient first, then scope. Before any edit, point your assistant at the thing you're about to touch.</p>
 <pre><code>You: I want to change the signature of validateSession. What breaks?
 </code></pre>
-<p>The assistant calls <strong>status</strong> to orient, then <strong>impact</strong> on <code>validateSession</code>. It comes back with every downstream node — handlers, middleware, the routes that hang off them — grouped by tier (entry, service, data). Now it knows the edit isn't local. It's a fan-out.</p>
+<p>The assistant calls <strong>orient</strong> to get its bearings, then <strong>impact</strong> on <code>validateSession</code>. It comes back with every downstream node — handlers, middleware, the routes that hang off them — grouped by tier (entry, service, data). Now it knows the edit isn't local. It's a fan-out.</p>
 <p>If you only care about what sits one hop away — say you're renaming a field and want the direct readers, not the whole transitive tail — ask for that instead:</p>
 <pre><code>You: Who calls getUserRole directly?
 </code></pre>
-<p>That's <strong>neighbours</strong>: the immediate ring, no transitive walk.</p>
+<p>That's <strong>impact</strong> at depth 1: the immediate ring, no transitive walk.</p>
 <h2>A real example</h2>
 <p>Take quokka-stack, a Go + Angular monorepo (~566 nodes / 620 edges). The bug: a reversed comparison operator in a permissions check.</p>
 <p>Without repo-graph, the assistant explored ~15 files (grep, read, grep, read), burned <strong>75,308 tokens</strong>, and took <strong>4m36s</strong>.</p>
-<p>With repo-graph, same bug, same model, same prompt: a flow lookup plus the handler file. <strong>2 files</strong>, <strong>29,838 tokens</strong>, ~<strong>30s</strong>.</p>
+<p>With repo-graph, same bug, same model, same prompt: a trace lookup plus the handler file. <strong>2 files</strong>, <strong>29,838 tokens</strong>, ~<strong>30s</strong>.</p>
 <p>The difference wasn't a smarter model. It was the model reading only what mattered.</p>
 <p>For a change instead of a read, the impact-first version looks like this:</p>
 <pre><code>You: Before I touch isGroupOpen, show me everything downstream of it.
@@ -100,11 +100,11 @@
 </tr>
 <tr>
 <td>"Who calls this directly?"</td>
-<td><strong>neighbours</strong></td>
+<td><strong>impact</strong> at depth 1</td>
 </tr>
 <tr>
 <td>"Where do I even start?"</td>
-<td><strong>status</strong></td>
+<td><strong>orient</strong></td>
 </tr>
 <tr>
 <td>"Where does the groups action hit the backend?"</td>
@@ -112,12 +112,12 @@
 </tr>
 <tr>
 <td>"Walk me through the login feature."</td>
-<td><strong>flow</strong></td>
+<td><strong>trace</strong></td>
 </tr>
 </tbody>
 </table>
 <p>The graph is cross-stack and covers 20+ languages, so impact on a backend handler can surface the frontend caller that hits it — the one a call-site grep would miss.</p>
-<p>After you've made the change, run <strong>reload</strong> so the graph reflects the new code before the next question.</p>
+<p>After you've made the change, run <strong>refresh</strong> so the graph reflects the new code before the next question.</p>
 <h2>Try it</h2>
 <pre><code class="language-bash">claude mcp add repo-graph -- uvx mcp-repo-graph --repo .
 </code></pre>

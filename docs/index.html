@@ -304,11 +304,17 @@ repo-graph --repo /path/to/your/repo">copy</button></pre>
       Your assistant queries the graph, finds the minimal set of files it needs, and reads only those.
       Less context burned, fewer wrong guesses, faster answers — for you and the model.
     </p>
+    <p class="muted" style="max-width:680px;margin-top:14px">
+      Six tools — one verb each, backed by the Rust engine. Every call returns a complete, ranked,
+      located answer in one shot, so your assistant doesn't spiral through a dozen lookups.
+    </p>
     <div class="grid" style="margin-top:22px">
-      <div class="card"><div class="k">Generation</div><div class="tools"><span class="pill">generate</span></div></div>
-      <div class="card"><div class="k">Navigation</div><div class="tools"><span class="pill">status</span><span class="pill">flow</span><span class="pill">trace</span><span class="pill">impact</span><span class="pill">neighbours</span></div></div>
-      <div class="card"><div class="k">Activation &amp; Context</div><div class="tools"><span class="pill">activate</span><span class="pill">find</span><span class="pill">dense_text</span></div></div>
-      <div class="card"><div class="k">Health &amp; Admin</div><div class="tools"><span class="pill">graph_view</span><span class="pill">reload</span></div></div>
+      <div class="card"><div class="k">orient</div><p class="muted" style="margin:6px 0 0">Repo shape, entry points, and where the graph is blind — so you know when to grep.</p></div>
+      <div class="card"><div class="k">find</div><p class="muted" style="margin:6px 0 0">Any text — symbol, keyword, stacktrace, failing test, or diff — → the ranked nodes that matter.</p></div>
+      <div class="card"><div class="k">impact</div><p class="muted" style="margin:6px 0 0">Blast radius: what a change affects or depends on, ranked and located, dead code flagged ⊘.</p></div>
+      <div class="card"><div class="k">trace</div><p class="muted" style="margin:6px 0 0">A feature end-to-end across the stack, or the path between two nodes.</p></div>
+      <div class="card"><div class="k">read</div><p class="muted" style="margin:6px 0 0">A node's exact source, sliced from its file — plus who calls it and what tests it.</p></div>
+      <div class="card"><div class="k">refresh</div><p class="muted" style="margin:6px 0 0">Rebuild the graph. Incremental, and it self-updates as you edit.</p></div>
     </div>
   </div>
 </section>
@@ -319,11 +325,11 @@ repo-graph --repo /path/to/your/repo">copy</button></pre>
     <p class="muted" style="max-width:680px">Say it in plain language to your assistant — repo-graph answers structurally, in one lookup, instead of grepping and reading files.</p>
     <div class="grid" style="margin-top:22px">
       <div class="card"><h3 class="muted">“Where does this frontend action end up in the backend?”</h3><div class="tools"><span class="pill">trace</span></div><p class="muted">Cross-stack path in one hop — grep can’t link stacks.</p></div>
-      <div class="card"><h3 class="muted">“What breaks if I change this component?”</h3><div class="tools"><span class="pill">impact</span></div><p class="muted">Full downstream blast radius by tier, including transitive.</p></div>
-      <div class="card"><h3 class="muted">“Show me how the login feature flows.”</h3><div class="tools"><span class="pill">flow</span></div><p class="muted">Entry point → handlers, mapped — not a keyword guess.</p></div>
-      <div class="card"><h3 class="muted">“Get enough context to work in this repo.”</h3><div class="tools"><span class="pill">dense_text</span></div><p class="muted">Whole-repo structural map, capped to fit the context window.</p></div>
-      <div class="card"><h3 class="muted">“Find everything related to billing.”</h3><div class="tools"><span class="pill">activate</span><span class="pill">find</span></div><p class="muted">Graph activation from seed terms — the relevant cluster, ranked.</p></div>
-      <div class="card"><h3 class="muted">“What’s connected to this file?”</h3><div class="tools"><span class="pill">neighbours</span></div><p class="muted">Immediate callers, callees and siblings around a node.</p></div>
+      <div class="card"><h3 class="muted">“What breaks if I change this component?”</h3><div class="tools"><span class="pill">impact</span></div><p class="muted">Ranked blast radius, forward or backward, with likely-dead code flagged ⊘.</p></div>
+      <div class="card"><h3 class="muted">“Show me how the login feature flows.”</h3><div class="tools"><span class="pill">trace</span></div><p class="muted">Entry point → handlers → data, each hop labelled — not a keyword guess.</p></div>
+      <div class="card"><h3 class="muted">“Get enough context to work in this repo.”</h3><div class="tools"><span class="pill">orient</span></div><p class="muted">Whole-repo structural map, capped to fit the context window.</p></div>
+      <div class="card"><h3 class="muted">“Find everything related to billing.”</h3><div class="tools"><span class="pill">find</span></div><p class="muted">The relevant cluster from a seed, ranked by relevance.</p></div>
+      <div class="card"><h3 class="muted">“Here’s a stacktrace — where do I even start?”</h3><div class="tools"><span class="pill">find</span></div><p class="muted">Paste the error; get the exact nodes it implicates, ranked.</p></div>
     </div>
   </div>
 </section>

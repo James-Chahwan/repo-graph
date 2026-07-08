@@ -4,9 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Is
 
-A thin **Python MCP server** that wraps the **glia** Rust engine (crate `repo-graph-py`, PyPI `repo-graph-py`). It exposes **13 MCP tools** across four tiers — generation, navigation, activation & context, health & admin — over any codebase.
+A thin **Python MCP server** that wraps the **glia** Rust engine (crate `repo-graph-py`, PyPI `repo-graph-py`). It exposes **6 MCP tools** — `orient`, `find`, `impact`, `trace`, `read`, `refresh` — over any codebase. Each is a natural verb backed by an engine primitive (v0.4.18: `blast_radius`, `cross_stack_trace`, `resolve`, `coverage`, `governing_docs`), so the wrapper stays thin — the engine owns ranking, `file`/`line` locating, and the `live` (dead-code) flag.
 
-The Python side is ~900 lines across 4 files. All parsing, graph building, storage (`.gmap`), and activation happen in Rust. The Python package only hosts the MCP server, the CLI entrypoints, and a thin wrapper over the pyo3 bindings.
+The Python side is ~900 lines across 4 files. All parsing, graph building, storage (`.gmap`), activation, ranking, locating, and liveness happen in Rust. The Python package only hosts the MCP server, the CLI entrypoints, and a thin wrapper over the pyo3 bindings.
 
 ## Commands
 
@@ -40,42 +40,49 @@ Cache writes are best-effort: a read-only filesystem or perms error doesn't brea
 
 ```bash
 pip install -e ".[dev]"          # installs pytest + pytest-asyncio
-pytest                           # full suite (65 tests in ~9s, incl. e2e subprocess)
+pytest                           # full suite (133 tests in ~9s, incl. e2e subprocess)
 pytest -m "not e2e"              # fast loop — skip MCP subprocess spin-up
 pytest -m perf                   # opt-in performance gates
 pytest -m e2e                    # only MCP-over-stdio end-to-end tests
 ```
 
-Six test layers:
-- `test_mcp_tools.py` — in-process @mcp.tool function calls (22 tests)
-- `test_mcp_e2e.py` — spawn `repo-graph` subprocess, talk MCP/JSON-RPC over stdio (14 tests)
+Test layers:
+- `test_mcp_tools.py` — in-process @mcp.tool function calls, the 6-tool surface (35 tests)
+- `test_mcp_e2e.py` — spawn `repo-graph` subprocess, talk MCP/JSON-RPC over stdio (12 tests)
+- `test_installer.py` — `repo-graph install` config writers across agents (45 tests)
 - `test_cache.py` — `.gmap` cache reuse roundtrip + incremental parse cache (9 tests)
-- `test_init.py` — `repo-graph-init` bootstrap CLI (5 tests)
-- `test_packaging.py` — install surface: `uvx`-runnable console script + server.json sync (3 tests)
+- `test_watcher.py` — in-server file watcher (7 tests)
+- `test_grade.py` — bench recall/precision grader (7 tests)
+- `test_packaging.py` — install surface: `uvx`-runnable console script + annotations (7 tests)
 - `test_perf.py` — generate/dense_text/activate budgets (6 tests)
+- `test_init.py` — `repo-graph-init` bootstrap CLI (5 tests)
 
 ## Architecture
 
 ```
 repo_graph/
-  server.py   MCP server — 13 tools across 4 tiers, wraps repo-graph-py
+  server.py   MCP server — 6 tools, thin presentation over engine primitives
   graph.py    Graph loader — reads .gmap via pyo3, BFS traversal helpers
   init.py     repo-graph-init CLI — bootstraps a target repo
   __init__.py empty
 ```
 
-The Rust engine lives in a separate repo (`glia` at `/home/ivy/Code/glia`) as of 2026-05-09. This repo no longer carries a `rust/` subtree — it was removed on 2026-06-10 once the glia CI wheel matrix was green and `repo-graph-py>=0.4.16` shipped all five platform wheels. This repo is purely the Python MCP wrapper; the engine consumes the published `repo-graph-py` wheel.
+The Rust engine lives in a separate repo (`glia` at `/home/ivy/Code/glia`) as of 2026-05-09. This repo no longer carries a `rust/` subtree — it was removed on 2026-06-10 once the glia CI wheel matrix was green. This repo is purely the Python MCP wrapper; the engine consumes the published `repo-graph-py` wheel (`>=0.4.18`).
 
-### MCP tool tiers
+### The 6 MCP tools
 
-- **Generation**: `generate` — scan codebase and (re)build graph
-- **Navigation**: `status`, `flow`, `trace`, `impact`, `neighbours`, `read`
-- **Activation & Context**: `activate`, `find`, `locate`, `dense_text`
-- **Health & Admin**: `graph_view`, `reload`
+Collapsed from 13 in the v0.4.18 cycle (reverse handoff `../glia/dev-notes/repo-graph-handoff-v0.4.18.md`, §4). Each verb folds several old tools into one engine primitive:
 
-`read` slices a node's source from its file span (engine GR-1). `locate` resolves a stacktrace/failing-test/diff to seed nodes then ranks the surrounding subgraph (engine GR-2). `impact` takes comma-separated nodes (whole-diff blast radius). `activate`/`impact`/`locate` take `mode=prose` for primed-prose output; `activate` takes a `profile` (default/repair/review/onboard); `dense_text` takes `seed=` for a scoped map. Most read tools take a `budget` char cap.
+- **`orient`** (← `status` + `dense_text` + `graph_view` + `coverage`) — overview + entry points + a `blind spots` note (from engine `coverage()`) flagging which languages/edges are under-linked so the agent falls back to grep deliberately. `seed=<node>` → scoped map; `full=true` → whole-repo dense map.
+- **`find`** (← `find` + `locate` + `activate`) — any text → ranked located nodes. A symbol/keyword returns matches; a pasted stacktrace/failing-test/diff is resolved via engine `resolve`. `expand=true` fans out to the PPR-ranked neighbourhood. Every row carries `path:line`.
+- **`impact`** (← `impact` + `neighbours`) — blast radius via engine `blast_radius`: complete, deduped, PPR-ranked, located, live-filtered closure with a per-node `via <reason>` and `⊘` dead-code marker. Structural import/containment fan-out is excluded (no noise). `direction` forward/backward/both (downstream/upstream aliases); `live_only` drops likely-dead; depth-1 both = neighbours. Comma-separate nodes for a whole-diff radius.
+- **`trace`** (← `flow` + `trace`) — one arg: feature end-to-end via engine `cross_stack_trace` (mechanism-labelled hops, cross-service marked), falling back to entry-point flow layering. Two args: shortest path A→B.
+- **`read`** — a node's exact source sliced from its span, plus a `context:` footer from `node_cells` (method / cross-stack callers / covering tests / intent-decision-constraint). Comma-separate to batch-read a ranked set.
+- **`refresh`** (← `generate` + `reload`) — rebuild the graph; `repo_path` retargets (path or git URL), `full=true` forces a clean reparse. Incremental by default; routine edits are auto-picked-up by the file watcher.
 
-Lock: the public tool surface is asserted by `tests/test_mcp_tools.py::test_thirteen_tools_decorated` (checked against the live MCP registry, catches added *and* removed tools). Adding or removing a tool must update both `server.py` and this list.
+Most read tools take a `budget` char cap. Liveness (`live`/`⊘`) and `file`/`line` come from the engine now — the wrapper no longer re-derives them.
+
+Lock: the public tool surface is asserted by `tests/test_mcp_tools.py::test_six_tools_decorated` (checked against the live MCP registry, catches added *and* removed tools) and `tests/test_installer.py::test_tool_names_match_server_registry`. Adding or removing a tool must update `server.py`, `installer/constants.py` `TOOL_NAMES`, and this list in lockstep.
 
 ### Python/Rust boundary
 

@@ -26,11 +26,12 @@ On activation the extension provisions an MCP stdio server:
 uvx mcp-repo-graph --repo <your-workspace-folder>
 ```
 
-VS Code's agent then gets repo-graph's 13 tools (`status`, `flow`, `trace`,
-`impact`, `read`, `activate`, `find`, `locate`, `dense_text`, `graph_view`, …).
-`locate` turns a stacktrace or failing test into the relevant nodes; `read`
-pulls a node's exact source. The `--repo` argument follows your active workspace
-folder automatically.
+VS Code's agent then gets repo-graph's 6 tools: `orient` (repo shape + where the
+graph is blind), `find` (a symbol, keyword, stacktrace, failing test, or diff →
+the ranked nodes that matter), `impact` (blast radius, dead code flagged `⊘`),
+`trace` (a feature end-to-end, or the path between two nodes), `read` (a node's
+exact source), and `refresh` (rebuild). The `--repo` argument follows your active
+workspace folder automatically.
 
 ## Usage
 

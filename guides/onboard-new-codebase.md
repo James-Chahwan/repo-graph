@@ -1,6 +1,6 @@
 ---
 title: "Understand a new repo before you touch it"
-description: "Onboard to an unfamiliar codebase without reading every file. Use repo-graph's status, dense_text, flow, and graph_view to orient and drill in."
+description: "Onboard to an unfamiliar codebase without reading every file. Use repo-graph's orient and trace to map the shape and drill into features."
 tags: [onboarding, mcp, code-navigation, ai-assistants, repo-graph]
 ---
 
@@ -10,31 +10,31 @@ You've cloned a repo you've never seen. The usual move is grep, read, grep, read
 
 Here's the order that works.
 
-## 1. status — orient first
+## 1. orient — get your bearings first
 
-Before any grepping, ask your assistant to call `status`. You get a read on the graph: what's there, the shape of it, where the weight sits. It's the "where am I" step.
+Before any grepping, ask your assistant to call `orient`. You get a read on the graph: what's there, the shape of it, where the weight sits. It also prints a "blind spots" note — which languages and edge-types the graph under-links, so you know exactly where to fall back to grep. It's the "where am I" step.
 
-> "What does this codebase look like? Run status."
+> "What does this codebase look like? Run orient."
 
-## 2. dense_text — the whole-repo map
+## 2. orient full=true — the whole-repo map
 
-`dense_text` is the primary context dump: the full graph as dense text. One call gives the model the structure of the repo without it opening a single source file. This is the move that saves the most context.
+`orient full=true` is the primary context dump: the full graph as dense text. One call gives the model the structure of the repo without it opening a single source file. This is the move that saves the most context.
 
 > "Give me the full map of this repo."
 
 The model now knows the entities and how they connect. It can answer architecture questions straight away.
 
-## 3. flow — drill into one feature
+## 3. trace — drill into one feature
 
-Once you're oriented, scope down. `flow` traces a feature from entry to service to data, so you can follow one path without reading the files it touches.
+Once you're oriented, scope down. `trace`, given a single feature, traces it from entry to service to data, so you can follow one path without reading the files it touches.
 
 > "Show me the flow for user authentication."
 
 You get the entry point, the services it calls, the data it hits. That's the feature, end to end.
 
-## 4. graph_view — a tree when you want one
+## 4. orient <node> — a tree when you want one
 
-`graph_view` gives an ASCII overview or a node tree. Handy when you want to eyeball the hierarchy under a node rather than read prose.
+`orient <node>` gives a tree scoped around a node, and plain `orient` an ASCII overview. Handy when you want to eyeball the hierarchy under a node rather than read prose.
 
 > "Show me a tree view of the payments module."
 
@@ -57,9 +57,9 @@ The only difference between the two runs is whether repo-graph is installed.
 
 ## The other tools, briefly
 
-You've got 11 across four tiers. Beyond the four above: `generate` (scan and build the graph, from a local path or a git URL), `impact` (blast radius up and down the tiers), `neighbours` (one-hop connections), `activate` (spreading activation from seed nodes), `find` (match nodes by name), `reload` (re-scan after you change code).
+You've got 6 verbs total. Beyond the ones above: `find` (match nodes by name, or paste a stacktrace/test/diff to jump to the code; add `expand=true` for the PPR-ranked cluster around your seeds), `impact` (forward/backward blast radius, with a `⊘` marker on likely-dead code), `read` (pull a node's exact source), `refresh` (re-scan after you change code, or from a local path or a git URL).
 
-The habit to build: before grepping or reading files, `status` to orient, then `dense_text` for full context, or `find` / `activate` / `flow` to scope in.
+The habit to build: before grepping or reading files, `orient` first, then `orient full=true` for full context, or `find` / `trace` to scope in.
 
 ## Try it
 

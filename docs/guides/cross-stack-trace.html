@@ -4,13 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Trace a frontend action to its backend handler · repo-graph</title>
-<meta name="description" content="Follow a feature across the stack with repo-graph trace, flow, and find instead of grepping both sides and guessing the link.">
+<meta name="description" content="Follow a feature across the stack with repo-graph trace and find instead of grepping both sides and guessing the link.">
 <link rel="canonical" href="https://repo-graph.com/guides/cross-stack-trace">
 <meta name="theme-color" content="#0a0a0a">
 <meta property="og:type" content="article">
 <meta property="og:site_name" content="repo-graph">
 <meta property="og:title" content="Trace a frontend action to its backend handler">
-<meta property="og:description" content="Follow a feature across the stack with repo-graph trace, flow, and find instead of grepping both sides and guessing the link.">
+<meta property="og:description" content="Follow a feature across the stack with repo-graph trace and find instead of grepping both sides and guessing the link.">
 <meta property="og:url" content="https://repo-graph.com/guides/cross-stack-trace">
 <meta property="og:image" content="https://repo-graph.com/og.png">
 <meta name="twitter:card" content="summary_large_image">
@@ -59,16 +59,16 @@
 <article><div class="wrap">
 <p class="eyebrow">How-to guide</p>
 <h1>Trace a frontend action to its backend handler</h1>
-<p class="lede">Follow a feature across the stack with repo-graph trace, flow, and find instead of grepping both sides and guessing the link.</p>
+<p class="lede">Follow a feature across the stack with repo-graph trace and find instead of grepping both sides and guessing the link.</p>
 <p>A button gets clicked in the UI. Somewhere on the backend a route handles it. Between those two points sit an HTTP call, a router definition, a controller, maybe a service. The usual way to find the handler: grep the frontend, read a file, grep the backend, read another, then squint at the path string to guess the link. That burns context and time.</p>
 <p>repo-graph already knows the link. It builds a structural graph of the codebase across 20+ languages and frameworks, frontend to backend, and <code>trace</code> returns the shortest path between two nodes. Your AI assistant calls the tool instead of reading half the repo.</p>
 <h2>The pattern</h2>
 <ol>
-<li><strong>Orient.</strong> Before grepping anything, the model calls <code>status</code> to see the shape of the codebase: tiers, languages, entry points.</li>
+<li><strong>Orient.</strong> Before grepping anything, the model calls <code>orient</code> to see the shape of the codebase: tiers, languages, entry points.</li>
 <li><strong>Find the ends.</strong> Use <code>find</code> to match the frontend node (the component or action) and the backend node (the route or handler) by name.</li>
 <li><strong>Connect them.</strong> <code>trace</code> returns the shortest path between the two nodes. That path is the answer.</li>
 </ol>
-<p>If you don't know the backend end yet, <code>flow</code> does the legwork: give it a feature and it returns entry -&gt; service -&gt; data in order.</p>
+<p>If you don't know the backend end yet, <code>trace</code> with a single argument does the legwork: give it a feature and it returns entry -&gt; service -&gt; data in order.</p>
 <h2>Worked example</h2>
 <p>Say you're chasing a bug in a Go + Angular monorepo. The groups list shows the wrong open/closed state. You suspect a backend comparison.</p>
 <p>You type to your assistant:</p>
@@ -80,19 +80,19 @@
 <blockquote>
 <p>Show me the full flow for the groups feature.</p>
 </blockquote>
-<p>That's <code>flow</code> — entry component, the HTTP service, the route, the handler, the data layer, in order. You open the handler, spot the reversed comparison operator, fix it.</p>
+<p>That's <code>trace</code> with one argument — entry component, the HTTP service, the route, the handler, the data layer, in order. You open the handler, spot the reversed comparison operator, fix it.</p>
 <p>On quokka-stack (~566 nodes / 620 edges) that exact bug, same model and same prompt both runs:</p>
 <ul>
 <li><strong>Without repo-graph:</strong> 75,308 tokens, 4m36s, ~15 files explored (grep, read, grep, read).</li>
-<li><strong>With repo-graph:</strong> 29,838 tokens, ~30s, 2 files — a flow lookup and the handler file.</li>
+<li><strong>With repo-graph:</strong> 29,838 tokens, ~30s, 2 files — a trace lookup and the handler file.</li>
 </ul>
 <p>Same bug, same model, same prompt. The only difference is whether repo-graph is installed.</p>
 <h2>Prompts and the tool that answers</h2>
 <ul>
 <li>"Where does the groups action hit the backend?" -&gt; <code>trace</code></li>
-<li>"Show me the full flow for the groups feature." -&gt; <code>flow</code></li>
+<li>"Show me the full flow for the groups feature." -&gt; <code>trace</code></li>
 <li>"What's the route node for the groups endpoint?" -&gt; <code>find</code></li>
-<li>"What's the layout of this repo?" -&gt; <code>status</code></li>
+<li>"What's the layout of this repo?" -&gt; <code>orient</code></li>
 <li>"What breaks if I change this handler?" -&gt; <code>impact</code></li>
 </ul>
 <p>You don't name the tools yourself. You ask the question in plain English; the assistant picks the tool from the graph.</p>
@@ -103,7 +103,7 @@
 <p>Or run it zero-install in any session:</p>
 <pre><code class="language-bash">uvx mcp-repo-graph --repo .
 </code></pre>
-<p>After you change code, ask the model to <code>reload</code> so the graph reflects the new source.</p>
+<p>After you change code, ask the model to <code>refresh</code> so the graph reflects the new source.</p>
 <p>More at <a href="https://repo-graph.com">repo-graph.com</a>.</p>
 </div></article>
 <footer><div class="wrap"><div class="cmd">$ <b>pip install mcp-repo-graph</b></div><a href="/guides/">‹ All guides</a> &nbsp;·&nbsp; <a href="https://github.com/James-Chahwan/repo-graph">GitHub</a> &nbsp;·&nbsp; repo-graph.com</div></footer>

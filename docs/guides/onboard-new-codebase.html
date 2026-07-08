@@ -4,13 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Understand a new repo before you touch it · repo-graph</title>
-<meta name="description" content="Onboard to an unfamiliar codebase without reading every file. Use repo-graph's status, dense_text, flow, and graph_view to orient and drill in.">
+<meta name="description" content="Onboard to an unfamiliar codebase without reading every file. Use repo-graph's orient and trace to map the shape and drill into features.">
 <link rel="canonical" href="https://repo-graph.com/guides/onboard-new-codebase">
 <meta name="theme-color" content="#0a0a0a">
 <meta property="og:type" content="article">
 <meta property="og:site_name" content="repo-graph">
 <meta property="og:title" content="Understand a new repo before you touch it">
-<meta property="og:description" content="Onboard to an unfamiliar codebase without reading every file. Use repo-graph's status, dense_text, flow, and graph_view to orient and drill in.">
+<meta property="og:description" content="Onboard to an unfamiliar codebase without reading every file. Use repo-graph's orient and trace to map the shape and drill into features.">
 <meta property="og:url" content="https://repo-graph.com/guides/onboard-new-codebase">
 <meta property="og:image" content="https://repo-graph.com/og.png">
 <meta name="twitter:card" content="summary_large_image">
@@ -59,28 +59,28 @@
 <article><div class="wrap">
 <p class="eyebrow">How-to guide</p>
 <h1>Understand a new repo before you touch it</h1>
-<p class="lede">Onboard to an unfamiliar codebase without reading every file. Use repo-graph's status, dense_text, flow, and graph_view to orient and drill in.</p>
+<p class="lede">Onboard to an unfamiliar codebase without reading every file. Use repo-graph's orient and trace to map the shape and drill into features.</p>
 <p>You've cloned a repo you've never seen. The usual move is grep, read, grep, read, until you've burned an hour and most of your context window guessing at structure. repo-graph skips that. It hands your AI assistant a structural map of the codebase (entities, relationships, feature flows) so the model goes to the right files instead of reading everything first. Works across 20+ languages and frameworks, frontend to backend.</p>
 <p>Here's the order that works.</p>
-<h2>1. status — orient first</h2>
-<p>Before any grepping, ask your assistant to call <code>status</code>. You get a read on the graph: what's there, the shape of it, where the weight sits. It's the "where am I" step.</p>
+<h2>1. orient — get your bearings first</h2>
+<p>Before any grepping, ask your assistant to call <code>orient</code>. You get a read on the graph: what's there, the shape of it, where the weight sits. It also prints a "blind spots" note — which languages and edge-types the graph under-links, so you know exactly where to fall back to grep. It's the "where am I" step.</p>
 <blockquote>
-<p>"What does this codebase look like? Run status."</p>
+<p>"What does this codebase look like? Run orient."</p>
 </blockquote>
-<h2>2. dense_text — the whole-repo map</h2>
-<p><code>dense_text</code> is the primary context dump: the full graph as dense text. One call gives the model the structure of the repo without it opening a single source file. This is the move that saves the most context.</p>
+<h2>2. orient full=true — the whole-repo map</h2>
+<p><code>orient full=true</code> is the primary context dump: the full graph as dense text. One call gives the model the structure of the repo without it opening a single source file. This is the move that saves the most context.</p>
 <blockquote>
 <p>"Give me the full map of this repo."</p>
 </blockquote>
 <p>The model now knows the entities and how they connect. It can answer architecture questions straight away.</p>
-<h2>3. flow — drill into one feature</h2>
-<p>Once you're oriented, scope down. <code>flow</code> traces a feature from entry to service to data, so you can follow one path without reading the files it touches.</p>
+<h2>3. trace — drill into one feature</h2>
+<p>Once you're oriented, scope down. <code>trace</code>, given a single feature, traces it from entry to service to data, so you can follow one path without reading the files it touches.</p>
 <blockquote>
 <p>"Show me the flow for user authentication."</p>
 </blockquote>
 <p>You get the entry point, the services it calls, the data it hits. That's the feature, end to end.</p>
-<h2>4. graph_view — a tree when you want one</h2>
-<p><code>graph_view</code> gives an ASCII overview or a node tree. Handy when you want to eyeball the hierarchy under a node rather than read prose.</p>
+<h2>4. orient <node> — a tree when you want one</h2>
+<p><code>orient &lt;node&gt;</code> gives a tree scoped around a node, and plain <code>orient</code> an ASCII overview. Handy when you want to eyeball the hierarchy under a node rather than read prose.</p>
 <blockquote>
 <p>"Show me a tree view of the payments module."</p>
 </blockquote>
@@ -98,8 +98,8 @@
 </ul>
 <p>The only difference between the two runs is whether repo-graph is installed.</p>
 <h2>The other tools, briefly</h2>
-<p>You've got 11 across four tiers. Beyond the four above: <code>generate</code> (scan and build the graph, from a local path or a git URL), <code>impact</code> (blast radius up and down the tiers), <code>neighbours</code> (one-hop connections), <code>activate</code> (spreading activation from seed nodes), <code>find</code> (match nodes by name), <code>reload</code> (re-scan after you change code).</p>
-<p>The habit to build: before grepping or reading files, <code>status</code> to orient, then <code>dense_text</code> for full context, or <code>find</code> / <code>activate</code> / <code>flow</code> to scope in.</p>
+<p>You've got 6 verbs total. Beyond the ones above: <code>find</code> (match nodes by name, or paste a stacktrace/test/diff to jump to the code; add <code>expand=true</code> for the PPR-ranked cluster around your seeds), <code>impact</code> (forward/backward blast radius, with a <code>⊘</code> marker on likely-dead code), <code>read</code> (pull a node's exact source), <code>refresh</code> (re-scan after you change code, or from a local path or a git URL).</p>
+<p>The habit to build: before grepping or reading files, <code>orient</code> first, then <code>orient full=true</code> for full context, or <code>find</code> / <code>trace</code> to scope in.</p>
 <h2>Try it</h2>
 <pre><code class="language-bash">uvx mcp-repo-graph --repo .
 </code></pre>

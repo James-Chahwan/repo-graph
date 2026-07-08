@@ -2,7 +2,7 @@
   "manifest_version": "0.2",
   "name": "repo-graph",
   "display_name": "repo-graph \u2014 structural codebase map for AI",
-  "version": "0.4.19",
+  "version": "0.4.20",
   "description": "Structural graph memory for AI coding assistants \u2014 navigate any codebase by structure, not guesswork.",
   "long_description": "repo-graph gives the assistant a structural map of your codebase \u2014 entities, relationships, and feature flows \u2014 so it navigates straight to the files that matter instead of grepping. It runs locally via uvx; nothing leaves your machine except a user-initiated git clone when you point it at a git URL.",
   "author": {
@@ -38,56 +38,28 @@
   },
   "tools": [
     {
-      "name": "generate",
-      "description": "Scan the codebase and (re)build the structural graph (incremental)"
-    },
-    {
-      "name": "status",
-      "description": "Repo overview: counts, kinds, entry points"
-    },
-    {
-      "name": "dense_text",
-      "description": "Graph in dense sigil notation (whole or seed-scoped)"
-    },
-    {
-      "name": "flow",
-      "description": "End-to-end flow for a feature, entry point to data"
-    },
-    {
-      "name": "trace",
-      "description": "Shortest path between two nodes"
-    },
-    {
-      "name": "impact",
-      "description": "Blast radius: what nodes affect or depend on (multi-seed)"
-    },
-    {
-      "name": "neighbours",
-      "description": "Direct connections to and from a node"
-    },
-    {
-      "name": "read",
-      "description": "Return a node's source, sliced from its file by line span"
-    },
-    {
-      "name": "activate",
-      "description": "Spreading activation (PPR) from seed nodes"
+      "name": "orient",
+      "description": "Repo overview, entry points, and where the graph is blind; full or seed-scoped structural map"
     },
     {
       "name": "find",
-      "description": "Find nodes by name or qualified-name pattern"
+      "description": "Any text — symbol, keyword, stacktrace, failing test, or diff — to the ranked nodes that matter"
     },
     {
-      "name": "locate",
-      "description": "Resolve a stacktrace / failing test / diff to the most relevant nodes"
+      "name": "impact",
+      "description": "Blast radius: what a node affects or depends on — ranked, located, dead code flagged"
     },
     {
-      "name": "graph_view",
-      "description": "Visual ASCII map of a node or the overview"
+      "name": "trace",
+      "description": "A feature end-to-end across the stack, or the shortest path between two nodes"
     },
     {
-      "name": "reload",
-      "description": "Re-generate the graph from source"
+      "name": "read",
+      "description": "Return a node's source, sliced from its file by line span (batch-capable)"
+    },
+    {
+      "name": "refresh",
+      "description": "Rebuild the structural graph from source (incremental; full reparse optional)"
     }
   ],
   "user_config": {

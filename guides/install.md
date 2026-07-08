@@ -64,22 +64,22 @@ Prefer a pinned install over `uvx`? `pip install mcp-repo-graph`.
 
 Build the graph, then orient. Tell your assistant:
 
-> Generate the repo-graph, then call status.
+> Refresh the repo-graph, then call orient.
 
-`generate` scans the repo and builds the graph. It also takes a git URL if you want to point at a remote repo. `status` reports what it found. If you get a summary back, you're set.
+`refresh` scans the repo and builds the graph. It also takes a git URL if you want to point at a remote repo. `orient` reports what it found. If you get a summary back, you're set.
 
 ## How you actually use it
 
-The pattern: before grepping or reading files, ask the model to call `status` to orient, then `dense_text` for full context, or `activate` / `find` / `flow` to scope in. Some prompts and the tool that answers them:
+The pattern: before grepping or reading files, ask the model to call `orient` first, then `orient full=true` for the whole-graph map, or `find` / `trace` to scope in. Some prompts and the tool that answers them:
 
-- "Where does the groups action hit the backend?" → `trace` (shortest path between two nodes)
-- "Walk me through the checkout feature." → `flow` (entry → service → data)
-- "What breaks if I change this handler?" → `impact` (downstream/upstream blast radius)
-- "What's directly wired to this node?" → `neighbours` (one-hop connections)
+- "Where does the groups action hit the backend?" → `trace` (two args = shortest path between two nodes)
+- "Walk me through the checkout feature." → `trace` (one arg = a feature end to end, entry → service → data)
+- "What breaks if I change this handler?" → `impact` (forward/backward blast radius)
+- "What's directly wired to this node?" → `impact` at depth 1 (the direct connections)
 - "Find the auth middleware." → `find` (match by name or qname)
-- "Give me an ASCII overview." → `graph_view`
+- "Give me an ASCII overview." → `orient` (overview)
 
-After you change code, `reload` rebuilds the graph.
+After you change code, `refresh` rebuilds the graph.
 
 ## What it changes
 
@@ -88,7 +88,7 @@ A run on quokka-stack, a Go + Angular monorepo (~566 nodes / 620 edges), fixing 
 | | Tokens | Time | Files touched |
 |---|---|---|---|
 | Without repo-graph | 75,308 | 4m36s | ~15 (grep, read, grep, read...) |
-| With repo-graph | 29,838 | ~30s | 2 (a flow lookup + the handler) |
+| With repo-graph | 29,838 | ~30s | 2 (a trace lookup + the handler) |
 
 The only difference is whether repo-graph is installed.
 

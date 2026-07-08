@@ -2,7 +2,7 @@
   "name": "repo-graph",
   "displayName": "repo-graph — structural codebase map for AI",
   "description": "Zero-config MCP server that gives AI coding assistants a structural graph of your workspace — navigate by structure, not grep.",
-  "version": "0.4.19",
+  "version": "0.4.20",
   "publisher": "james-chahwan",
   "license": "MIT",
   "icon": "media/icon.png",
