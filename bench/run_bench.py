@@ -74,7 +74,8 @@ def _rate_limit_from_events(events: list, result: dict | None) -> tuple[bool, in
     return limited, resets
 
 
-def run_agent(prompt: str, workdir: Path, arm: str, model: str, max_turns: int) -> dict:
+def run_agent(prompt: str, workdir: Path, arm: str, model: str, max_turns: int,
+              force_graph: bool = False) -> dict:
     """Run one headless Claude session; return parsed metrics (or {'error':...})."""
     mcp_cfg = RG_MCP if arm == "with" else EMPTY_MCP
     cmd = [
@@ -83,9 +84,19 @@ def run_agent(prompt: str, workdir: Path, arm: str, model: str, max_turns: int) 
         "--output-format", "json",
         "--mcp-config", str(mcp_cfg),
         "--strict-mcp-config",              # ONLY these servers -> fair, isolated
+        # Load ONLY project settings — NOT the operator's user-level plugins/hooks.
+        # Without this, a user-installed Stop hook (e.g. a memory-save plugin) fires
+        # inside the agent's session and derails long runs into off-task work,
+        # silently contaminating every result. Auth is unaffected.
+        "--setting-sources", "project",
         "--permission-mode", "bypassPermissions",
         "--max-turns", str(max_turns),
     ]
+    if arm == "with" and force_graph:
+        # Isolate the graph's intrinsic value: take away text search so the agent
+        # MUST navigate via repo-graph tools (+ Read), removing the "weak model
+        # never calls the tool" confound.
+        cmd += ["--disallowedTools", "Grep", "Glob", "Bash"]
     env = dict(os.environ, REPO_GRAPH_WATCH="0")
     t0 = time.time()
     proc = subprocess.run(cmd, cwd=str(workdir), env=env, capture_output=True, text=True)
@@ -102,12 +113,13 @@ def run_agent(prompt: str, workdir: Path, arm: str, model: str, max_turns: int) 
     return _metrics(events, wall)
 
 
-def run_with_retries(prompt: str, wd: Path, arm: str, model: str, max_turns: int) -> dict:
+def run_with_retries(prompt: str, wd: Path, arm: str, model: str, max_turns: int,
+                     force_graph: bool = False) -> dict:
     """Run one session, waiting out rate limits (until reset) and retrying
     transient errors, so an unattended full matrix completes whenever it can."""
     m: dict = {}
     for attempt in range(1, MAX_RETRIES + 1):
-        m = run_agent(prompt, wd, arm, model, max_turns)
+        m = run_agent(prompt, wd, arm, model, max_turns, force_graph)
         if m.get("rate_limited"):
             now = time.time()
             resets = m.get("resets_at")
@@ -203,6 +215,8 @@ def prepare_repo(repo: dict) -> tuple[Path, Path] | None:
         ".git", ".venv", "venv", "node_modules", ".ai", "__pycache__",
         "dist", "build", "target", "*.egg-info", ".pytest_cache", ".cache",
         "*.mp4", "*.vsix", "*.mcpb",
+        # big non-code binaries (oci ships a 300MB tarball + 39MB dump)
+        "*.tar.gz", "*.tar", "*.dump", "*.sqlite", "*.zip", "*.bin",
     )
     clean = CACHE / "work" / f"{name}-clean"
     withd = CACHE / "work" / f"{name}-rg"
@@ -226,8 +240,12 @@ def _agg(values: list[float]) -> dict:
     if not values:
         return {"median": None, "p25": None, "p75": None, "n": 0}
     s = sorted(values)
-    q = statistics.quantiles(s, n=4) if len(s) >= 2 else [s[0], s[0], s[0]]
-    return {"median": statistics.median(s), "p25": q[0], "p75": q[2], "n": len(s)}
+    if len(s) >= 4:
+        q = statistics.quantiles(s, n=4, method="inclusive")  # no out-of-range extrapolation
+        lo, hi = q[0], q[2]
+    else:
+        lo, hi = s[0], s[-1]  # small n: show min-max, not nonsense quantiles
+    return {"median": statistics.median(s), "p25": lo, "p75": hi, "n": len(s)}
 
 
 def summarize(runs: list[dict]) -> dict:
@@ -295,6 +313,9 @@ def main() -> int:
     ap.add_argument("--out", default=str(BENCH_DIR / "RESULTS.md"))
     ap.add_argument("--max-turns", type=int, default=40)
     ap.add_argument("--fresh", action="store_true", help="ignore any checkpoint and start over")
+    ap.add_argument("--force-graph", action="store_true",
+                    help="with-arm must navigate via repo-graph: disallow Grep/Glob/Bash "
+                         "(isolates the graph's value from whether the model chooses to call it)")
     args = ap.parse_args()
 
     if shutil.which("claude") is None:
@@ -309,7 +330,7 @@ def main() -> int:
 
     # Resume from a checkpoint so a killed/throttled long run continues instead of
     # rerunning completed cells. Keyed by model so switching models starts clean.
-    ckpt_path = CACHE / "checkpoint.json"
+    ckpt_path = CACHE / f"checkpoint-{Path(args.out).stem}.json"
     ckpt = {}
     if not args.fresh and ckpt_path.is_file():
         try:
@@ -345,7 +366,7 @@ def main() -> int:
             arm_runs = {"without": [], "with": []}
             for arm, wd in (("without", clean), ("with", withd)):
                 for i in range(runs):
-                    m = run_with_retries(task["prompt"], wd, arm, model, args.max_turns)
+                    m = run_with_retries(task["prompt"], wd, arm, model, args.max_turns, args.force_graph)
                     m["correct"] = is_correct(m, task["targets"])
                     arm_runs[arm].append(m)
                     tag = "OK" if m["correct"] else ("ERR" if m.get("error") else "miss")

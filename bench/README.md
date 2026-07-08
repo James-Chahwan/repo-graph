@@ -72,10 +72,14 @@ Either way, trim it with fewer `runs`, fewer repos, or a lower `--max-turns`.
   in either.
 - **Fresh clones.** Each run copies a pinned clone; the without arm never sees a
   repo-graph `.mcp.json`/`CLAUDE.md`.
-- **Residual confound.** The harness runs on your machine, so your global
-  `~/.claude/CLAUDE.md` and installed plugins apply to *both* arms equally. They
-  don't bias the delta, but for a pristine number run on a clean account. Pin
-  clone refs to commits (not branches) for byte-exact reproducibility.
+- **Operator-config isolation.** The harness passes `--setting-sources project`
+  so the agent loads ONLY the target repo's settings — not your user-level plugins
+  and hooks. This matters: a user-installed **Stop hook** (e.g. a memory-save
+  plugin) otherwise fires *inside* the agent's session and derails long runs into
+  off-task work — and it does NOT cancel out across arms, because it bites the arm
+  that takes more turns harder. (Auth survives `--setting-sources project`.) For a
+  fully pristine number, also run under a clean `CLAUDE_CONFIG_DIR`. Pin clone
+  refs to commits (not branches) for byte-exact reproducibility.
 - **Correctness is a proxy.** It checks that the target file/symbol shows up in
   the answer or the agent's file footprint. It confirms the agent reached the
   right place; it is not a full grader.

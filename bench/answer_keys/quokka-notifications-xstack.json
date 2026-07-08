@@ -1,0 +1,22 @@
+{
+  "task": "quokka-stack-notifications-blast-radius",
+  "repo": "quokka-stack",
+  "question": "This is a monorepo with THREE projects: a Go backend (turps/), an Angular web app (quokka_web/), and a Flutter mobile app (quokka_android/). The backend's notifications endpoint (GET /protected/notifications) is about to change its response shape. Before we touch it, enumerate the COMPLETE blast radius across ALL THREE projects: the backend route handler and the service that builds the response, AND every frontend consumer in BOTH the web app and the mobile app. For each dependent, give the file path and the symbol/function.",
+  "verified_against": {
+    "remote": "git@gitlab.com:jameschahwan/quokka-stack.git",
+    "head": "a77d4cb",
+    "tree": "DIRTY working tree at /home/ivy/Code/quokka-stack on 2026-07-08 (105 dirty files); anchors grep-verified present; not reproducible until pinned"
+  },
+  "grader": "bench/grade.py — recall reported per project (layer = backend/web/android). Graded on result_text only, path+token binding.",
+  "required": [
+    {"path": "turps/Server/Controllers/notifications_controller.go", "token": "GetNotificationsHandler", "layer": "backend"},
+    {"path": "turps/Services/notification_service.go", "token": "GetNotifications", "layer": "backend"},
+    {"path": "quokka_web/src/app/core/services/notification.service.ts", "token": "fetchNotifications", "layer": "web"},
+    {"path": "quokka_web/src/app/features/home/home.component.ts", "token": "notification", "layer": "web"},
+    {"path": "quokka_web/src/app/features/groups/groups.component.ts", "token": "notification", "layer": "web"},
+    {"path": "quokka_android/lib/core/services/notification_service.dart", "token": "notification", "layer": "android"},
+    {"path": "quokka_android/lib/features/notifications/notifications_page.dart", "token": "notification", "layer": "android"},
+    {"path": "quokka_android/lib/features/home/home_page.dart", "token": "notification", "layer": "android"}
+  ],
+  "dead": []
+}

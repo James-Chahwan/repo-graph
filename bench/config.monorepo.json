@@ -1,0 +1,30 @@
+{
+  "model": "claude-sonnet-5",
+  "runs": 3,
+  "repos": [
+    {
+      "name": "quokka-stack",
+      "dir": "/home/ivy/Code/quokka-stack",
+      "tasks": [
+        {
+          "id": "locate-backend-entry",
+          "type": "easy-locate",
+          "prompt": "Where is the Go backend's HTTP server started and where are its API routes registered? Name the file(s).",
+          "targets": ["main.go", "router", "route"]
+        },
+        {
+          "id": "xstack-friends",
+          "type": "cross-stack-trace",
+          "prompt": "The Angular frontend has a friends feature that calls the backend over HTTP. Which Go controller/handler serves those friend requests? Name the backend file.",
+          "targets": ["friends_controller.go"]
+        },
+        {
+          "id": "xstack-notifications",
+          "type": "cross-stack-trace",
+          "prompt": "Trace notifications end to end: name the Angular frontend service that fetches notifications and the Go controller that serves them.",
+          "targets": ["notification.service.ts", "notifications_controller.go"]
+        }
+      ]
+    }
+  ]
+}

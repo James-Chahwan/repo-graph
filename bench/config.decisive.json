@@ -1,0 +1,90 @@
+{
+  "model": "claude-sonnet-5",
+  "runs": 2,
+  "repos": [
+    {
+      "name": "quokka-stack",
+      "dir": "/home/ivy/Code/quokka-stack",
+      "tasks": [
+        {
+          "id": "demo-bug",
+          "type": "symptom-localize",
+          "prompt": "Groups that were created recently are showing as closed, and old groups show as open. This is backwards; new groups should be open for members to join. Find the bug: name the exact file and function responsible.",
+          "targets": ["group_controller.go"]
+        }
+      ]
+    },
+    {
+      "name": "oci",
+      "dir": "/home/ivy/Code/oci",
+      "tasks": [
+        {
+          "id": "t1-symptom",
+          "type": "symptom-localize",
+          "prompt": "A colleague wanted to make it harder for a country to land in the most-severe governance category, so they raised the numeric cutoff for that top band directly in the scoring code and re-ran the full data build. After the rebuild, the exact same set of countries still ends up in the worst category; their change had zero effect. Explain why the edit did nothing, and point to the code that the build actually uses to assign each country its category.",
+          "targets": ["src/compute/compute_oci.py", "_status_from_oci", "pipeline.py"]
+        },
+        {
+          "id": "t2-discovery",
+          "type": "discovery",
+          "prompt": "A new engineer opens the live site, hovers a country, and sees a shade of colour plus a one-word condition label. They ask: where did those two things actually come from? Walk the entire journey from the original external measurements all the way to what renders on the map, naming each transformation stage and how each stage hands its output to the next. Call out any hand-off that is NOT a function call.",
+          "targets": ["src/normalize/normalize.py", "src/compute/compute_oci.py", "pipeline.py", "data.json", "App.jsx"]
+        },
+        {
+          "id": "t3-blast",
+          "type": "blast-radius",
+          "prompt": "We're about to change the schema of the record that stores each country-year's four normalized sub-scores; adding one field and renaming another. Before we touch it, give the complete list of code that reads or writes those values and would therefore have to change. Searching for the data model's class name will badly under-count the real dependents, so do not rely on that.",
+          "targets": ["oci_component", "src/normalize/normalize.py", "src/compute/compute_oci.py", "pipeline.py"]
+        }
+      ]
+    },
+    {
+      "name": "quokka",
+      "dir": "/home/ivy/Code/quokka",
+      "tasks": [
+        {
+          "id": "t1-symptom",
+          "type": "symptom-localize",
+          "prompt": "On the group chat screen, the small round photo shown next to each person's name never loads; it renders as a broken-image placeholder for the two people already in the conversation, and the exact same broken thumbnail shows up for anything the current user posts. Track down where this behaviour comes from and explain what actually needs to change to fix it.",
+          "targets": ["messaging.component", "src/assets"]
+        },
+        {
+          "id": "t2-discovery",
+          "type": "discovery",
+          "prompt": "You're onboarding a new developer onto this app. Describe the main sections a user can visit, then explain the mechanism that controls how the user switches between those sections and how each section's code is pulled in only when it's actually needed. Name the specific files that define this wiring and how they fit together.",
+          "targets": ["app.routes.ts", "navbar.component", "loadComponent"]
+        },
+        {
+          "id": "t3-blast",
+          "type": "blast-radius",
+          "prompt": "At startup, a single file registers the complete set of named glyphs the interface is allowed to render, and nothing imports that list directly. If a developer renames or deletes one of those registered entries, which screens would silently show a blank/broken glyph, and how would you reliably determine the full set of affected files before shipping the change?",
+          "targets": ["app.component.ts", "navbar.component.html", "home.page.html"]
+        }
+      ]
+    },
+    {
+      "name": "lapse",
+      "dir": "/home/ivy/Code/lapse",
+      "tasks": [
+        {
+          "id": "t1-symptom",
+          "type": "symptom-localize",
+          "prompt": "Customers who monitor entries in a government register report a data-freshness problem: when the details of an entry they already track are revised at the source (say an agency updates a tender's estimated value, its closing information, or its description) none of the people watching it get notified, and the revision never appears on the radar or the dashboard. Brand-new entries, and entries that are about to lapse, still trigger notifications normally. Oddly, if they open the entry directly its stored details ARE the new revised values, so the fetch/save side is clearly working. Track down where the system decides whether an update to an already-known entry is significant enough to act on, and explain precisely why ordinary content edits like these get dropped before any notification or dashboard update can happen.",
+          "targets": ["internal/pipeline/scheduler.go", "detectChangeType"]
+        },
+        {
+          "id": "t2-discovery",
+          "type": "discovery",
+          "prompt": "A new engineer is onboarding and needs to understand one core capability end to end: when a customer uploads a tender/source document through the web app, how does that file become structured, categorised sections (and feed later AI summarisation)? Produce a complete walkthrough of the pipeline, naming the concrete components on BOTH the browser side and the server side. Be specific about: how the upload actually leaves the browser and which endpoint receives it, how the backend picks the correct parser for different file formats, and how each extracted section's category is decided. Finally, state whether this exact same processing path is reused anywhere other than interactive user uploads.",
+          "targets": ["rft-upload.component", "internal/api/rft_documents.go", "internal/ingestion", "cmd/ingest-rfts"]
+        },
+        {
+          "id": "t3-blast",
+          "type": "blast-radius",
+          "prompt": "The team wants to overhaul the algorithm that decides how relevant each opportunity is to each onboarded organisation; the weights, thresholds and signals that produce an organisation's per-opportunity relevance figure. Before anyone edits it, enumerate the full blast radius: every code path that produces or recomputes those relevance figures, including scheduled/background processing and any one-off maintenance or backfill tooling. Do not stop at the functions that call it directly; follow the chain outward and name the entrypoints that end up triggering it transitively.",
+          "targets": ["internal/pipeline/opportunity_factory.go", "ScoreOpportunityForAllOrgs", "cmd/rescore", "internal/pipeline/scheduler.go"]
+        }
+      ]
+    }
+  ]
+}

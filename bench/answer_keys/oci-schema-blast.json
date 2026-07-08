@@ -1,0 +1,31 @@
+{
+  "task": "oci-schema-blast-live-vs-dead",
+  "repo": "oci",
+  "question": "We're about to change the schema of the record that stores each country-year's four normalized sub-scores (the oci_component row: w, p, m, l). Before we touch it, give the COMPLETE list of code that reads or writes those four values and would have to change. Searching for the data model's class name will badly under-count the real dependents, so do not rely on it. Then partition your list into code the RUNNING pipeline executes (live) vs code that textually references these fields but is DEAD (never imported/reached), and state how you determined reachability.",
+  "verified_against": {
+    "remote": "git@gitlab.com:jameschahwan/oci.git",
+    "head": "3a27474",
+    "tree": "DIRTY working tree at /home/ivy/Code/oci on 2026-07-07 (pipeline.py, compute_oci.py, normalize.py, App.jsx have uncommitted edits)",
+    "reproducible": false,
+    "note": "Every (path, token) below was grep-verified present in that working tree. Anchors are path+token (not line numbers) so they survive line shifts, but the key is only reproducible once the repo is pinned to a committed ref. Re-verify before a decisive full run. See BLOCKER-1 (pinning) — user decision."
+  },
+  "grader": "bench/grade.py — recall over `required`, precision counts any `dead` location cited as a live dependent. Graded on result_text only, strict dir-qualified path + token binding.",
+  "required": [
+    {"path": "src/utils/db.py", "token": "OCIComponent", "layer": "db"},
+    {"path": "src/utils/db.py", "token": "upsert_oci_component", "layer": "db"},
+    {"path": "src/normalize/normalize.py", "token": "normalize_all_components", "layer": "normalize"},
+    {"path": "src/normalize/normalize.py", "token": "oci_component", "layer": "normalize-sql"},
+    {"path": "src/compute/compute_oci.py", "token": "_status_from_oci", "layer": "compute-live"},
+    {"path": "src/compute/compute_oci.py", "token": "get_top", "layer": "compute-live"},
+    {"path": "pipeline.py", "token": "oci_country_year", "layer": "pipeline"},
+    {"path": "pipeline.py", "token": "export_json", "layer": "pipeline-export"},
+    {"path": "pipeline.py", "token": "data.json", "layer": "pipeline-export"},
+    {"path": "src/api/app.py", "token": "/api/oci", "layer": "api"},
+    {"path": "frontend/src/App.jsx", "token": "toFixed", "layer": "frontend"},
+    {"path": "frontend/src/App.jsx", "token": "interpolate", "layer": "frontend"}
+  ],
+  "dead": [
+    {"path": "src/process/compute_oci.py", "token": "get_oci_rankings", "note": "unimported mirror of src/compute — reads w/p/m/l via ORM but never runs"},
+    {"path": "src/process/normalize.py", "token": "normalize_wealth_component", "note": "unimported mirror of src/normalize — the w_component naming variant lives here, dead"}
+  ]
+}
