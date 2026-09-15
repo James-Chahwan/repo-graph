@@ -1,6 +1,6 @@
 [project]
 name = "mcp-repo-graph"
-version = "0.4.20"
+version = "0.4.21"
 description = "MCP server that gives LLMs a structural map of any codebase — entities, relationships, and flows — so they navigate to the right files without reading everything first."
 readme = "README.md"
 license = "MIT"
@@ -22,7 +22,7 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 dependencies = [
-    "mcp[cli]>=1.0.0",
+    "mcp[cli]>=1.0.0,<2",  # 2.x renamed FastMCP → MCPServer; port before lifting
     "repo-graph-py>=0.4.18",
     "watchdog>=3.0",
 ]

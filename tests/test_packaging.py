@@ -94,3 +94,12 @@ async def test_all_tools_have_submission_annotations():
         assert (ann.readOnlyHint is not None) or (ann.destructiveHint is not None), (
             f"{t.name} needs readOnlyHint or destructiveHint"
         )
+
+
+def test_mcp_sdk_capped_below_2():
+    """mcp 2.x renamed FastMCP → MCPServer; an uncapped `mcp>=1` made every fresh
+    install (uvx/pip, any OS) crash on import from 2026-07-28. Keep the cap until
+    server.py is ported."""
+    deps = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]["dependencies"]
+    mcp = next(d for d in deps if d.startswith("mcp"))
+    assert "<2" in mcp.replace(" ", ""), f"mcp dependency must be capped below 2.x: {mcp!r}"
