@@ -15,6 +15,7 @@ from pathlib import Path
 
 import repo_graph_py
 
+from .gitexclude import ensure_cache_excluded
 from .installer import install, format_report, REGISTRY
 from .installer.constants import MARKER_START
 
@@ -38,6 +39,8 @@ def init(repo_root: Path, graph_only: bool = False) -> None:
             pg.save_to_default(str(repo_root))
         except Exception:
             pass  # read-only fs / perms shouldn't fail the bootstrap
+    # Keep the cache out of `git status` (skipped if the pre-commit hook commits it).
+    ensure_cache_excluded(repo_root / ".ai" / "repo-graph")
     print(f"  {pg.node_count()} nodes, {pg.edge_count()} edges, "
           f"{pg.cross_edge_count()} cross-stack edges")
     print(f"  Engine: repo-graph-py {repo_graph_py.version()}")

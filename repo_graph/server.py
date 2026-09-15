@@ -35,6 +35,7 @@ from mcp.types import ToolAnnotations
 import repo_graph_py
 
 from .graph import RustGraph
+from .gitexclude import ensure_cache_excluded
 
 REPO_PATH = os.environ.get("REPO_GRAPH_REPO", os.getcwd())
 
@@ -95,6 +96,15 @@ def _resolve_repo(spec: str) -> str:
     return dest
 
 
+def _exclude_cache(target: str) -> None:
+    """Keep the `.ai/repo-graph/` cache out of `git status` (local
+    `info/exclude`; skipped if the user commits the cache). Never raises."""
+    gmap_dir = (repo_graph_py.default_gmap_dir(target)
+                if hasattr(repo_graph_py, "default_gmap_dir")
+                else os.path.join(target, ".ai", "repo-graph"))
+    ensure_cache_excluded(gmap_dir)
+
+
 def _build_graph(target: str, incremental: bool = True) -> RustGraph:
     """Generate `target`'s graph, persist the `.gmap` cache, install it as live.
 
@@ -112,6 +122,7 @@ def _build_graph(target: str, incremental: bool = True) -> RustGraph:
             except Exception:
                 # Best-effort: read-only fs / perms shouldn't break the live graph.
                 pass
+        _exclude_cache(target)
         REPO_PATH = target
         _graph = RustGraph(pg, target)
         return _graph

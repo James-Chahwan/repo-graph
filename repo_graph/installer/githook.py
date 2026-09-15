@@ -13,16 +13,17 @@ import os
 import stat
 from pathlib import Path
 
+from ..gitexclude import HOOK_MARKER
 from .markers import upsert_section, remove_section
 from .targets import Change
 
-_HOOK_START = "# >>> repo-graph pre-commit >>>"
+_HOOK_START = HOOK_MARKER
 _HOOK_END = "# <<< repo-graph pre-commit <<<"
 
 _HOOK_BODY = f"""{_HOOK_START}
 # Refresh and cache the repo-graph before committing, then stage the cache.
 uvx --from mcp-repo-graph repo-graph-init --repo . --graph-only >/dev/null 2>&1 || true
-git add .ai/repo-graph 2>/dev/null || true
+git add -f .ai/repo-graph 2>/dev/null || true
 {_HOOK_END}"""
 
 # Reuse the marker engine but with the hook's own sentinels.
