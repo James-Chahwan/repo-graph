@@ -21,7 +21,7 @@ repo-graph --repo /path/to/target-repo
 repo-graph-init --repo /path/to/target-repo
 ```
 
-Python 3.11+ required. Runtime deps: `mcp[cli]>=1.0.0`, `repo-graph-py>=0.4.16`.
+Python 3.11+ required. Runtime deps: `mcp[cli]>=1.0.0,<2` (2.x renamed FastMCP — port before lifting), `repo-graph-py>=0.4.16`.
 
 ### Cache reuse on cold start
 
@@ -40,7 +40,7 @@ Cache writes are best-effort: a read-only filesystem or perms error doesn't brea
 
 ```bash
 pip install -e ".[dev]"          # installs pytest + pytest-asyncio
-pytest                           # full suite (133 tests in ~9s, incl. e2e subprocess)
+pytest                           # full suite (144 tests in ~9s, incl. e2e subprocess)
 pytest -m "not e2e"              # fast loop — skip MCP subprocess spin-up
 pytest -m perf                   # opt-in performance gates
 pytest -m e2e                    # only MCP-over-stdio end-to-end tests
@@ -51,9 +51,10 @@ Test layers:
 - `test_mcp_e2e.py` — spawn `repo-graph` subprocess, talk MCP/JSON-RPC over stdio (12 tests)
 - `test_installer.py` — `repo-graph install` config writers across agents (45 tests)
 - `test_cache.py` — `.gmap` cache reuse roundtrip + incremental parse cache (9 tests)
+- `test_gitexclude.py` — cache kept out of `git status` via `info/exclude` (10 tests)
 - `test_watcher.py` — in-server file watcher (7 tests)
 - `test_grade.py` — bench recall/precision grader (7 tests)
-- `test_packaging.py` — install surface: `uvx`-runnable console script + annotations (7 tests)
+- `test_packaging.py` — install surface: `uvx`-runnable console script + annotations + mcp<2 cap (8 tests)
 - `test_perf.py` — generate/dense_text/activate budgets (6 tests)
 - `test_init.py` — `repo-graph-init` bootstrap CLI (5 tests)
 
@@ -63,6 +64,7 @@ Test layers:
 repo_graph/
   server.py   MCP server — 6 tools, thin presentation over engine primitives
   graph.py    Graph loader — reads .gmap via pyo3, BFS traversal helpers
+  gitexclude.py  adds .ai/repo-graph/ to .git/info/exclude on cache write (skipped if hook/tracked)
   init.py     repo-graph-init CLI — bootstraps a target repo
   __init__.py empty
 ```
