@@ -1,19 +1,25 @@
 name: install-matrix
 
-# Fresh-machine validation: builds the clean-room image and runs `repo-graph
-# install` for all 9 agents end to end, asserting config + instructions land, the
-# graph builds, a query works, and uninstall reverses it. Catches any regression
-# that would break a fresh install.
+# Fresh-machine validation, two ways:
+#   source    — clean-room image installs this checkout (latest-resolving deps), runs
+#               `repo-graph install` for all 9 agents, then talks real MCP over stdio
+#               to the installed server (handshake + tools/list + orient), uninstalls.
+#   published — `uvx mcp-repo-graph` from PyPI on a clean Debian box, real MCP handshake.
+# Scheduled daily: deps release without us pushing (mcp 2.0 broke every fresh install
+# on 2026-07-28 and nothing ran for two months). A red here means users can't install.
 on:
   push:
     branches: [main]
   pull_request:
+  schedule:
+    - cron: "17 21 * * *"
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  install-matrix:
+  source:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -21,3 +27,21 @@ jobs:
         run: docker build -f docker/Dockerfile -t repo-graph-install-matrix .
       - name: Run install matrix
         run: docker run --rm repo-graph-install-matrix
+
+  published:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        image: ["debian:12", "debian:13", "ubuntu:24.04"]
+    container: ${{ matrix.image }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install uv (documented path) + python for the harness
+        run: |
+          apt-get update -qq && apt-get install -y -qq curl ca-certificates git python3 >/dev/null
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: uvx mcp-repo-graph from PyPI — MCP handshake
+        run: python3 docker/install_matrix.py --published

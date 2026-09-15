@@ -19,6 +19,7 @@ import os
 import subprocess
 import sys
 import tempfile
+import threading
 import tomllib
 from pathlib import Path
 
@@ -36,6 +37,53 @@ def check(name: str, ok: bool, detail: str = "") -> None:
 
 def _run(args: list[str], env: dict) -> subprocess.CompletedProcess:
     return subprocess.run(args, env=env, capture_output=True, text=True)
+
+
+def mcp_handshake(cmd: list[str], env: dict, timeout: int = 180) -> tuple[bool, str]:
+    """initialize → initialized → tools/list → tools/call orient over stdio.
+    True only if the server lists the 6 tools and orient returns an overview."""
+    msgs = [
+        {"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {
+            "protocolVersion": "2024-11-05", "capabilities": {},
+            "clientInfo": {"name": "install-matrix", "version": "1"}}},
+        {"jsonrpc": "2.0", "method": "notifications/initialized"},
+        {"jsonrpc": "2.0", "id": 2, "method": "tools/list"},
+        {"jsonrpc": "2.0", "id": 3, "method": "tools/call",
+         "params": {"name": "orient", "arguments": {}}},
+    ]
+    stdin = "".join(json.dumps(m) + "\n" for m in msgs)
+    try:
+        p = subprocess.Popen(cmd, env=env, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                             stderr=subprocess.PIPE, text=True)
+    except OSError as e:
+        return False, str(e)
+    killer = threading.Timer(timeout, p.kill)  # a hung server can't wedge CI
+    killer.start()
+    p.stdin.write(stdin)
+    p.stdin.flush()
+    replies: dict[int, dict] = {}
+    try:
+        for line in p.stdout:
+            try:
+                msg = json.loads(line)
+            except ValueError:
+                continue
+            if "id" in msg:
+                replies[msg["id"]] = msg
+            if 3 in replies:
+                break
+    finally:
+        killer.cancel()
+        p.kill()
+        err = p.stderr.read()[-400:]
+    tools = {t["name"] for t in replies.get(2, {}).get("result", {}).get("tools", [])}
+    text = "".join(c.get("text", "") for c in replies.get(3, {}).get("result", {}).get("content", []))
+    want = {"orient", "find", "impact", "trace", "read", "refresh"}
+    if tools != want:
+        return False, f"tools={sorted(tools)} stderr={err}"
+    if "nodes" not in text.lower():
+        return False, f"orient={text[:200]!r} stderr={err}"
+    return True, ""
 
 
 def _write_sample(repo: Path) -> None:
@@ -142,22 +190,11 @@ def main() -> int:
     gmap = repo / ".ai/repo-graph"
     check("graph builds + caches (.ai/repo-graph)", gen.returncode == 0 and gmap.is_dir(), gen.stderr[:300])
 
-    query_ok = False
-    detail = ""
-    try:
-        env_q = dict(env, REPO_GRAPH_REPO=str(repo))
-        code = (
-            "import os; os.environ['REPO_GRAPH_WATCH']='0';"
-            "import repo_graph.server as s;"
-            "out=s.status();"
-            "print('NODES_OK' if 'nodes' in out.lower() else 'NO')"
-        )
-        q = subprocess.run([sys.executable, "-c", code], env=env_q, capture_output=True, text=True)
-        query_ok = "NODES_OK" in q.stdout
-        detail = (q.stdout + q.stderr)[-300:]
-    except Exception as e:  # noqa: BLE001
-        detail = str(e)
-    check("`status` query returns a repo overview", query_ok, detail)
+    # Real MCP over stdio through the installed console script — what an agent
+    # actually launches. Catches import-time breaks (e.g. an incompatible `mcp`
+    # SDK) that config-file checks and in-process calls never see.
+    ok, detail = mcp_handshake(["repo-graph", "--repo", str(repo)], dict(env, REPO_GRAPH_WATCH="0"))
+    check("MCP stdio handshake + `orient` over the installed server", ok, detail)
 
     # 6) uninstall reverses everything
     un = _run(["repo-graph", "uninstall", "--agents", "all", "--repo", str(repo), "--yes"], env)
@@ -186,5 +223,19 @@ def _still_has_repo_graph(p: Path) -> bool:
     return "repo-graph:start" in txt or '"repo-graph"' in txt or "[mcp_servers.repo-graph]" in txt
 
 
+def published() -> int:
+    """What a new user gets today: `uvx mcp-repo-graph` straight from PyPI, with
+    whatever dependency versions resolve right now. Run on a schedule so an
+    upstream release that breaks the published package (mcp 2.0, 2026-07-28)
+    goes red within a day instead of two months."""
+    repo = Path(tempfile.mkdtemp(prefix="rg-published-")) / "sample"
+    repo.mkdir()
+    _write_sample(repo)
+    env = dict(os.environ, REPO_GRAPH_WATCH="0")
+    ok, detail = mcp_handshake(["uvx", "--no-cache", "mcp-repo-graph", "--repo", str(repo)], env)
+    check("published `uvx mcp-repo-graph`: MCP handshake + `orient`", ok, detail)
+    return 0 if ok else 1
+
+
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(published() if "--published" in sys.argv else main())
