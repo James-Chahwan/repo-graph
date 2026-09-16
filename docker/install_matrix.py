@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import json
 import os
+import signal
 import subprocess
 import sys
 import tempfile
@@ -53,11 +54,20 @@ def mcp_handshake(cmd: list[str], env: dict, timeout: int = 180) -> tuple[bool, 
     ]
     stdin = "".join(json.dumps(m) + "\n" for m in msgs)
     try:
+        # Own process group: `uvx` is a launcher, so killing just it leaves the
+        # real server as a grandchild holding stdout open and the read below
+        # blocks forever (CI hung 6h until GitHub's limit, 2026-09-15).
         p = subprocess.Popen(cmd, env=env, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                             stderr=subprocess.PIPE, text=True)
+                             stderr=subprocess.PIPE, text=True, start_new_session=True)
     except OSError as e:
         return False, str(e)
-    killer = threading.Timer(timeout, p.kill)  # a hung server can't wedge CI
+    def kill_tree() -> None:
+        try:
+            os.killpg(p.pid, signal.SIGKILL)
+        except (OSError, ProcessLookupError):
+            p.kill()
+
+    killer = threading.Timer(timeout, kill_tree)  # a hung server can't wedge CI
     killer.start()
     p.stdin.write(stdin)
     p.stdin.flush()
@@ -74,8 +84,11 @@ def mcp_handshake(cmd: list[str], env: dict, timeout: int = 180) -> tuple[bool, 
                 break
     finally:
         killer.cancel()
-        p.kill()
-        err = p.stderr.read()[-400:]
+        kill_tree()
+        try:
+            err = p.stderr.read()[-400:]
+        except OSError:
+            err = ""
     tools = {t["name"] for t in replies.get(2, {}).get("result", {}).get("tools", [])}
     text = "".join(c.get("text", "") for c in replies.get(3, {}).get("result", {}).get("content", []))
     want = {"orient", "find", "impact", "trace", "read", "refresh"}
