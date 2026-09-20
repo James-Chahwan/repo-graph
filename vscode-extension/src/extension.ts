@@ -10,6 +10,9 @@ import * as vscode from 'vscode';
  */
 export function activate(context: vscode.ExtensionContext) {
   const didChange = new vscode.EventEmitter<void>();
+  // Read the version from package.json rather than a literal — a hardcoded string
+  // here silently drifted behind the real release twice (0.4.16, then 0.4.21).
+  const version: string = context.extension.packageJSON.version;
 
   const provider: vscode.McpServerDefinitionProvider = {
     onDidChangeMcpServerDefinitions: didChange.event,
@@ -21,7 +24,7 @@ export function activate(context: vscode.ExtensionContext) {
       }
       // Positional constructor: (label, command, args, env?, version?)
       return [
-        new vscode.McpStdioServerDefinition('repo-graph', 'uvx', args, undefined, '0.4.21'),
+        new vscode.McpStdioServerDefinition('repo-graph', 'uvx', args, undefined, version),
       ];
     },
   };

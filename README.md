@@ -53,7 +53,9 @@ https://github.com/user-attachments/assets/fc3191e5-fc35-4bd7-8372-72af55995883
 
 Same bug, same model, same prompt — the only difference is whether repo-graph is installed.
 
-**The task:** fix a reversed comparison operator in a Go + Angular monorepo (566 nodes, 620 edges).
+**The task:** fix a reversed comparison operator in a Go + Angular monorepo.
+
+*(Recorded on an earlier engine, which mapped that repo to 566 nodes / 620 edges. The 0.5.0 engine extracts far more from the same code — 2,939 nodes / 5,129 edges — so the graph the model gets today is richer than the one in the video. The token and time figures are from the recorded run and are left as measured.)*
 
 | | Without repo-graph | With repo-graph |
 |---|---|---|
@@ -172,11 +174,23 @@ Same graph, same answers — just without the tool schemas in your context. It's
 
 Cross-cutting extractors (work across all languages):
 
-- **Data sources** — DB/cache/queue/blob/search/email client detection
-- **CLI entrypoints** — Python click, JS commander/yargs, Go cobra, Rust clap
-- **gRPC** — service/method definitions from `.proto` files
-- **Queue consumers** — Celery, Dramatiq, BullMQ, Sidekiq, Oban, NATS
-- **Cross-stack HTTP** — frontend `fetch`/`axios` calls linked to backend routes
+- **Cross-stack HTTP** — frontend `fetch`/`axios` calls linked to the backend route they hit, and the handler behind it
+- **WebSockets** — handlers and clients (gorilla, browser, Python, Java, C#), paired by path
+- **gRPC** — services, methods and message types from `.proto`, plus client stubs and server implementations
+- **GraphQL** — resolvers and the operations that call them
+- **Queues** — consumers and producers (Celery, Dramatiq, BullMQ, Sidekiq, Oban, NATS), with const-resolved topics
+- **Events** — emitters and handlers
+- **Cron jobs** — scheduled entry points
+- **Page navigation** — frontend routes and the links between them (`NAVIGATES_TO`)
+- **Data sources** — DB / cache / queue / blob / search / email clients, and which code touches which
+- **Data entities** — shared schemas and the code that reads or writes them
+- **CLI entrypoints** — Python click, JS commander/yargs, Go cobra, Rust clap, Java picocli, C# System.CommandLine and Spectre
+- **Contracts** — OpenAPI / AsyncAPI / Pact operations linked to the routes that implement them
+- **Dependency injection** — constructor injection wired to the thing injected
+- **Config keys** — where a key is defined and everywhere that reads it
+- **Infra** — Terraform and Kubernetes resources
+- **Docs** — doc sections linked to the symbols they govern (what `read` surfaces as *governed by*)
+- **Tests** — which tests cover which code
 
 Multiple languages can match one repo (e.g., Go backend + Angular frontend + SCSS). Each contributes its nodes and edges into a single unified graph.
 
@@ -292,8 +306,8 @@ The AI assistant now has access to all 6 tools. Example queries it can answer:
 The graph stays current on its own. While the server is running it watches the repo
 and does an incremental rebuild a moment after you save, so a structural question
 right after an edit reflects the change with no manual `refresh`. On top of that, the
-graph refreshes on cold start whenever the source tree changed since the cached
-`.gmap` was written, so it's never stale when your assistant connects.
+graph heals itself on cold start — if the cached `.gmap` is stale, an old format, or missing, the
+engine rebuilds it and writes it back, so it's never stale when your assistant connects.
 
 The watcher is on by default. Set `REPO_GRAPH_WATCH=0` to disable it (the cold-start
 refresh still applies). It needs the `watchdog` package, which ships as a dependency.
@@ -362,23 +376,22 @@ so a declared component or service isn't flattened to "class".
 
 The Rust engine lives in its own [`glia`](https://github.com/James-Chahwan/glia) repo; `mcp-repo-graph` is the MCP-facing thin wrapper.
 
-## Config (optional escape hatch)
+## Layout detection
 
-If auto-detection misses a weird layout, drop `.ai/repo-graph/config.yaml` in the target repo:
+repo-graph finds your projects itself — `go.mod`, `package.json`, `pyproject.toml`, `Cargo.toml`,
+`pom.xml`, `build.gradle`, `composer.json`, `pubspec.yaml`, `mix.exs`, `Package.swift`,
+`CMakeLists.txt` and friends. Point `--repo` at a monorepo root and every project under it lands in
+one graph.
 
-```yaml
-skip:
-  - legacy       # directory basenames excluded from the walk
-  - scratch
+It also prunes on its own: `node_modules`, `vendor`, `.venv`, `site-packages`, build output
+(`dist`, `target`, `.next`, `.nuxt`, `.angular`, `coverage`) and hashed bundle directories collapse
+to a single region anchor instead of being parsed file by file, and `.gitignore` is honoured.
 
-roots:           # explicit roots heuristics miss — added on top of auto-detection
-  - path: apps/weird-layout
-    kind: python
-  - path: services/custom
-    kind: go
-```
-
-`kind` values: `go`, `rust`, `python`, `typescript`, `react`, `vue`, `angular`, `java`, `scala`, `clojure`, `csharp`, `ruby`, `php`, `swift`, `c_cpp`, `dart`, `elixir`, `solidity`, `terraform`. `config.json` works too if you prefer.
+> **Note:** earlier versions documented a `config.yaml` escape hatch with `skip:` / `roots:` keys.
+> That was a Python-era feature and the Rust engine does not read it — if you have one, it is being
+> ignored. If auto-detection misses your layout, please
+> [open an issue](https://github.com/James-Chahwan/repo-graph/issues) with the shape of the repo;
+> that's more useful than a config file nobody can see.
 
 ## Graph data format
 
@@ -391,7 +404,12 @@ Generated files live in `.glia/graph/` inside the target repo:
 
 The whole directory is regenerated: delete it and the next call rebuilds it.
 
-Common edge types: `imports`, `defines`, `contains`, `uses`, `calls`, `handles`, `handled_by`, `exports`, `includes`, `tests`, cross-stack HTTP links.
+The engine carries **36 edge categories**. The ones you'll see most: `CALLS`, `IMPORTS`,
+`CONTAINS`, `DEFINES`, `USES`, `HANDLED_BY`, `HTTP_CALLS`, `IMPLEMENTS`, `INHERITS_FROM`,
+`INJECTS`, `ACCESSES_DATA`, `TESTS`, `DOCUMENTS`, `NAVIGATES_TO`, plus the channel ones
+(`GRPC_CALLS`, `QUEUE_FLOWS`, `WS_CONNECTS`, `EVENT_FLOWS`, `GRAPHQL_CALLS`, `RPC_CALLS`).
+There are **49 node kinds**. Both tables come from the engine, so `orient` always reports the
+set your version actually has.
 
 ## Privacy Policy
 
