@@ -22,9 +22,14 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 dependencies = [
-    "mcp[cli]>=2",  # 2.x renamed FastMCP → MCPServer; ported in 0.5.1
-    "glia-py>=0.5.0",
-    "watchdog>=3.0",
+    # Majors are capped on purpose. An uncapped `mcp>=1` let 2.0 in and broke
+    # every fresh install for two months (2026-07-28 to 2026-09-15), because a
+    # published package resolves its deps fresh on the user's machine. A cap
+    # turns that into an install-time refusal we can see, instead of a runtime
+    # crash the user sees. Lift each one deliberately, with the port done.
+    "mcp[cli]>=2,<3",       # 2.x renamed FastMCP -> MCPServer; ported in 0.5.1
+    "glia-py>=0.5.0,<0.6",  # engine API is versioned with the graph format
+    "watchdog>=3.0,<7",
 ]
 
 [project.optional-dependencies]

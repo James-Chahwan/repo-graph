@@ -108,6 +108,18 @@ def test_mcp_sdk_floor_is_2():
     assert "<2" not in spec, f"the <2 cap predates the MCPServer port: {spec!r}"
 
 
+def test_every_dependency_caps_its_major():
+    """A published package resolves its dependencies fresh on the user's machine,
+    so an uncapped major is a time bomb: `mcp>=1` let 2.0 in and broke every
+    fresh install for two months before anyone noticed. Each cap is lifted by
+    hand, after the port."""
+    deps = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]["dependencies"]
+    uncapped = [d for d in deps if "<" not in d]
+    assert not uncapped, (
+        f"these dependencies have no upper bound: {uncapped}. A breaking major "
+        "upstream would reach users as a runtime crash.")
+
+
 def test_server_uses_the_2x_server_class():
     """Guard the rename itself — if someone reverts to FastMCP the dependency
     floor above stops matching the code."""

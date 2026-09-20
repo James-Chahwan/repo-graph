@@ -245,6 +245,23 @@ def published() -> int:
     repo.mkdir()
     _write_sample(repo)
     env = dict(os.environ, REPO_GRAPH_WATCH="0")
+
+    # Report what actually resolved. A green check that doesn't say which
+    # versions it validated can't tell you the CDN served you yesterday's
+    # release, or that a dependency floor silently picked something older.
+    probe = subprocess.run(
+        ["uv", "run", "--no-cache", "--with", "mcp-repo-graph", "python", "-c",
+         "import importlib.metadata as m;"
+         "print(' '.join(f'{p}=' + m.version(p) for p in "
+         "('mcp-repo-graph','mcp','glia-py','watchdog')))"],
+        capture_output=True, text=True, env=env, timeout=900,
+    )
+    resolved = probe.stdout.strip().splitlines()[-1] if probe.stdout.strip() else "(probe failed)"
+    print(f"  resolved: {resolved}")
+    check("dependency resolution reports a version for every package",
+          all("=" in part and not part.endswith("=") for part in resolved.split()),
+          resolved)
+
     ok, detail = mcp_handshake(["uvx", "--no-cache", "mcp-repo-graph", "--repo", str(repo)], env)
     check("published `uvx mcp-repo-graph`: MCP handshake + `orient`", ok, detail)
     return 0 if ok else 1
