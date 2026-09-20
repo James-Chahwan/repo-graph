@@ -91,18 +91,29 @@ async def test_all_tools_have_submission_annotations():
     for t in tools:
         ann = t.annotations
         assert ann is not None and ann.title, f"{t.name} missing annotations.title"
-        assert (ann.readOnlyHint is not None) or (ann.destructiveHint is not None), (
-            f"{t.name} needs readOnlyHint or destructiveHint"
+        assert (ann.read_only_hint is not None) or (ann.destructive_hint is not None), (
+            f"{t.name} needs read_only_hint or destructive_hint"
         )
 
 
-def test_mcp_sdk_capped_below_2():
-    """mcp 2.x renamed FastMCP → MCPServer; an uncapped `mcp>=1` made every fresh
-    install (uvx/pip, any OS) crash on import from 2026-07-28. Keep the cap until
-    server.py is ported."""
+def test_mcp_sdk_floor_is_2():
+    """The 1.x/2.x split is a hard fork of the server class: 1.x has `FastMCP`
+    and 2.x has `MCPServer`, and `mcp.server.fastmcp` in 2.x is a stub that
+    raises on import. server.py imports `MCPServer`, so the floor must be >=2 —
+    an unpinned or 1.x-allowing range crashes every fresh install, which is
+    exactly what an uncapped `mcp>=1` did for two months from 2026-07-28."""
     deps = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]["dependencies"]
-    mcp = next(d for d in deps if d.startswith("mcp"))
-    assert "<2" in mcp.replace(" ", ""), f"mcp dependency must be capped below 2.x: {mcp!r}"
+    spec = next(d for d in deps if d.startswith("mcp")).replace(" ", "")
+    assert ">=2" in spec, f"mcp dependency must require 2.x: {spec!r}"
+    assert "<2" not in spec, f"the <2 cap predates the MCPServer port: {spec!r}"
+
+
+def test_server_uses_the_2x_server_class():
+    """Guard the rename itself — if someone reverts to FastMCP the dependency
+    floor above stops matching the code."""
+    src = (ROOT / "repo_graph" / "server.py").read_text()
+    assert "from mcp.server.mcpserver import MCPServer" in src
+    assert "FastMCP" not in src
 
 
 # ── Every distribution manifest carries the same version ────────────────────

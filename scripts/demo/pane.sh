@@ -61,7 +61,7 @@ summary_card(){ local n lt lf lc rt rf rc tw=0 tr=0 tf=0 tc=0
   printf '   %ssame model · same prompt · only difference: repo-graph%s\n\n' "$C_DIM" "$C_R"
   printf '   %s%-31s %12s    %-12s%s\n' "$C_DIM" "demo" "WITHOUT" "WITH" "$C_R"
   printf '   %s──────────────────────────────────────────────────────────────%s\n' "$C_DIM" "$C_R"
-  for n in 1 2 3 4 5 6 7; do
+  for n in 1 2 3 4 5 6 7 8; do
     read -r lt lf lc < "$SYNC/left.d$n"  2>/dev/null || { lt=0; lf=0; lc=0; }
     read -r rt rf rc < "$SYNC/right.d$n" 2>/dev/null || { rt=0; rf=0; rc=0; }
     tw=$((tw+lt)); tr=$((tr+rt)); tf=$((tf+lf)); tc=$((tc+rc))
@@ -117,15 +117,11 @@ read_biggest(){ # count
   for f in "${files[@]}"; do cmd "cat ${f#"$DEMO_REPO"/}"
     ch=$(wc -c <"$f" 2>/dev/null||echo 0); FILES=$((FILES+1)); TOK=$((TOK+ch/4)); tally_l; pace 0.22; done; }
 
-rg(){ # tool args...   (retries past a transient engine bug where impact/trace
-      #                  occasionally return empty for a node that has results)
+rg(){ # tool args...    (glia 0.5.0 made traversal deterministic — the old
+      #                   retry-until-non-empty loop is gone)
   local tool="$1"; shift; cmd "repo-graph $tool $*"; pace 0.3
-  local out tries=0
-  while :; do
-    out=$(DEMO_REPO="$DEMO_REPO" python3 "$HERE/rg.py" "$tool" "$@" 2>/dev/null)
-    tries=$((tries+1))
-    { [ "${#out}" -ge 120 ] || [ "$tries" -ge 8 ]; } && break
-  done
+  local out
+  out=$(DEMO_REPO="$DEMO_REPO" python3 "$HERE/rg.py" "$tool" "$@" 2>/dev/null)
   printf "%s\n" "$out" | head -28
   TOK=$(( ${#out}/4 )); CALLS=$((CALLS+1)); tally_r; pace 0.4; }
 
@@ -139,13 +135,14 @@ P3="Get just enough context to work on the groups feature — don't bloat the wi
 P4="What breaks if I change both friends handlers?"
 P5="Where does the frontend group action end up in the backend?"
 P6="Where does the groups feature live?"
-P7="Groups created recently show as closed; new groups should be open. Find & fix."
+P7="Nothing seems to reference LegacyMailer. Safe to delete it?"
+P8="ClaimsFromContext barely shows up in grep. Can I refactor it freely?"
 
 # A Go panic with paths/symbols that REALLY exist in quokka-stack (so locate resolves).
 STACK=$'panic: runtime error: invalid memory address or nil pointer dereference\n  turps/Server/Controllers.SendFriendRequestHandler(0xc000123)\n    turps/Server/Controllers/friends_controller.go:112\n  turps/Server/Controllers.GetFriendsHandler(0xc000123)\n    turps/Server/Controllers/friends_controller.go:40'
 paste(){ printf "%s┃ pasted error%s\n%s%s%s\n\n" "$C_YEL" "$C_R" "$C_DIM" "$1" "$C_R"; pace 0.5; }
-locate_demo(){ cmd "repo-graph locate \"<stack trace>\" stacktrace"; pace 0.3
-  local out; out=$(DEMO_REPO="$DEMO_REPO" python3 "$HERE/rg.py" locate "$STACK" stacktrace 2>/dev/null)
+locate_demo(){ cmd "repo-graph find \"<stack trace>\" kind=stacktrace"; pace 0.3
+  local out; out=$(DEMO_REPO="$DEMO_REPO" python3 "$HERE/rg.py" find "$STACK" kind=stacktrace 2>/dev/null)
   printf "%s\n" "$out" | head -20; TOK=$(( ${#out}/4 )); CALLS=$((CALLS+1)); tally_r; pace 0.4; }
 
 # 1 · Ground the Edit — find + read the REAL function vs guessing its contract
@@ -160,7 +157,7 @@ right1(){ hdr "$C_GRN" "✓ with repo-graph" "read the real source first"; promp
 left2(){  hdr "$C_RED" "✗ without repo-graph" "grep the frames, open file after file"; prompt "$P2"
   paste "$STACK"; grep_show "SendFriendRequestHandler"; grep_show "GetFriendsHandler"; read_matches "friend" 4
   finalcard "$C_RED" "still tracing the error by hand"; }
-right2(){ hdr "$C_GRN" "✓ with repo-graph" "locate the trace → read the frame"; prompt "$P2"
+right2(){ hdr "$C_GRN" "✓ with repo-graph" "resolve the trace → read the frame"; prompt "$P2"
   paste "$STACK"; locate_demo; rg read GetFriendsHandler
   finalcard "$C_GRN" "error → exact code, ranked"; }
 
@@ -169,7 +166,7 @@ left3(){  hdr "$C_RED" "✗ without repo-graph" "load files until you 'get it' �
   read_biggest 14
   finalcard "$C_RED" "window bloated with off-target detail"; }
 right3(){ hdr "$C_GRN" "✓ with repo-graph" "just the relevant slice"; prompt "$P3"
-  rg dense_text GroupsComponent
+  rg orient seed=GroupsComponent
   finalcard "$C_GRN" "scoped map — a fraction of the full dump"; }
 
 # 4 · Blast Radius — multi-seed impact (cross-stack) vs grep's direct refs
@@ -193,16 +190,24 @@ left6(){  hdr "$C_RED" "✗ without repo-graph" "grep → read → grep to find 
   grep_show "groups"; read_matches "GroupsComponent" 4
   finalcard "$C_RED" "scattered hits, no ranking"; }
 right6(){ hdr "$C_GRN" "✓ with repo-graph" "the ranked cluster from one seed"; prompt "$P6"
-  rg activate GroupsComponent
+  rg find GroupsComponent expand=true
   finalcard "$C_GRN" "the feature's nodes, ranked by relevance"; }
 
-# 7 · Token Race — flow vs grep→read→grep for a real bug-fix task
-left7(){  hdr "$C_RED" "✗ without repo-graph" "grep → read → grep → read…"; prompt "$P7"
-  grep_show "isGroupOpen"; grep_show "closed"; read_matches "GroupsComponent" 4; read_matches "group" 6
-  finalcard "$C_RED" "still hunting"; }
-right7(){ hdr "$C_GRN" "✓ with repo-graph" "one structural lookup"; prompt "$P7"
-  rg flow groups
-  finalcard "$C_GRN" "1 call → the exact handler flow"; }
+# 7 · Empty ≠ safe — an absence that explains itself vs grep's silence
+left7(){  hdr "$C_RED" "✗ without repo-graph" "0 results reads as 'nothing uses it'"; prompt "$P7"
+  grep_show "LegacyMailer"; grep_show "legacy_mailer"
+  finalcard "$C_RED" "empty output, no idea why — delete and hope"; }
+right7(){ hdr "$C_GRN" "✓ with repo-graph" "empty, and it tells you why"; prompt "$P7"
+  rg impact LegacyMailer
+  finalcard "$C_GRN" "reason + FACT/HEURISTIC + where to grep"; }
+
+# 8 · Safe to delete? — grep's file count vs the real dependent set
+left8(){  hdr "$C_RED" "✗ without repo-graph" "2 files mention it — looks trivial"; prompt "$P8"
+  grep_show "ClaimsFromContext"; read_matches "ClaimsFromContext" 2
+  finalcard "$C_RED" "a handful of hits — refactor away?"; }
+right8(){ hdr "$C_GRN" "✓ with repo-graph" "everything that depends on it"; prompt "$P8"
+  rg impact ClaimsFromContext direction=backward top_k=12
+  finalcard "$C_GRN" "grep saw 2 files — the graph sees the whole chain"; }
 
 ready(){ printf "\n%s%s● repo-graph demo · %s side%s\n" "$C_B" "$C_MAG" "$1" "$C_R"
   for i in 3 2 1; do printf "  starting in %s…\r" "$i"; sleep 1; done; printf "                    \n\n"; }

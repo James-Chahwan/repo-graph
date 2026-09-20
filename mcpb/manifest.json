@@ -2,7 +2,7 @@
   "manifest_version": "0.2",
   "name": "repo-graph",
   "display_name": "repo-graph \u2014 structural codebase map for AI",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Structural graph memory for AI coding assistants \u2014 navigate any codebase by structure, not guesswork.",
   "long_description": "repo-graph gives the assistant a structural map of your codebase \u2014 entities, relationships, and feature flows \u2014 so it navigates straight to the files that matter instead of grepping. It runs locally via uvx; nothing leaves your machine except a user-initiated git clone when you point it at a git URL.",
   "author": {

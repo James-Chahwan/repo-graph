@@ -148,7 +148,7 @@ import json, asyncio
 from repo_graph import server
 m = json.load(open("mcpb/manifest.json"))
 tools = asyncio.run(server.mcp.list_tools())
-by = {t.name: t.inputSchema for t in tools}
+by = {t.name: t.input_schema for t in tools}   # mcp 2.x: snake_case attr, camelCase on the wire
 for t in m["tools"]:
     t["inputSchema"] = by[t["name"]]
 json.dump(m, open("/tmp/mcpb-build/manifest.json", "w"), indent=2)

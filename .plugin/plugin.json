@@ -1,6 +1,6 @@
 {
   "name": "repo-graph",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Structural graph memory for AI coding assistants — navigate any codebase by structure, not guesswork. Bundles the repo-graph MCP server plus workflow skills.",
   "author": {
     "name": "James Chahwan",

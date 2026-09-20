@@ -93,8 +93,8 @@ async def test_initialize_and_list_tools(target_repo):
         # and a JSON-schema for inputs
         for tool in result.tools:
             assert tool.description, f"tool {tool.name!r} missing description"
-            assert tool.inputSchema, f"tool {tool.name!r} missing input schema"
-            assert tool.inputSchema.get("type") == "object"
+            assert tool.input_schema, f"tool {tool.name!r} missing input schema"
+            assert tool.input_schema.get("type") == "object"
 
 
 # ── Content-shape contract ──────────────────────────────────────────────────
@@ -102,7 +102,7 @@ async def test_initialize_and_list_tools(target_repo):
 
 def _text(result) -> str:
     """Pull the concatenated text out of a CallToolResult."""
-    assert not result.isError, f"tool returned error: {result}"
+    assert not result.is_error, f"tool returned error: {result}"
     parts = []
     for block in result.content:
         # MCP content blocks are tagged unions; text blocks have .text
@@ -226,6 +226,6 @@ async def test_all_tools_callable_no_errors(target_repo):
 
         for name, args in invocations:
             result = await session.call_tool(name, args)
-            assert not result.isError, f"{name}({args}) returned isError=True: {result}"
+            assert not result.is_error, f"{name}({args}) returned is_error=True: {result}"
             # Every tool must return at least one content block
             assert result.content, f"{name}({args}) returned no content"

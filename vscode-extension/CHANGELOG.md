@@ -1,5 +1,13 @@
 # Change Log
 
+## 0.5.1
+
+- Tracks `mcp-repo-graph` 0.5.1, which moves the server onto the **MCP Python SDK
+  2.x** (`FastMCP` → `MCPServer`). The `mcp[cli]<2` cap that had been in place
+  since 2.x shipped is lifted. This is a server-side change only — the protocol
+  and the tool schemas on the wire are byte-identical, so no client or config is
+  affected.
+
 ## 0.5.0
 
 - Tracks `mcp-repo-graph` 0.5.0, which moves onto the **glia 0.5.0** engine

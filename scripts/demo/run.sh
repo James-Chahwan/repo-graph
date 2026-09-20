@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # One-command side-by-side repo-graph demo for recording.
-#   scripts/demo/run.sh <1-7>     one demo
-#   scripts/demo/run.sh all       all seven back-to-back, panes in lockstep
+#   scripts/demo/run.sh <1-8>     one demo
+#   scripts/demo/run.sh all       all eight back-to-back, panes in lockstep
 #   DEMO_REPO=/path DEMO_SPEED=1.4 scripts/demo/run.sh all
 #
 # Top bar is a LIVE comparison: "✗ WITHOUT <stats>  —  benefit  —  <stats> WITH ✓",
 # describing the human+LLM workflow win. Panes: LEFT real grep/cat, RIGHT real
-# repo-graph (flow/trace/impact/dense_text). Counters grounded in real bytes.
+# repo-graph (orient/find/impact/trace/read). Counters grounded in real bytes.
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 N="${1:-1}"
@@ -20,8 +20,8 @@ SYNC="$(mktemp -d "${TMPDIR:-/tmp}/rgdemo.XXXXXX")"   # shared: live stats + loc
 : > "$SYNC/left.stat"; : > "$SYNC/right.stat"
 
 echo "Pre-warming graph cache for $DEMO_REPO…"
-DEMO_REPO="$DEMO_REPO" python3 "$HERE/rg.py" status >/dev/null 2>&1 || \
-  DEMO_REPO="$DEMO_REPO" python3 "$HERE/rg.py" generate >/dev/null 2>&1 || true
+DEMO_REPO="$DEMO_REPO" python3 "$HERE/rg.py" orient >/dev/null 2>&1 || \
+  DEMO_REPO="$DEMO_REPO" python3 "$HERE/rg.py" refresh >/dev/null 2>&1 || true
 
 tmux kill-session -t "$S" 2>/dev/null || true
 # layout: side = horizontal columns (16:9) · stack = vertical rows (9:16 portrait)

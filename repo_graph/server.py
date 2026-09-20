@@ -29,7 +29,7 @@ from collections import Counter
 from typing import Annotated
 
 from pydantic import Field
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 from mcp.types import ToolAnnotations
 
 import glia_py
@@ -39,7 +39,7 @@ from .gitexclude import ensure_cache_excluded
 
 REPO_PATH = os.environ.get("REPO_GRAPH_REPO", os.getcwd())
 
-mcp = FastMCP(
+mcp = MCPServer(
     "repo-graph",
     instructions=(
         "Structural map of this codebase (entities, relationships, cross-stack flows) via MCP. "
@@ -245,7 +245,7 @@ except ValueError:
     DENSE_TEXT_MAX_CHARS = 50_000
 
 
-@mcp.tool(annotations=ToolAnnotations(title="Orient", readOnlyHint=True))
+@mcp.tool(annotations=ToolAnnotations(title="Orient", read_only_hint=True))
 def orient(
     seed: Annotated[str, Field(description="Optional node/qname to scope the map around (its activated neighbourhood). Blank = repo overview.", default="")] = "",
     full: Annotated[bool, Field(description="With no seed: return the whole-repo dense structural map instead of the counts overview. Ignored when seed is given.", default=False)] = False,
@@ -308,7 +308,7 @@ def _render_located(header: str, records: list[dict], g: RustGraph, budget: int)
     return _truncate("\n".join(lines), budget, "find")
 
 
-@mcp.tool(annotations=ToolAnnotations(title="Find Nodes", readOnlyHint=True))
+@mcp.tool(annotations=ToolAnnotations(title="Find Nodes", read_only_hint=True))
 def find(
     query: Annotated[str, Field(description="What to locate: a symbol/keyword (e.g. `User`, `checkout`), OR a failure signal — paste a raw stacktrace, a failing-test id (path::test), or a unified diff / changed-file list.")],
     expand: Annotated[bool, Field(description="Return the relevant neighbourhood (Personalized-PageRank ranked) around the matches, not just the matches themselves. Use to discover what surrounds a seed.", default=False)] = False,
@@ -383,7 +383,7 @@ _DIRECTION_ALIAS = {"downstream": "forward", "upstream": "backward",
                     "forward": "forward", "backward": "backward", "both": "both"}
 
 
-@mcp.tool(annotations=ToolAnnotations(title="Impact / Blast Radius", readOnlyHint=True))
+@mcp.tool(annotations=ToolAnnotations(title="Impact / Blast Radius", read_only_hint=True))
 def impact(
     nodes: Annotated[str, Field(description="One or more node names/qnames, comma-separated. A diff touching N symbols is one call.")],
     direction: Annotated[str, Field(description="'forward' (what it affects), 'backward' (what it depends on / who uses it), or 'both'. (Aliases: downstream=forward, upstream=backward.)", default="both")] = "both",
@@ -468,7 +468,7 @@ _MECH_ICON = {"CALLS": "→", "HTTP_CALLS": "⇒", "HANDLED_BY": "⇒", "QUEUE_F
               "EVENT_FLOWS": "↯", "INJECTS": "⊕", "ACCESSES_DATA": "⊟", "TESTS": "✓"}
 
 
-@mcp.tool(annotations=ToolAnnotations(title="Trace", readOnlyHint=True))
+@mcp.tool(annotations=ToolAnnotations(title="Trace", read_only_hint=True))
 def trace(
     from_node: Annotated[str, Field(description="A feature/keyword to trace end-to-end (one arg), OR the start node when tracing a path to `to_node`.")],
     to_node: Annotated[str, Field(description="Optional target node. Given → shortest path from_node→to_node. Blank → trace `from_node` as a feature across the stack.", default="")] = "",
@@ -760,7 +760,7 @@ def _read_one(g: RustGraph, node: str, context_lines: int) -> str:
     return f"{header}\n```\n{snippet}\n```" + ctx
 
 
-@mcp.tool(annotations=ToolAnnotations(title="Read Source", readOnlyHint=True))
+@mcp.tool(annotations=ToolAnnotations(title="Read Source", read_only_hint=True))
 def read(
     node: Annotated[str, Field(description="Node name or qname to read. Comma-separate several (e.g. the top-ranked nodes from `find`/`impact`) to slice them all in one call.")],
     context_lines: Annotated[int, Field(description="Lines of padding above and below the node's span. Default 0.", default=0, ge=0, le=200)] = 0,
@@ -781,7 +781,7 @@ def read(
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-@mcp.tool(annotations=ToolAnnotations(title="Refresh Graph", readOnlyHint=False, openWorldHint=True))
+@mcp.tool(annotations=ToolAnnotations(title="Refresh Graph", read_only_hint=False, open_world_hint=True))
 def refresh(
     repo_path: Annotated[str, Field(description="Path or git URL to (re)scan. Blank = the repo the server is serving. A different path/URL retargets the server at it.", default="")] = "",
     full: Annotated[bool, Field(description="Force a full reparse instead of reusing the per-file parse cache. Default False (incremental — only changed files re-parse, so this is cheap after edits).", default=False)] = False,
