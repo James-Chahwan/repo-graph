@@ -1,6 +1,6 @@
 # Example outputs
 
-Real output from the six MCP tools, run against freshly cloned upstream repos — this is what your
+Real output from the six MCP tools, run against freshly cloned upstream repos. This is what your
 assistant sees **before it opens a single file**. Nothing here is hand-written.
 
 | Repository | Language | Nodes | Edges | Cross-stack | Entry points | Cold build | Warm load |
@@ -13,8 +13,8 @@ assistant sees **before it opens a single file**. Nothing here is hand-written.
 Each directory has a `README.md` with the actual `orient`, `find`, `impact` and `trace` transcripts
 for that repo, plus the numbers above.
 
-Cold build is a full reparse from a fresh clone; warm load reads the cached graph from
-`.glia/graph/`. Both measured on one machine — treat them as a shape, not a benchmark.
+Cold build is a full reparse from a fresh clone. Warm load reads the cached graph from
+`.glia/graph/`. Both measured on one machine, so treat them as a shape, not a benchmark.
 
 ## Regenerate
 

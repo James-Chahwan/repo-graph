@@ -3,10 +3,9 @@
 ## 0.5.1
 
 - Tracks `mcp-repo-graph` 0.5.1, which moves the server onto the **MCP Python SDK
-  2.x** (`FastMCP` → `MCPServer`). The `mcp[cli]<2` cap that had been in place
-  since 2.x shipped is lifted. This is a server-side change only — the protocol
-  and the tool schemas on the wire are byte-identical, so no client or config is
-  affected.
+  2.x** (`FastMCP` becomes `MCPServer`). The `mcp[cli]<2` cap is lifted. This is a
+  server-side change only. The protocol and the tool schemas on the wire are
+  byte-identical, so no client or config is affected.
 
 ## 0.5.0
 
@@ -14,15 +13,15 @@
   (the engine package is renamed `repo-graph-py` → `glia-py`). Same six tools,
   better answers:
   - **Empty answers now explain themselves.** When nothing matches, the engine
-    returns *why* — the reason, whether it's a fact or a heuristic, and which
-    extractions are partial for that mechanism — instead of a bare "not found".
+    returns why: the reason, whether it's a fact or a heuristic, and which
+    extractions are partial for that mechanism. Better than a bare "not found".
   - **`impact` takes a whole diff in one call.** Many seeds, one walk, one
-    ranking; names that don't resolve come back listed rather than failing the
+    ranking. Names that don't resolve come back listed rather than failing the
     call.
   - **`trace` returns ranked distinct paths** across the stack, and a two-node
     trace follows real mechanism-labelled hops instead of a structural
     shortest path.
-  - **Declared components and services are labelled as such** — an Angular
+  - **Declared components and services are labelled as such.** An Angular
     component reads as `component`, not `class`.
   - Entry points, liveness and cell labels all come from the engine's own
     tables, so the extension can't drift from the engine's vocabulary.

@@ -246,9 +246,9 @@
       </video>
     </div>
     <p class="muted" style="margin-top:14px;max-width:700px">
-      The same bug, fixed two ways, same model and same prompt — the only difference is whether
-      repo-graph is installed. Without it: <b>75,308</b> tokens and <b>4m36s</b> of grep-and-read.
-      With it: <b>29,838</b> tokens and about <b>30s</b>.
+      Same bug, same model, same prompt. The only difference is whether repo-graph is installed.
+      Without it: <b>75,308</b> tokens and <b>4m36s</b> of grep-and-read. With it: <b>29,838</b>
+      tokens and about <b>30s</b>.
     </p>
   </div>
 </section>
@@ -403,11 +403,11 @@ repo-graph --repo /path/to/your/repo">copy</button></pre>
       Less context burned, fewer wrong guesses, faster answers — for you and the model.
     </p>
     <p class="muted" style="max-width:680px;margin-top:14px">
-      Six tools — one verb each, backed by the Rust engine. Every call returns a complete, ranked,
+      Six tools, one verb each, backed by the Rust engine. Every call returns a complete, ranked,
       located answer in one shot, so your assistant doesn't spiral through a dozen lookups.
     </p>
     <div class="grid" style="margin-top:22px">
-      <div class="card"><div class="k">orient</div><p class="muted" style="margin:6px 0 0">Repo shape, entry points, and where the graph is blind — so you know when to grep.</p></div>
+      <div class="card"><div class="k">orient</div><p class="muted" style="margin:6px 0 0">Repo shape, entry points, and where the graph is blind, so you know when to grep.</p></div>
       <div class="card"><div class="k">find</div><p class="muted" style="margin:6px 0 0">Any text — symbol, keyword, stacktrace, failing test, or diff — → the ranked nodes that matter.</p></div>
       <div class="card"><div class="k">impact</div><p class="muted" style="margin:6px 0 0">Blast radius: what a change affects or depends on, ranked and located, dead code flagged ⊘.</p></div>
       <div class="card"><div class="k">trace</div><p class="muted" style="margin:6px 0 0">A feature end-to-end across the stack, or the path between two nodes.</p></div>
@@ -421,8 +421,8 @@ repo-graph --repo /path/to/your/repo">copy</button></pre>
   <div class="wrap">
     <h2>It tells you when it doesn't know</h2>
     <p class="muted" style="max-width:700px">
-      Every code-graph tool looks great on the queries it can answer. The ones that burn you are the
-      silent misses — an empty result your assistant reads as "nothing uses this", so it deletes the
+      Every code-graph tool looks good on the queries it can answer. The ones that burn you are the
+      silent misses. An empty result reads as "nothing uses this", so your assistant deletes the
       thing anyway. repo-graph answers an empty query with the reason, whether that reason is a
       <b>fact</b> or a <b>heuristic</b>, and which extractions are partial for that mechanism.
     </p>
@@ -435,14 +435,14 @@ repo-graph --repo /path/to/your/repo">copy</button></pre>
         indirection are not resolved — verify: grep the callee name
     searched 26 nodes</code></pre>
     <p class="muted" style="max-width:700px;margin-top:16px">
-      <code>orient</code> reports the same blind spots up front, so your assistant knows where to fall
-      back to grep <em>deliberately</em> rather than trusting a gap.
+      <code>orient</code> reports the same blind spots up front, so your assistant knows when to grep
+      instead of trusting a gap.
     </p>
     <div class="grid" style="margin-top:24px">
-      <div class="card"><div class="k">whole diffs</div><p class="muted" style="margin:6px 0 0">Pass every symbol a change touches; one walk, one ranking. Names that don't resolve come back listed, not silently dropped.</p></div>
+      <div class="card"><div class="k">whole diffs</div><p class="muted" style="margin:6px 0 0">Pass every symbol a change touches. One walk, one ranking. Names that don't resolve come back listed, not silently dropped.</p></div>
       <div class="card"><div class="k">dead code</div><p class="muted" style="margin:6px 0 0">Anything unreachable from a known entry point is flagged <b>⊘</b>, so "nothing calls this" is a claim you can act on.</p></div>
-      <div class="card"><div class="k">real labels</div><p class="muted" style="margin:6px 0 0">A declared component, service, hook or guard is labelled as one — not flattened to "class".</p></div>
-      <div class="card"><div class="k">every row located</div><p class="muted" style="margin:6px 0 0">Each answer carries <code>path:line</code>, so the next step is a read, never a search.</p></div>
+      <div class="card"><div class="k">real labels</div><p class="muted" style="margin:6px 0 0">A declared component, service, hook or guard is labelled as one, not flattened to "class".</p></div>
+      <div class="card"><div class="k">every row located</div><p class="muted" style="margin:6px 0 0">Each answer carries <code>path:line</code>, so the next step is a read, not a search.</p></div>
     </div>
   </div>
 </section>
@@ -462,7 +462,7 @@ repo-graph --repo /path/to/your/repo">copy</button></pre>
           <li class="no"><span class="m">✕</span><div>Grant a <b>third party read access</b> to your repositories</div></li>
           <li class="no"><span class="m">✕</span><div>Your code is uploaded and indexed off your machine</div></li>
           <li class="no"><span class="m">✕</span><div><b>Per-seat monthly fee</b>, per repo-size tier</div></li>
-          <li class="no"><span class="m">✕</span><div>Fresh on <b>push</b> — uncommitted work isn't in the graph</div></li>
+          <li class="no"><span class="m">✕</span><div>Fresh on <b>push</b>, so uncommitted work isn't in the graph</div></li>
           <li class="no"><span class="m">✕</span><div>Private, air-gapped or client repos are often a non-starter</div></li>
         </ul>
       </div>
@@ -470,17 +470,17 @@ repo-graph --repo /path/to/your/repo">copy</button></pre>
         <h3 style="color:var(--accent)">repo-graph</h3>
         <ul>
           <li class="yes"><span class="m">✓</span><div><b>Nothing to grant.</b> No app, no OAuth, no account</div></li>
-          <li class="yes"><span class="m">✓</span><div>Your source <b>never leaves the machine</b> — parsing and the graph are local</div></li>
+          <li class="yes"><span class="m">✓</span><div>Your source <b>never leaves the machine</b>. Parsing and the graph are local</div></li>
           <li class="yes"><span class="m">✓</span><div><b>Free.</b> MIT-licensed, no seats, no repo limits</div></li>
-          <li class="yes"><span class="m">✓</span><div>Fresh <b>on save</b> — a watcher rebuilds incrementally as you edit</div></li>
+          <li class="yes"><span class="m">✓</span><div>Fresh <b>on save</b>. A watcher rebuilds incrementally as you edit</div></li>
           <li class="yes"><span class="m">✓</span><div>Works offline, on air-gapped boxes, and on repos you can't upload</div></li>
         </ul>
       </div>
     </div>
     <p class="muted" style="margin-top:18px;max-width:700px;font-size:.9rem">
       The usual objection to running it yourself is that a local index goes stale. That's what the
-      watcher is for — and if it ever does drift, the engine rebuilds it on connect rather than
-      serving you something old.
+      watcher is for. If it does drift, the engine rebuilds it on connect instead of serving you
+      something old.
     </p>
   </div>
 </section>
@@ -510,9 +510,9 @@ repo-graph --repo /path/to/your/repo">copy</button></pre>
       <button class="short" type="button" data-clip="paths" data-cap="Every route the call takes, ranked"><span class="frame"><img src="clips/paths.jpg" alt="" loading="lazy" width="540" height="960"><span class="play" aria-hidden="true">▶</span></span><span class="cap"><span class="pill">new in 0.5.0</span><p>Every route the call takes, ranked</p></span></button>
       <button class="short" type="button" data-clip="constellation" data-cap="Your whole codebase, as a graph"><span class="frame"><img src="clips/constellation.jpg" alt="" loading="lazy" width="540" height="960"><span class="play" aria-hidden="true">▶</span></span><span class="cap"><p>Your whole codebase, as a graph</p></span></button>
       <button class="short" type="button" data-clip="dayone" data-cap="Day one on 80,000 unfamiliar lines"><span class="frame"><img src="clips/dayone.jpg" alt="" loading="lazy" width="540" height="960"><span class="play" aria-hidden="true">▶</span></span><span class="cap"><p>Day one on 80,000 unfamiliar lines</p></span></button>
-      <button class="short" type="button" data-clip="roulette" data-cap="312 grep hits → 4, ranked"><span class="frame"><img src="clips/roulette.jpg" alt="" loading="lazy" width="540" height="960"><span class="play" aria-hidden="true">▶</span></span><span class="cap"><p>312 grep hits → 4, ranked</p></span></button>
+      <button class="short" type="button" data-clip="roulette" data-cap="312 grep hits → 4, ranked"><span class="frame"><img src="clips/roulette.jpg" alt="" loading="lazy" width="540" height="960"><span class="play" aria-hidden="true">▶</span></span><span class="cap"><p>312 grep hits become 4, ranked</p></span></button>
       <button class="short" type="button" data-clip="tectonic" data-cap="A stacktrace is just coordinates"><span class="frame"><img src="clips/tectonic.jpg" alt="" loading="lazy" width="540" height="960"><span class="play" aria-hidden="true">▶</span></span><span class="cap"><p>A stacktrace is just coordinates</p></span></button>
-      <button class="short" type="button" data-clip="typed-blast" data-cap="Rename one field — see everything it touches"><span class="frame"><img src="clips/typed-blast.jpg" alt="" loading="lazy" width="540" height="960"><span class="play" aria-hidden="true">▶</span></span><span class="cap"><p>Rename one field — see everything it touches</p></span></button>
+      <button class="short" type="button" data-clip="typed-blast" data-cap="Rename one field — see everything it touches"><span class="frame"><img src="clips/typed-blast.jpg" alt="" loading="lazy" width="540" height="960"><span class="play" aria-hidden="true">▶</span></span><span class="cap"><p>Rename one field, see everything it touches</p></span></button>
       <button class="short" type="button" data-clip="monorepo" data-cap="Four apps, and how they actually connect"><span class="frame"><img src="clips/monorepo.jpg" alt="" loading="lazy" width="540" height="960"><span class="play" aria-hidden="true">▶</span></span><span class="cap"><p>Four apps, and how they actually connect</p></span></button>
     </div>
   </div>
@@ -521,7 +521,7 @@ repo-graph --repo /path/to/your/repo">copy</button></pre>
 <section>
   <div class="wrap">
     <h2>See it on real repos</h2>
-    <p class="muted">Real tool output, captured against the current engine — what your assistant gets before it opens a single file.</p>
+    <p class="muted">Real tool output against the current engine. This is what your assistant gets before it opens a single file.</p>
     <div class="grid" style="margin-top:20px">
       <a class="card" href="https://github.com/James-Chahwan/repo-graph/blob/main/examples/fastapi/README.md"><h3>FastAPI</h3><span class="muted">Python · routes → handlers</span><div class="tools"><span class="pill">19,025 nodes</span><span class="pill">0.5s</span></div></a>
       <a class="card" href="https://github.com/James-Chahwan/repo-graph/blob/main/examples/nestjs/README.md"><h3>NestJS</h3><span class="muted">TypeScript · modules / DI</span><div class="tools"><span class="pill">7,829 nodes</span><span class="pill">0.4s</span></div></a>
@@ -529,7 +529,7 @@ repo-graph --repo /path/to/your/repo">copy</button></pre>
       <a class="card" href="https://github.com/James-Chahwan/repo-graph/blob/main/examples/gin/README.md"><h3>Gin</h3><span class="muted">Go · HTTP routing</span><div class="tools"><span class="pill">2,037 nodes</span><span class="pill">0.1s</span></div></a>
     </div>
     <p class="muted" style="margin-top:16px;font-size:.88rem">Times are a cold build from a fresh clone. A warm start reads the cached graph in
-      <b>0.02–0.18s</b> — your assistant never waits for it.</p>
+      <b>0.02 to 0.18s</b>, so your assistant never waits for it.</p>
   </div>
 </section>
 

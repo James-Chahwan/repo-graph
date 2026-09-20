@@ -13,14 +13,14 @@ grepping and reading everything first. Works across 20+ languages/frameworks
 linking between frontend calls and backend routes.
 
 Six tools show up in agent mode: **`orient`** (the lay of the land, and where the
-graph is blind), **`find`** (a symbol, a stacktrace, a failing test or a diff →
-the ranked nodes that matter), **`impact`** (blast radius, dead code flagged ⊘),
-**`trace`** (a feature end-to-end, or the path between two nodes), **`read`**
+graph is blind), **`find`** (turn a symbol, a stacktrace, a failing test or a diff
+into the ranked nodes that matter), **`impact`** (blast radius, dead code flagged
+⊘), **`trace`** (a feature end-to-end, or the path between two nodes), **`read`**
 (exact source plus who calls it and what tests it) and **`refresh`**.
 
-When the graph *can't* answer, it says why — the reason, whether that reason is a
-fact or a heuristic, and which extractions are partial — instead of returning an
-empty result the model reads as "nothing uses this".
+When the graph can't answer, it says why: the reason, whether that reason is a
+fact or a heuristic, and which extractions are partial. Better than an empty
+result the model reads as "nothing uses this".
 
 ## Requirements
 

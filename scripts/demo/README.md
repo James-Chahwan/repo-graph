@@ -39,4 +39,4 @@ DEMO_SPEED=1.4                        # higher = slower typing/pacing
 - Requires `tmux`, the editable repo-graph install, and a real cross-stack repo.
 - `run.sh` pre-warms the `.gmap` cache so right-pane calls are sub-second.
 - Traversal is deterministic since glia 0.5.0, so `rg()` no longer retries a
-  call until it returns something — the engine bug that needed that is fixed.
+  call until it returns something. The engine bug that needed that is fixed.

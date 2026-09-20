@@ -22,8 +22,8 @@ Or one command in your terminal wires up every agent you have: `uvx mcp-repo-gra
 
 > ### ⚠️ Upgrading to 0.5.0
 >
-> **The engine package was renamed `repo-graph-py` → `glia-py`.** If you install with `uvx` or
-> `pip install mcp-repo-graph`, you don't have to do anything — the new engine is pulled in for you.
+> **The engine package was renamed `repo-graph-py` to `glia-py`.** If you install with `uvx` or
+> `pip install mcp-repo-graph`, you don't have to do anything. The new engine is pulled in for you.
 >
 > You only need to act if you **import the engine directly**:
 >
@@ -37,11 +37,12 @@ Or one command in your terminal wires up every agent you have: `uvx mcp-repo-gra
 > - **The answers are Python objects, not JSON strings.** `find`, `resolve`, `blast_radius`,
 >   `cross_stack_trace` and `governing_docs` return a `{"results": [...], "absence": {...}}` dict.
 >   If you were doing `json.loads(...)` on a result, drop it.
-> - **`find_node` and `find_nodes_by_qname` are gone** — one `find(query, top_k)` replaces both.
-> - **The graph cache moved** `.ai/repo-graph/` → `.glia/graph/`. It's rebuilt automatically, so you
->   can delete the old directory. The new one ignores itself, so it never shows up in `git status`.
+> - **`find_node` and `find_nodes_by_qname` are gone.** One `find(query, top_k)` replaces both.
+> - **The graph cache moved** from `.ai/repo-graph/` to `.glia/graph/`. It's rebuilt automatically,
+>   so you can delete the old directory. The new one ignores itself and never shows up in
+>   `git status`.
 >
-> The six MCP tools are unchanged — `orient`, `find`, `impact`, `trace`, `read`, `refresh` — so
+> The six MCP tools are unchanged (`orient`, `find`, `impact`, `trace`, `read`, `refresh`), so
 > nothing in your agent config needs touching. Full detail in the
 > [0.5.0 release notes](https://github.com/James-Chahwan/repo-graph/releases/tag/v0.5.0).
 
@@ -55,7 +56,7 @@ Same bug, same model, same prompt — the only difference is whether repo-graph 
 
 **The task:** fix a reversed comparison operator in a Go + Angular monorepo.
 
-*(Recorded on an earlier engine, which mapped that repo to 566 nodes / 620 edges. The 0.5.0 engine extracts far more from the same code — 2,939 nodes / 5,129 edges — so the graph the model gets today is richer than the one in the video. The token and time figures are from the recorded run and are left as measured.)*
+*(Recorded on an earlier engine, which mapped that repo to 566 nodes / 620 edges. The 0.5.0 engine extracts far more from the same code, 2,939 nodes and 5,129 edges, so the graph the model gets today is richer than the one in the video. The token and time figures are from the recorded run and are left as measured.)*
 
 | | Without repo-graph | With repo-graph |
 |---|---|---|
@@ -174,23 +175,23 @@ Same graph, same answers — just without the tool schemas in your context. It's
 
 Cross-cutting extractors (work across all languages):
 
-- **Cross-stack HTTP** — frontend `fetch`/`axios` calls linked to the backend route they hit, and the handler behind it
-- **WebSockets** — handlers and clients (gorilla, browser, Python, Java, C#), paired by path
-- **gRPC** — services, methods and message types from `.proto`, plus client stubs and server implementations
-- **GraphQL** — resolvers and the operations that call them
-- **Queues** — consumers and producers (Celery, Dramatiq, BullMQ, Sidekiq, Oban, NATS), with const-resolved topics
-- **Events** — emitters and handlers
-- **Cron jobs** — scheduled entry points
-- **Page navigation** — frontend routes and the links between them (`NAVIGATES_TO`)
-- **Data sources** — DB / cache / queue / blob / search / email clients, and which code touches which
-- **Data entities** — shared schemas and the code that reads or writes them
-- **CLI entrypoints** — Python click, JS commander/yargs, Go cobra, Rust clap, Java picocli, C# System.CommandLine and Spectre
-- **Contracts** — OpenAPI / AsyncAPI / Pact operations linked to the routes that implement them
-- **Dependency injection** — constructor injection wired to the thing injected
-- **Config keys** — where a key is defined and everywhere that reads it
-- **Infra** — Terraform and Kubernetes resources
-- **Docs** — doc sections linked to the symbols they govern (what `read` surfaces as *governed by*)
-- **Tests** — which tests cover which code
+- **Cross-stack HTTP**: frontend `fetch`/`axios` calls linked to the backend route they hit, and the handler behind it
+- **WebSockets**: handlers and clients (gorilla, browser, Python, Java, C#), paired by path
+- **gRPC**: services, methods and message types from `.proto`, plus client stubs and server implementations
+- **GraphQL**: resolvers and the operations that call them
+- **Queues**: consumers and producers (Celery, Dramatiq, BullMQ, Sidekiq, Oban, NATS), with const-resolved topics
+- **Events**: emitters and handlers
+- **Cron jobs**: scheduled entry points
+- **Page navigation**: frontend routes and the links between them (`NAVIGATES_TO`)
+- **Data sources**: DB / cache / queue / blob / search / email clients, and which code touches which
+- **Data entities**: shared schemas and the code that reads or writes them
+- **CLI entrypoints**: Python click, JS commander/yargs, Go cobra, Rust clap, Java picocli, C# System.CommandLine and Spectre
+- **Contracts**: OpenAPI / AsyncAPI / Pact operations linked to the routes that implement them
+- **Dependency injection**: constructor injection wired to the thing injected
+- **Config keys**: where a key is defined and everywhere that reads it
+- **Infra**: Terraform and Kubernetes resources
+- **Docs**: doc sections linked to the symbols they govern (what `read` surfaces as *governed by*)
+- **Tests**: which tests cover which code
 
 Multiple languages can match one repo (e.g., Go backend + Angular frontend + SCSS). Each contributes its nodes and edges into a single unified graph.
 
@@ -343,7 +344,7 @@ Most tools also take a `budget` (max chars) so a result fits a small-model conte
 
 ### It tells you when it doesn't know
 
-The failure that actually costs you isn't a wrong answer — it's a silent empty one, which an
+The failure that actually costs you isn't a wrong answer. It's a silent empty one, which an
 assistant reads as "nothing uses this". Since **0.5.0** an empty result comes back as a structured
 *absence*: the reason, whether that reason is a **FACT** or a **HEURISTIC**, and which extractions
 are partial for the mechanism that came up empty.
@@ -359,10 +360,10 @@ are partial for the mechanism that came up empty.
     searched 26 nodes
 ```
 
-`orient` surfaces the same blind spots up front, so the model falls back to grep *deliberately*
-rather than trusting a gap. Alongside that, 0.5.0 adds: whole-diff `impact` in one call (unresolved
-names are reported, not dropped), ranked distinct cross-stack paths in `trace`, and role-aware labels
-so a declared component or service isn't flattened to "class".
+`orient` surfaces the same blind spots up front, so the model knows when to grep instead of
+trusting a gap. 0.5.0 also adds whole-diff `impact` in one call (unresolved names are reported, not
+dropped), ranked distinct cross-stack paths in `trace`, and role-aware labels so a declared component
+or service isn't flattened to "class".
 
 ## How it works
 
@@ -397,10 +398,10 @@ to a single region anchor instead of being parsed file by file, and `.gitignore`
 
 Generated files live in `.glia/graph/` inside the target repo:
 
-- **`repo-<id>.gmap`** — the graph itself, sharded, as zero-copy rkyv (mmap'd on load)
-- **`manifest.json`** — format version, repo labels, roots and parse errors, so a warm load equals a fresh generate
-- **`parse_cache.bin`** — per-file content-hashed parse cache, so an incremental rebuild only re-parses edited files
-- **`.gitignore`** — the dir ignores itself, so it never shows up in `git status`
+- **`repo-<id>.gmap`**: the graph itself, sharded, as zero-copy rkyv (mmap'd on load)
+- **`manifest.json`**: format version, repo labels, roots and parse errors, so a warm load equals a fresh generate
+- **`parse_cache.bin`**: per-file content-hashed parse cache, so an incremental rebuild only re-parses edited files
+- **`.gitignore`**: the dir ignores itself, so it never shows up in `git status`
 
 The whole directory is regenerated: delete it and the next call rebuilds it.
 
