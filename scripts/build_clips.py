@@ -32,6 +32,12 @@ SHORTS = [
     ("tectonic",      "tectonic",      "A stacktrace is just coordinates",     "00:00:07"),
     ("typed-blast",   "typed-blast",   "Rename one field — see everything it touches", "00:00:07"),
     ("monorepo",      "monorepo",      "Four apps, and how they actually connect",     "00:00:07"),
+    ("polyglot",      "polyglot",      "Eight languages, one graph",                   "00:00:07"),
+    ("twomaps",       "twomaps",       "Embeddings drift. Run it twice, get two answers", "00:00:09"),
+    ("skyline",       "skyline",       "One feature lights its street",                "00:00:07"),
+    ("receipt",       "receipt",       "One line changed. Here is the receipt",        "00:00:08"),
+    ("invisible",     "invisible",     "You just ask. It navigates for you",           "00:00:07"),
+    ("fresh",         "fresh",         "You changed one line, not the whole repo",     "00:00:07"),
 ]
 # Deliberately NOT shipped: `yours` (demos the config.yaml escape hatch, which the
 # 0.5.0 engine no longer reads) and the clip-* terminal cuts (kept for social).
