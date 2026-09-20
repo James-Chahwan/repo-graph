@@ -138,6 +138,21 @@
   .pill{border:1px solid var(--line);border-radius:999px;padding:3px 11px;font-size:.75rem;
         color:var(--accent);background:#fff;font-family:var(--mono)}
 
+  /* local vs hosted */
+  .vs{display:grid;grid-template-columns:1fr 1fr;gap:0;margin-top:24px;border:1px solid var(--line);
+      border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow-card);background:var(--card)}
+  .vs>div{padding:22px 24px}
+  .vs>div+div{border-left:1px solid var(--line)}
+  .vs h3{margin:0 0 14px;font-size:.78rem;letter-spacing:.1em;text-transform:uppercase;
+         font-family:var(--body);font-weight:700;color:var(--dim)}
+  .vs.ours h3{color:var(--accent)}
+  .vs ul{margin:0;padding:0;list-style:none}
+  .vs li{display:flex;gap:10px;padding:7px 0;font-size:.92rem;color:var(--sub);line-height:1.45}
+  .vs li b{color:var(--fg);font-weight:600}
+  .vs .m{flex:0 0 auto;font-weight:700}
+  .vs .no .m{color:#b0553f} .vs .yes .m{color:var(--accent)}
+  @media(max-width:700px){.vs{grid-template-columns:1fr}.vs>div+div{border-left:0;border-top:1px solid var(--line)}}
+
   /* clips */
   .clipwrap{border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;
             box-shadow:var(--shadow);background:#12151c;line-height:0}
@@ -429,6 +444,44 @@ repo-graph --repo /path/to/your/repo">copy</button></pre>
       <div class="card"><div class="k">real labels</div><p class="muted" style="margin:6px 0 0">A declared component, service, hook or guard is labelled as one — not flattened to "class".</p></div>
       <div class="card"><div class="k">every row located</div><p class="muted" style="margin:6px 0 0">Each answer carries <code>path:line</code>, so the next step is a read, never a search.</p></div>
     </div>
+  </div>
+</section>
+
+<section id="local">
+  <div class="wrap">
+    <h2>It runs on your machine</h2>
+    <p class="muted" style="max-width:700px">
+      There are hosted code-graph services now. They index your repo on their servers and you query it
+      over the network. That's a real trade, and it's worth being explicit about which side of it
+      repo-graph is on.
+    </p>
+    <div class="vs">
+      <div>
+        <h3>A hosted index</h3>
+        <ul>
+          <li class="no"><span class="m">✕</span><div>Grant a <b>third party read access</b> to your repositories</div></li>
+          <li class="no"><span class="m">✕</span><div>Your code is uploaded and indexed off your machine</div></li>
+          <li class="no"><span class="m">✕</span><div><b>Per-seat monthly fee</b>, per repo-size tier</div></li>
+          <li class="no"><span class="m">✕</span><div>Fresh on <b>push</b> — uncommitted work isn't in the graph</div></li>
+          <li class="no"><span class="m">✕</span><div>Private, air-gapped or client repos are often a non-starter</div></li>
+        </ul>
+      </div>
+      <div class="ours-col">
+        <h3 style="color:var(--accent)">repo-graph</h3>
+        <ul>
+          <li class="yes"><span class="m">✓</span><div><b>Nothing to grant.</b> No app, no OAuth, no account</div></li>
+          <li class="yes"><span class="m">✓</span><div>Your source <b>never leaves the machine</b> — parsing and the graph are local</div></li>
+          <li class="yes"><span class="m">✓</span><div><b>Free.</b> MIT-licensed, no seats, no repo limits</div></li>
+          <li class="yes"><span class="m">✓</span><div>Fresh <b>on save</b> — a watcher rebuilds incrementally as you edit</div></li>
+          <li class="yes"><span class="m">✓</span><div>Works offline, on air-gapped boxes, and on repos you can't upload</div></li>
+        </ul>
+      </div>
+    </div>
+    <p class="muted" style="margin-top:18px;max-width:700px;font-size:.9rem">
+      The usual objection to running it yourself is that a local index goes stale. That's what the
+      watcher is for — and if it ever does drift, the engine rebuilds it on connect rather than
+      serving you something old.
+    </p>
   </div>
 </section>
 
