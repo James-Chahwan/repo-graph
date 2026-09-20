@@ -28,6 +28,29 @@ jobs:
       - name: Run install matrix
         run: docker run --rm repo-graph-install-matrix
 
+  # Early warning for the next breaking upstream major. The cap in pyproject
+  # protects users; this job tells us the cap is now the only thing doing so.
+  # `mcp[cli]<2` sat there for two months because nothing was watching 2.x.
+  unpinned-upstream:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    continue-on-error: true      # advisory: a red here is a heads-up, not a broken build
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - name: Install with every cap lifted, then run the suite
+        run: |
+          python -m pip install -q -e ".[dev]"
+          # deliberately drag each dependency to its newest release, caps ignored
+          python -m pip install -q -U --upgrade-strategy eager "mcp[cli]" glia-py watchdog
+          python - <<'PY'
+          import importlib.metadata as m
+          for pkg in ("mcp", "glia-py", "watchdog"):
+              print(f"::notice::unpinned {pkg} == {m.version(pkg)}")
+          PY
+          pytest -q -m "not perf"
+
   published:
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest

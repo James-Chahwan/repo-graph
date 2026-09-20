@@ -119,7 +119,9 @@ repo-graph earns its keep when a codebase is bigger or more tangled than the mod
 
 Strong fits:
 
-- **Monorepos** — a frontend calling a backend across a language boundary. repo-graph links the HTTP call to the route it hits and the handler behind it — the one thing grep structurally can't do. Point `--repo` at the monorepo root and a single graph spans every project. *(The demo above is exactly this: Go + Angular in one repo.)*
+- **Monorepos** — a frontend calling a backend across a language boundary. repo-graph links the HTTP call to the route it hits and the handler behind it, which a text search can't do because the two sides share no string. Point `--repo` at the monorepo root and a single graph spans every project. *(The demo above is exactly this: Go + Angular in one repo.)*
+
+  Other tools link `fetch`/`axios` to Express, Fastify and Koa routes. What differs here is reach: the same pairing runs across Go, Python, Java, C#, Rust, PHP, Ruby and the rest, in one graph, and covers gRPC, GraphQL, WebSockets, queues and events on the same footing. That breadth is not benchmarked against them, so take it as a design difference rather than a measured win.
 - **Multi-service / polyrepo systems** — drop the services under one directory and point `--repo` at it; the graph traces a feature across service boundaries in one call.
 - **Large single codebases** — thousands of files where orientation itself is the cost.
 - **Unfamiliar or legacy code** — where you don't yet know what touches what.
