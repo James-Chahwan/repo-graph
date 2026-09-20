@@ -6,7 +6,7 @@ repo-graph runs on your machine and is built to keep your code there.
 - **Data collection & sharing:** None. Your source code and graph data are never
   sent to repo-graph, its author, or any third party.
 - **Local processing & storage:** Scanning and graph-building happen locally; the
-  structural graph is cached in your project's `.ai/repo-graph/` directory and
+  structural graph is cached in your project's `.glia/graph/` directory and
   stays on your device.
 - **Network access — only two cases, both user-initiated:**
   1. **Installation.** `uvx` / `pip` downloads the package and its prebuilt engine

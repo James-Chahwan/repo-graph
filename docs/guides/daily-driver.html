@@ -6,7 +6,7 @@
 <title>Make your AI assistant navigate by structure · repo-graph</title>
 <meta name="description" content="Teach Claude Code, Cursor, and Codex to call orient before grepping, scope with the right repo-graph tool, and trust the graph.">
 <link rel="canonical" href="https://repo-graph.com/guides/daily-driver">
-<meta name="theme-color" content="#0a0a0a">
+<meta name="theme-color" content="#f3f1f2">
 <meta property="og:type" content="article">
 <meta property="og:site_name" content="repo-graph">
 <meta property="og:title" content="Make your AI assistant navigate by structure">
@@ -14,44 +14,68 @@
 <meta property="og:url" content="https://repo-graph.com/guides/daily-driver">
 <meta property="og:image" content="https://repo-graph.com/og.png">
 <meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Space+Grotesk:wght@400;500;700&display=swap">
 <style>
-  :root{--bg:#0a0a0a;--panel:#101311;--line:#1c241e;--fg:#cfe6d2;--dim:#7e9384;
-        --grn:#8effc0;--grn2:#a8ffd0;--red:#e88a8a;
+  /* Design language shared with quokk4.net (quokka-stack quokka_web/src/styles.css). */
+  :root{--bg:#f3f1f2;
+        --card:linear-gradient(158deg,rgba(251,250,255,.88),rgba(246,248,252,.7));
+        --card-strong:rgba(247,246,252,.94);
+        --line:rgba(129,140,167,.28);--line-strong:rgba(119,130,157,.4);
+        --fg:#1f2532;--head:#1a2233;--sub:#4b5770;--dim:#5e687c;
+        --accent:#6254c8;--accent-warm:#c2703f;
+        --grad:linear-gradient(138deg,#9b8ff2 0%,#f2a37f 100%);
+        --radius:20px;--shadow-card:0 8px 20px rgba(127,136,162,.1);
+        --display:"Fraunces","Iowan Old Style","Palatino Linotype",serif;
+        --body:"Space Grotesk","Avenir Next","Segoe UI",sans-serif;
         --mono:"SFMono-Regular",ui-monospace,"JetBrains Mono","Source Code Pro",Menlo,Consolas,monospace;}
   *{box-sizing:border-box} html{scroll-behavior:smooth}
-  body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--mono);line-height:1.65;
-       -webkit-font-smoothing:antialiased;font-size:15px}
-  a{color:var(--grn);text-decoration:none} a:hover{text-decoration:underline}
-  .wrap{max-width:760px;margin:0 auto;padding:0 24px}
+  body{margin:0;min-height:100vh;background:var(--bg);color:var(--fg);font-family:var(--body);
+       line-height:1.7;-webkit-font-smoothing:antialiased;font-size:16px}
+  body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+    background:radial-gradient(circle at 50% 14%,rgba(251,248,255,.92),rgba(246,244,245,.88) 48%,rgba(237,238,241,.9) 100%)}
+  body>*{position:relative;z-index:1}
+  a{color:var(--accent);text-decoration:none} a:hover{text-decoration:underline}
+  .wrap{width:min(760px,calc(100% - 3rem));margin:0 auto}
   .top{border-bottom:1px solid var(--line)}
-  .top .wrap{display:flex;align-items:center;justify-content:space-between;height:56px}
-  .brand{font-weight:700;color:var(--fg)} .brand b{color:var(--grn)}
-  .top nav a{color:var(--dim);margin-left:18px;font-size:14px}
-  .top nav a:hover{color:var(--grn)}
-  article{padding:48px 0 24px}
-  .eyebrow{color:var(--dim);font-size:12px;letter-spacing:.16em;text-transform:uppercase;margin:0 0 12px}
-  h1{font-size:clamp(26px,4.5vw,38px);line-height:1.2;margin:0 0 14px;letter-spacing:-.01em}
-  .lede{color:var(--dim);font-size:17px;margin:0 0 28px}
-  h2{font-size:20px;margin:34px 0 10px;color:var(--grn)}
-  h3{font-size:16px;margin:24px 0 8px}
-  p{margin:0 0 14px} ul,ol{margin:0 0 14px;padding-left:22px} li{margin:4px 0}
-  strong{color:var(--grn2)}
-  code{background:#0c0f0d;border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-size:13.5px}
-  pre{background:#0c0f0d;border:1px solid var(--line);border-radius:10px;padding:14px 16px;overflow:auto;margin:14px 0}
-  pre code{background:none;border:0;padding:0;font-size:13.5px;color:var(--fg)}
-  table{border-collapse:collapse;width:100%;margin:14px 0;font-size:14px}
-  th,td{border:1px solid var(--line);padding:8px 12px;text-align:left}
-  th{color:var(--grn);font-weight:600}
-  blockquote{border-left:2px solid var(--line);margin:14px 0;padding:2px 16px;color:var(--dim)}
-  hr{border:0;border-top:1px solid var(--line);margin:28px 0}
-  footer{border-top:1px solid var(--line);padding:28px 0 64px;color:var(--dim);font-size:13px}
-  footer .cmd{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin:0 0 14px;color:var(--fg)}
-  footer .cmd b{color:var(--grn)}
+  .top .wrap{display:flex;align-items:center;justify-content:space-between;height:60px}
+  .brand{font-weight:700;color:var(--head);font-family:var(--display)}
+  .brand b{background:var(--grad);-webkit-background-clip:text;background-clip:text;
+           -webkit-text-fill-color:transparent}
+  .top nav a{color:var(--dim);margin-left:18px;font-size:.88rem}
+  .top nav a:hover{color:var(--fg)}
+  article{padding:52px 0 24px}
+  .eyebrow{color:var(--dim);font-size:.72rem;letter-spacing:.16em;text-transform:uppercase;margin:0 0 12px}
+  h1{font-family:var(--display);font-size:clamp(2rem,4.8vw,3rem);line-height:1.05;margin:0 0 16px;
+     letter-spacing:-.025em;color:var(--head);font-weight:700}
+  .lede{color:var(--sub);font-size:1.08rem;margin:0 0 30px}
+  h2{font-family:var(--display);font-size:1.45rem;margin:38px 0 10px;color:#253248;
+     font-weight:600;letter-spacing:-.02em;line-height:1.2}
+  h3{font-family:var(--display);font-size:1.08rem;margin:26px 0 8px;color:#253248;font-weight:600}
+  p{margin:0 0 15px} ul,ol{margin:0 0 15px;padding-left:22px} li{margin:5px 0}
+  strong{color:var(--head);font-weight:700}
+  code{background:var(--card-strong);border:1px solid var(--line);border-radius:6px;
+       padding:1px 6px;font-family:var(--mono);font-size:.84rem}
+  pre{background:var(--card-strong);border:1px solid var(--line);border-radius:14px;
+      padding:16px 18px;overflow:auto;margin:16px 0;box-shadow:var(--shadow-card)}
+  pre code{background:none;border:0;padding:0;font-size:.8rem;color:var(--fg);line-height:1.55}
+  table{border-collapse:collapse;width:100%;margin:16px 0;font-size:.9rem}
+  th,td{border:1px solid var(--line);padding:9px 13px;text-align:left}
+  th{color:#253248;font-weight:600;background:var(--card-strong)}
+  blockquote{border-left:3px solid;border-image:var(--grad) 1;margin:16px 0;padding:2px 18px;color:var(--sub)}
+  hr{border:0;border-top:1px solid var(--line);margin:30px 0}
+  footer{border-top:1px solid var(--line);padding:30px 0 64px;color:var(--dim);font-size:.85rem}
+  footer .cmd{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+              padding:12px 16px;margin:0 0 14px;color:var(--fg);font-family:var(--mono);
+              box-shadow:var(--shadow-card)}
+  footer .cmd b{color:var(--accent)}
   .cards{display:grid;gap:14px;margin:18px 0}
-  .card{display:block;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px;color:var(--fg)}
-  .card:hover{border-color:var(--grn);text-decoration:none}
-  .card h3{margin:0 0 4px;color:var(--fg)} .card p{margin:0;color:var(--dim);font-size:14px}
-  .sec{color:var(--grn);font-size:12px;letter-spacing:.16em;text-transform:uppercase;margin:28px 0 4px}
+  .card{display:block;background:var(--card);border:1px solid var(--line);
+        border-radius:var(--radius);padding:18px 20px;color:var(--fg);box-shadow:var(--shadow-card)}
+  .card:hover{border-color:var(--line-strong);text-decoration:none}
+  .card h3{margin:0 0 4px;color:#253248} .card p{margin:0;color:var(--sub);font-size:.9rem}
+  .sec{color:var(--accent-warm);font-size:.72rem;letter-spacing:.16em;text-transform:uppercase;margin:30px 0 4px}
 </style>
 </head>
 <body>

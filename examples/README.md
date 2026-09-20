@@ -1,28 +1,26 @@
-# Example Outputs
+# Example outputs
 
-Pre-generated graph data for popular open-source repositories, so you can see what `repo-graph` produces without running it yourself.
+Real output from the six MCP tools, run against freshly cloned upstream repos — this is what your
+assistant sees **before it opens a single file**. Nothing here is hand-written.
 
-| Repository | Language | Nodes | Edges | Flows |
-|---|---|---|---|---|
-| [FastAPI](fastapi/) | Python | 1,693 | 1,619 | 95 |
-| [Gin](gin/) | Go | 419 | 417 | 2 |
-| [Hono](hono/) | TypeScript | 716 | 608 | 0 |
-| [NestJS](nestjs/) | TypeScript | 2,805 | 2,237 | 0 |
+| Repository | Language | Nodes | Edges | Cross-stack | Entry points | Cold build | Warm load |
+|---|---|---|---|---|---|---|---|
+| [FastAPI](fastapi/) | Python | 19,025 | 20,854 | 3,999 | 3,045 | 0.5s | 0.18s |
+| [NestJS](nestjs/) | TypeScript | 7,829 | 14,961 | 362 | 469 | 0.4s | 0.10s |
+| [Hono](hono/) | TypeScript | 2,062 | 4,967 | 204 | 581 | 0.3s | 0.05s |
+| [Gin](gin/) | Go | 2,037 | 3,809 | 34 | 810 | 0.1s | 0.02s |
 
-Each directory contains the full `.ai/repo-graph/` output:
+Each directory has a `README.md` with the actual `orient`, `find`, `impact` and `trace` transcripts
+for that repo, plus the numbers above.
 
-- **`state.md`** -- project overview, git state, detected packages/modules
-- **`nodes.json`** -- every entity (functions, classes, routes, modules, etc.)
-- **`edges.json`** -- relationships (imports, calls, contains, routes_to)
-- **`flows/`** -- auto-generated feature flows from detected routes
+Cold build is a full reparse from a fresh clone; warm load reads the cached graph from
+`.glia/graph/`. Both measured on one machine — treat them as a shape, not a benchmark.
 
 ## Regenerate
 
-To regenerate any example against the latest version of the repo:
-
 ```bash
-git clone --depth 1 https://github.com/tiangolo/fastapi.git /tmp/fastapi
-repo-graph-init --repo /tmp/fastapi --graph-only
+python3 scripts/build_examples.py          # clones into /tmp/exrepos, rewrites examples/
+python3 scripts/build_examples.py --keep   # reuse existing clones
 ```
 
-The output lands in `/tmp/fastapi/.ai/repo-graph/`.
+Run it after an engine release so the published transcripts match what users actually get.

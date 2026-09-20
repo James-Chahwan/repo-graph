@@ -9,7 +9,7 @@
 <meta name="description" content="repo-graph (PyPI: mcp-repo-graph) is an MCP server that gives Claude, Cursor, VS Code and any MCP client a structural graph of your codebase — so the model reads only what matters. pip install mcp-repo-graph.">
 <meta name="keywords" content="mcp-repo-graph, repo-graph, MCP server, code graph, codebase map, Claude Code, MCP code navigation, tree-sitter, context window, AI coding">
 <link rel="canonical" href="https://repo-graph.com/">
-<meta name="theme-color" content="#0a0a0a">
+<meta name="theme-color" content="#f3f1f2">
 
 <!-- Open Graph / social -->
 <meta property="og:type" content="website">
@@ -40,82 +40,156 @@
 }
 </script>
 
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Space+Grotesk:wght@400;500;700&display=swap">
+
 <style>
+  /* Design language lifted from quokka-stack (quokk4.net):
+     quokka_web/src/styles.css tokens + the cozy-cyber-background wash. */
   :root{
-    --bg:#0a0a0a; --panel:#101311; --line:#1c241e; --fg:#cfe6d2; --dim:#7e9384;
-    --grn:#8effc0; --grn2:#a8ffd0; --red:#e88a8a;
+    --bg:#f3f1f2;
+    --card:linear-gradient(158deg,rgba(251,250,255,.88),rgba(246,248,252,.7));
+    --card-strong:rgba(247,246,252,.94);
+    --line:rgba(129,140,167,.28); --line-strong:rgba(119,130,157,.4);
+    --fg:#1f2532; --head:#1a2233; --sub:#4b5770; --dim:#5e687c;
+    --accent:#6254c8; --accent-soft:#c8bfec; --accent-warm:#c2703f;
+    --grad:linear-gradient(138deg,#9b8ff2 0%,#f2a37f 100%);
+    --grad-soft:linear-gradient(135deg,#b5a8e4,#f5b99a);
+    --radius:20px;
+    --shadow:0 16px 44px rgba(114,121,145,.2);
+    --shadow-card:0 8px 20px rgba(127,136,162,.1);
+    --display:"Fraunces","Iowan Old Style","Palatino Linotype",serif;
+    --body:"Space Grotesk","Avenir Next","Segoe UI",sans-serif;
     --mono:"SFMono-Regular",ui-monospace,"JetBrains Mono","Source Code Pro",Menlo,Consolas,monospace;
   }
   *{box-sizing:border-box}
   html{scroll-behavior:smooth}
-  body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--mono);
-       line-height:1.6;-webkit-font-smoothing:antialiased}
-  a{color:var(--grn);text-decoration:none}
+  body{margin:0;min-height:100vh;background:var(--bg);color:var(--fg);font-family:var(--body);
+       line-height:1.65;-webkit-font-smoothing:antialiased}
+  /* the cozy wash, fixed behind everything */
+  body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+    background:radial-gradient(circle at 50% 14%,rgba(251,248,255,.92),rgba(246,244,245,.88) 48%,rgba(237,238,241,.9) 100%)}
+  body>*{position:relative;z-index:1}
+  a{color:var(--accent);text-decoration:none}
   a:hover{text-decoration:underline}
-  .wrap{max-width:920px;margin:0 auto;padding:0 24px}
+  .wrap{width:min(1020px,calc(100% - 3rem));margin:0 auto}
   .muted{color:var(--dim)}
-  section{padding:64px 0;border-top:1px solid var(--line)}
-  h2{font-size:14px;letter-spacing:.18em;text-transform:uppercase;color:var(--grn);margin:0 0 24px;font-weight:600}
-  h3{margin:0 0 6px;font-size:16px}
+  section{padding:68px 0;border-top:1px solid var(--line)}
+  h2{font-family:var(--display);font-size:clamp(1.3rem,2.4vw,1.75rem);font-weight:600;
+     letter-spacing:-.02em;color:#253248;margin:0 0 22px;line-height:1.2}
+  h3{margin:0 0 6px;font-family:var(--display);font-size:1.05rem;font-weight:600;color:#253248;line-height:1.25}
 
   /* hero */
-  header{padding:84px 0 64px;text-align:center}
-  .word{font-size:clamp(34px,7vw,64px);font-weight:700;letter-spacing:-.01em;margin:0}
-  .word b{color:var(--grn)}
-  .tag{font-size:clamp(15px,2.4vw,20px);margin:14px auto 0;max-width:640px;color:var(--fg)}
-  .sub{margin:10px auto 0;max-width:600px;color:var(--dim);font-size:14px}
-  .proof{margin:26px auto 0;max-width:640px;color:var(--dim);font-size:13px;
-         border:1px dashed var(--line);border-radius:10px;padding:12px 16px}
-  .proof b{color:var(--grn2)}
+  header{padding:88px 0 68px;text-align:center}
+  .word{margin:0;font-family:var(--display);font-size:clamp(2.1rem,5.2vw,3.7rem);font-weight:700;
+        line-height:1.05;letter-spacing:-.025em;color:var(--head)}
+  .word b{background:var(--grad);-webkit-background-clip:text;background-clip:text;
+          -webkit-text-fill-color:transparent;color:var(--accent)}
+  .tag{margin:18px auto 0;max-width:660px;font-size:clamp(1rem,2.2vw,1.22rem);color:var(--sub)}
+  .sub{margin:10px auto 0;max-width:600px;color:var(--dim);font-size:.95rem}
+  .proof{margin:28px auto 0;max-width:660px;color:var(--sub);font-size:.9rem;
+         border:1px solid var(--line);border-radius:var(--radius);padding:16px 20px;
+         background:var(--card);box-shadow:var(--shadow-card)}
+  .proof b{color:var(--accent-warm);font-weight:600}
 
   /* copyable command */
-  .cmd{display:flex;align-items:center;gap:12px;background:var(--panel);border:1px solid var(--line);
-       border-radius:12px;padding:14px 16px;margin:22px auto 0;max-width:560px;text-align:left}
-  .cmd code{flex:1;font-size:clamp(14px,2.2vw,18px);color:var(--fg);white-space:nowrap;overflow:auto}
-  .cmd .pfx{color:var(--grn)}
-  .copy{cursor:pointer;background:transparent;border:1px solid var(--line);color:var(--dim);
-        border-radius:8px;padding:6px 12px;font-family:var(--mono);font-size:12px;white-space:nowrap}
-  .copy:hover{border-color:var(--grn);color:var(--grn)}
-  .copy.ok{color:var(--grn);border-color:var(--grn)}
+  .cmd{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);
+       border-radius:var(--radius);padding:14px 18px;margin:24px auto 0;max-width:580px;
+       text-align:left;box-shadow:var(--shadow)}
+  .cmd code{flex:1;font-family:var(--mono);font-size:clamp(.82rem,2vw,1.02rem);color:var(--fg);
+            white-space:nowrap;overflow:auto}
+  .cmd .pfx{color:var(--accent)}
+  .copy{cursor:pointer;background:#fff;border:1px solid var(--line);color:var(--dim);
+        border-radius:999px;padding:6px 14px;font-family:var(--body);font-size:.75rem;white-space:nowrap}
+  .copy:hover{border-color:var(--line-strong);color:var(--fg)}
+  .copy.ok{color:#241d3a;background:var(--grad-soft);border-color:transparent;font-weight:600}
 
-  .btns{margin:22px 0 0;display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
-  .btn{border:1px solid var(--line);border-radius:10px;padding:10px 18px;color:var(--fg);font-size:14px}
-  .btn:hover{border-color:var(--grn);text-decoration:none}
-  .btn.primary{background:var(--grn);color:#06140d;border-color:var(--grn);font-weight:600}
+  .btns{margin:24px 0 0;display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+  .btn{border:1px solid var(--line);border-radius:999px;padding:11px 22px;color:var(--fg);
+       font-size:.9rem;background:#fff;font-weight:500}
+  .btn:hover{border-color:var(--line-strong);text-decoration:none}
+  .btn.primary{background:var(--grad);color:#241d3a;border-color:transparent;font-weight:700;
+               box-shadow:var(--shadow)}
 
   /* install switcher */
   .tabs{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px}
-  .tab{cursor:pointer;border:1px solid var(--line);background:transparent;color:var(--dim);
-       border-radius:999px;padding:7px 15px;font-family:var(--mono);font-size:13px}
-  .tab[aria-selected="true"]{border-color:var(--grn);color:var(--grn);background:#0e1712}
-  .panel{display:none;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:4px 18px 18px}
+  .tab{cursor:pointer;border:1px solid var(--line);background:#fff;color:var(--dim);
+       border-radius:999px;padding:8px 16px;font-family:var(--body);font-size:.82rem}
+  .tab[aria-selected="true"]{border-color:transparent;color:#241d3a;background:var(--grad);font-weight:600}
+  .panel{display:none;background:var(--card);border:1px solid var(--line);
+         border-radius:var(--radius);padding:6px 20px 20px;box-shadow:var(--shadow-card)}
   .panel.on{display:block}
-  .panel p{color:var(--dim);font-size:14px}
-  pre{position:relative;background:#0c0f0d;border:1px solid var(--line);border-radius:10px;
-      padding:14px 16px;overflow:auto;font-size:13.5px;color:var(--fg);margin:14px 0 0}
-  pre .copy{position:absolute;top:8px;right:8px}
+  .panel p{color:var(--sub);font-size:.9rem}
+  pre{position:relative;background:var(--card-strong);border:1px solid var(--line);
+      border-radius:14px;padding:16px 18px;overflow:auto;font-family:var(--mono);
+      font-size:.8rem;line-height:1.55;color:var(--fg);margin:14px 0 0}
+  pre .copy{position:absolute;top:10px;right:10px}
+  code{font-family:var(--mono)}
 
-  /* tiers + examples grids */
-  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px}
-  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px}
-  .card .k{color:var(--grn);font-size:12px;letter-spacing:.1em;text-transform:uppercase}
-  .card code{color:var(--fg);font-size:13px}
+  /* grids */
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+        padding:20px;box-shadow:var(--shadow-card)}
+  a.card:hover{border-color:var(--line-strong);text-decoration:none;box-shadow:var(--shadow)}
+  .card .k{font-family:var(--mono);color:var(--accent);font-size:.82rem;font-weight:600}
+  .card code{color:var(--fg);font-size:.8rem}
   .tools{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
-  .pill{border:1px solid var(--line);border-radius:7px;padding:3px 9px;font-size:12.5px;color:var(--fg)}
+  .pill{border:1px solid var(--line);border-radius:999px;padding:3px 11px;font-size:.75rem;
+        color:var(--accent);background:#fff;font-family:var(--mono)}
+
+  /* clips */
+  .clipwrap{border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;
+            box-shadow:var(--shadow);background:#12151c;line-height:0}
+  .clipwrap video{width:100%;height:auto;display:block}
+
+  /* Thumbnails are posters, not <video> — the clips are 1080x1920 with small type,
+     so they're only legible played large. Clicking opens the lightbox. */
+  .shorts{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:22px;margin-top:24px}
+  .short{display:flex;flex-direction:column;gap:12px;text-align:left;padding:0;border:0;
+         background:none;font:inherit;color:inherit;cursor:pointer}
+  .short .frame{position:relative;border:1px solid var(--line);border-radius:18px;overflow:hidden;
+                box-shadow:var(--shadow-card);background:#12151c;line-height:0;
+                transition:box-shadow .2s,transform .2s}
+  .short:hover .frame{box-shadow:var(--shadow);transform:translateY(-2px)}
+  .short:focus-visible .frame{outline:3px solid var(--accent-soft);outline-offset:3px}
+  .short img{width:100%;height:auto;display:block;aspect-ratio:9/16;object-fit:cover}
+  .short .play{position:absolute;inset:0;margin:auto;width:56px;height:56px;border-radius:50%;
+               background:var(--grad);color:#241d3a;display:flex;align-items:center;
+               justify-content:center;font-size:20px;box-shadow:var(--shadow);line-height:1}
+  .short .cap{display:flex;flex-direction:column;gap:8px;align-items:flex-start}
+  .short p{margin:0;color:var(--sub);font-size:.88rem;line-height:1.45}
+
+  /* lightbox — portrait clips need the height, so cap by vh not vw */
+  .lb{position:fixed;inset:0;z-index:50;display:none;align-items:center;justify-content:center;
+      background:rgba(24,26,36,.82);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);padding:24px}
+  .lb.on{display:flex}
+  .lb video{max-height:84vh;max-width:min(94vw,520px);width:auto;height:auto;border-radius:18px;
+            box-shadow:0 30px 70px rgba(12,14,22,.6);background:#12151c;display:block}
+  .lb .x{position:absolute;top:18px;right:20px;width:44px;height:44px;border-radius:50%;
+         border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.1);color:#fff;
+         font-size:20px;cursor:pointer;line-height:1}
+  .lb .x:hover{background:rgba(255,255,255,.2)}
+  .lb .lbcap{position:absolute;bottom:18px;left:0;right:0;text-align:center;color:#e7e6ef;
+             font-size:.95rem;padding:0 24px}
 
   /* demo */
-  .demo-poster{display:flex;align-items:center;gap:18px;background:var(--panel);border:1px solid var(--line);
-    border-radius:14px;padding:26px;color:var(--fg)}
-  .demo-poster:hover{border-color:var(--grn);text-decoration:none}
-  .demo-poster .play{flex:0 0 auto;width:54px;height:54px;border-radius:50%;background:var(--grn);color:#06140d;
-    display:flex;align-items:center;justify-content:center;font-size:20px}
-  .demo-cap{font-size:15px}
-  .video{position:relative;padding-bottom:56.25%;height:0;border-radius:14px;overflow:hidden;border:1px solid var(--line)}
+  .demo-poster{display:flex;align-items:center;gap:18px;background:var(--card);
+    border:1px solid var(--line);border-radius:var(--radius);padding:26px;color:var(--fg);
+    box-shadow:var(--shadow-card)}
+  .demo-poster:hover{border-color:var(--line-strong);text-decoration:none;box-shadow:var(--shadow)}
+  .demo-poster .play{flex:0 0 auto;width:54px;height:54px;border-radius:50%;background:var(--grad);
+    color:#241d3a;display:flex;align-items:center;justify-content:center;font-size:20px}
+  .demo-cap{font-size:.95rem}
+  .video{position:relative;padding-bottom:56.25%;height:0;border-radius:var(--radius);
+         overflow:hidden;border:1px solid var(--line)}
   .video iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
 
-  footer{padding:48px 0 72px;border-top:1px solid var(--line);text-align:center;color:var(--dim);font-size:13px}
+  footer{padding:48px 0 72px;border-top:1px solid var(--line);text-align:center;
+         color:var(--dim);font-size:.88rem}
   .flinks{display:flex;gap:18px;justify-content:center;flex-wrap:wrap;margin-bottom:16px}
-  .search{font-size:13px}.search b{color:var(--grn)}
+  .flinks a{color:var(--dim)} .flinks a:hover{color:var(--fg)}
+  .search{font-size:.82rem}.search b{color:var(--accent-warm)}
 </style>
 </head>
 <body>
@@ -144,14 +218,23 @@
 
 <section id="demo">
   <div class="wrap">
-    <h2>Watch — same model, same prompt</h2>
-    <!-- When the video is on YouTube, replace the <a> below with:
+    <h2>Why a graph, in 30 seconds</h2>
+    <!-- Self-hosted so it works without a third party. To switch to YouTube later:
          <div class="video"><iframe src="https://www.youtube.com/embed/VIDEO_ID"
            title="repo-graph demo" allowfullscreen loading="lazy"></iframe></div> -->
-    <a class="demo-poster" href="https://github.com/James-Chahwan/repo-graph#demo" aria-label="Watch the repo-graph demo">
-      <span class="play">▶</span>
-      <span class="demo-cap">The same bug, fixed two ways — with and without repo-graph.<br><b class="muted">~10× less context, every task.</b></span>
-    </a>
+    <div class="clipwrap">
+      <video controls playsinline preload="none" poster="clips/explainer.jpg"
+             aria-label="What repo-graph does, in 30 seconds">
+        <source src="clips/explainer.mp4" type="video/mp4">
+        Your browser can't play this clip —
+        <a href="clips/explainer.mp4">download it instead</a>.
+      </video>
+    </div>
+    <p class="muted" style="margin-top:14px;max-width:700px">
+      The same bug, fixed two ways, same model and same prompt — the only difference is whether
+      repo-graph is installed. Without it: <b>75,308</b> tokens and <b>4m36s</b> of grep-and-read.
+      With it: <b>29,838</b> tokens and about <b>30s</b>.
+    </p>
   </div>
 </section>
 
@@ -319,6 +402,36 @@ repo-graph --repo /path/to/your/repo">copy</button></pre>
   </div>
 </section>
 
+<section id="honest">
+  <div class="wrap">
+    <h2>It tells you when it doesn't know</h2>
+    <p class="muted" style="max-width:700px">
+      Every code-graph tool looks great on the queries it can answer. The ones that burn you are the
+      silent misses — an empty result your assistant reads as "nothing uses this", so it deletes the
+      thing anyway. repo-graph answers an empty query with the reason, whether that reason is a
+      <b>fact</b> or a <b>heuristic</b>, and which extractions are partial for that mechanism.
+    </p>
+    <pre><code>  No answer (no_edges, FACT): no carry edge touches `backend::server::server` in this
+  graph; `backend::server::server` is a container: structural IMPORTS/CONTAINS/DEFINES
+  are not carry edges, so seed a symbol inside it
+    looked over: CALLS
+    blind spots (grep to confirm):
+      ⚠ CALLS (*): calls through reflection, dynamic dispatch, or higher-order
+        indirection are not resolved — verify: grep the callee name
+    searched 26 nodes</code></pre>
+    <p class="muted" style="max-width:700px;margin-top:16px">
+      <code>orient</code> reports the same blind spots up front, so your assistant knows where to fall
+      back to grep <em>deliberately</em> rather than trusting a gap.
+    </p>
+    <div class="grid" style="margin-top:24px">
+      <div class="card"><div class="k">whole diffs</div><p class="muted" style="margin:6px 0 0">Pass every symbol a change touches; one walk, one ranking. Names that don't resolve come back listed, not silently dropped.</p></div>
+      <div class="card"><div class="k">dead code</div><p class="muted" style="margin:6px 0 0">Anything unreachable from a known entry point is flagged <b>⊘</b>, so "nothing calls this" is a claim you can act on.</p></div>
+      <div class="card"><div class="k">real labels</div><p class="muted" style="margin:6px 0 0">A declared component, service, hook or guard is labelled as one — not flattened to "class".</p></div>
+      <div class="card"><div class="k">every row located</div><p class="muted" style="margin:6px 0 0">Each answer carries <code>path:line</code>, so the next step is a read, never a search.</p></div>
+    </div>
+  </div>
+</section>
+
 <section id="workflows">
   <div class="wrap">
     <h2>What you can ask</h2>
@@ -336,14 +449,34 @@ repo-graph --repo /path/to/your/repo">copy</button></pre>
 
 <section>
   <div class="wrap">
-    <h2>See it on real repos</h2>
-    <p class="muted">Graph output for popular frameworks — what your assistant gets before it reads a single file.</p>
-    <div class="grid" style="margin-top:20px">
-      <a class="card" href="https://github.com/James-Chahwan/repo-graph/tree/main/examples/fastapi"><h3>FastAPI</h3><span class="muted">Python · routes → handlers</span></a>
-      <a class="card" href="https://github.com/James-Chahwan/repo-graph/tree/main/examples/gin"><h3>Gin</h3><span class="muted">Go · HTTP routing</span></a>
-      <a class="card" href="https://github.com/James-Chahwan/repo-graph/tree/main/examples/hono"><h3>Hono</h3><span class="muted">TypeScript · edge routes</span></a>
-      <a class="card" href="https://github.com/James-Chahwan/repo-graph/tree/main/examples/nestjs"><h3>NestJS</h3><span class="muted">TypeScript · modules/DI</span></a>
+    <h2>One idea at a time</h2>
+    <p class="muted" style="max-width:700px">Short cuts, each showing one thing the graph does that a text search can't.</p>
+    <div class="shorts">
+      <button class="short" type="button" data-clip="honest" data-cap="An empty answer that explains itself"><span class="frame"><img src="clips/honest.jpg" alt="" loading="lazy" width="540" height="960"><span class="play" aria-hidden="true">▶</span></span><span class="cap"><span class="pill">new in 0.5.0</span><p>An empty answer that explains itself</p></span></button>
+      <button class="short" type="button" data-clip="wholediff" data-cap="A whole diff in one call"><span class="frame"><img src="clips/wholediff.jpg" alt="" loading="lazy" width="540" height="960"><span class="play" aria-hidden="true">▶</span></span><span class="cap"><span class="pill">new in 0.5.0</span><p>A whole diff in one call</p></span></button>
+      <button class="short" type="button" data-clip="paths" data-cap="Every route the call takes, ranked"><span class="frame"><img src="clips/paths.jpg" alt="" loading="lazy" width="540" height="960"><span class="play" aria-hidden="true">▶</span></span><span class="cap"><span class="pill">new in 0.5.0</span><p>Every route the call takes, ranked</p></span></button>
+      <button class="short" type="button" data-clip="constellation" data-cap="Your whole codebase, as a graph"><span class="frame"><img src="clips/constellation.jpg" alt="" loading="lazy" width="540" height="960"><span class="play" aria-hidden="true">▶</span></span><span class="cap"><p>Your whole codebase, as a graph</p></span></button>
+      <button class="short" type="button" data-clip="dayone" data-cap="Day one on 80,000 unfamiliar lines"><span class="frame"><img src="clips/dayone.jpg" alt="" loading="lazy" width="540" height="960"><span class="play" aria-hidden="true">▶</span></span><span class="cap"><p>Day one on 80,000 unfamiliar lines</p></span></button>
+      <button class="short" type="button" data-clip="roulette" data-cap="312 grep hits → 4, ranked"><span class="frame"><img src="clips/roulette.jpg" alt="" loading="lazy" width="540" height="960"><span class="play" aria-hidden="true">▶</span></span><span class="cap"><p>312 grep hits → 4, ranked</p></span></button>
+      <button class="short" type="button" data-clip="tectonic" data-cap="A stacktrace is just coordinates"><span class="frame"><img src="clips/tectonic.jpg" alt="" loading="lazy" width="540" height="960"><span class="play" aria-hidden="true">▶</span></span><span class="cap"><p>A stacktrace is just coordinates</p></span></button>
+      <button class="short" type="button" data-clip="typed-blast" data-cap="Rename one field — see everything it touches"><span class="frame"><img src="clips/typed-blast.jpg" alt="" loading="lazy" width="540" height="960"><span class="play" aria-hidden="true">▶</span></span><span class="cap"><p>Rename one field — see everything it touches</p></span></button>
+      <button class="short" type="button" data-clip="monorepo" data-cap="Four apps, and how they actually connect"><span class="frame"><img src="clips/monorepo.jpg" alt="" loading="lazy" width="540" height="960"><span class="play" aria-hidden="true">▶</span></span><span class="cap"><p>Four apps, and how they actually connect</p></span></button>
     </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>See it on real repos</h2>
+    <p class="muted">Real tool output, captured against the current engine — what your assistant gets before it opens a single file.</p>
+    <div class="grid" style="margin-top:20px">
+      <a class="card" href="https://github.com/James-Chahwan/repo-graph/blob/main/examples/fastapi/README.md"><h3>FastAPI</h3><span class="muted">Python · routes → handlers</span><div class="tools"><span class="pill">19,025 nodes</span><span class="pill">0.5s</span></div></a>
+      <a class="card" href="https://github.com/James-Chahwan/repo-graph/blob/main/examples/nestjs/README.md"><h3>NestJS</h3><span class="muted">TypeScript · modules / DI</span><div class="tools"><span class="pill">7,829 nodes</span><span class="pill">0.4s</span></div></a>
+      <a class="card" href="https://github.com/James-Chahwan/repo-graph/blob/main/examples/hono/README.md"><h3>Hono</h3><span class="muted">TypeScript · edge routes</span><div class="tools"><span class="pill">2,062 nodes</span><span class="pill">0.3s</span></div></a>
+      <a class="card" href="https://github.com/James-Chahwan/repo-graph/blob/main/examples/gin/README.md"><h3>Gin</h3><span class="muted">Go · HTTP routing</span><div class="tools"><span class="pill">2,037 nodes</span><span class="pill">0.1s</span></div></a>
+    </div>
+    <p class="muted" style="margin-top:16px;font-size:.88rem">Times are a cold build from a fresh clone. A warm start reads the cached graph in
+      <b>0.02–0.18s</b> — your assistant never waits for it.</p>
   </div>
 </section>
 
@@ -361,7 +494,31 @@ repo-graph --repo /path/to/your/repo">copy</button></pre>
   </div>
 </footer>
 
+<div class="lb" id="lb" role="dialog" aria-modal="true" aria-label="Demo clip">
+  <button class="x" id="lbx" aria-label="Close">✕</button>
+  <video id="lbv" controls playsinline preload="none"></video>
+  <p class="lbcap" id="lbc"></p>
+</div>
+
 <script>
+  // lightbox: the clips are portrait and text-heavy, so play them large
+  (function(){
+    var lb=document.getElementById('lb'),v=document.getElementById('lbv'),c=document.getElementById('lbc');
+    function open(name,cap){
+      v.src='clips/'+name+'.mp4'; v.poster='clips/'+name+'.jpg';
+      c.textContent=cap; lb.classList.add('on'); document.body.style.overflow='hidden';
+      v.play().catch(function(){});
+    }
+    function close(){ lb.classList.remove('on'); v.pause(); v.removeAttribute('src'); v.load();
+      document.body.style.overflow=''; }
+    document.querySelectorAll('.short').forEach(function(b){
+      b.addEventListener('click',function(){ open(b.dataset.clip,b.dataset.cap); });
+    });
+    document.getElementById('lbx').addEventListener('click',close);
+    lb.addEventListener('click',function(e){ if(e.target===lb) close(); });
+    addEventListener('keydown',function(e){ if(e.key==='Escape'&&lb.classList.contains('on')) close(); });
+  })();
+
   // copy buttons
   document.querySelectorAll('.copy').forEach(function(b){
     b.addEventListener('click', function(){

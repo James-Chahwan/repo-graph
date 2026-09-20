@@ -5,8 +5,16 @@ dist/
 build/
 .eggs/
 .ai/
+# NOT `.glia/` — that dir also holds committed inputs (overlay.toml, cells.jsonl,
+# vectors.jsonl). The graph layout `.glia/graph/` ships its own .gitignore, so it
+# already stays out of `git status` on its own.
 .mcpregistry_*
+
+# Source recordings stay local (big, regenerable via scripts/demo/capture-shorts.cjs).
+# The web-optimised clips served by the site are the exception — they ship.
 *.mp4
+*.webm
+!docs/clips/*.mp4
 
 # Local scratch
 entities.json

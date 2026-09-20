@@ -53,6 +53,11 @@ const PIECES = [
   ['dayone', 'wow-dayone.html', 12000],
   ['invisible', 'wow-invisible.html', 12500],
   ['yours', 'wow-yours.html', 12500],
+  // 0.5.0 feature demos
+  ['honest', 'wow-honest.html', 13000],
+  ['wholediff', 'wow-wholediff.html', 13000],
+  ['paths', 'wow-paths.html', 13000],
+
   ['clip-ground', 'clips.html?clip=ground', 10200],
   ['clip-context', 'clips.html?clip=context', 6800],
   ['clip-trace', 'clips.html?clip=trace', 10200],

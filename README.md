@@ -98,19 +98,25 @@ Where it *doesn't* pull its weight: a **small, single-language repo with a clear
 
 ## Use it without MCP
 
-The MCP server is the zero-config path, but the graph isn't tied to it. The engine ships as a plain Python wheel — `pip install repo-graph-py` — so you can build the graph and call the same answer primitives directly, from a script or your own tooling, with **none of the per-turn MCP cost**:
+The MCP server is the zero-config path, but the graph isn't tied to it. The engine ships as a plain Python wheel — `pip install glia-py` — so you can build the graph and call the same answer primitives directly, from a script or your own tooling, with **none of the per-turn MCP cost**:
 
 ```python
-import repo_graph_py as rg
+import glia_py as rg
 
-g = rg.generate(".")                            # or rg.load_from_gmap(rg.default_gmap_dir("."))
-print(g.blast_radius("checkout", "both"))       # ranked, located, live-filtered — JSON
-print(g.cross_stack_trace("notifications"))     # feature path across the stack, mechanism-labelled
-print(g.resolve(open("error.log").read()))      # stacktrace / test / diff → the nodes that matter
-print(g.coverage())                             # where extraction is partial (grep those)
+g = rg.load_from_gmap(rg.default_gmap_dir("."), ".")   # builds it if there's no cache yet
+
+g.find("checkout")                              # ranked, located nodes for a name
+g.blast_radius(["checkout", "Cart.add"], "both")  # many seeds, one walk, one ranking
+g.cross_stack_trace("notifications")            # feature path across the stack, mechanism-labelled
+g.resolve(open("error.log").read())             # stacktrace / test / diff → the nodes that matter
+g.coverage()                                    # where extraction is partial (grep those)
 ```
 
-Same graph, same answers — just without the tool schemas in your context. It's the same Rust engine ([glia](https://github.com/James-Chahwan/glia)) the MCP server wraps; `repo-graph-py` is its published wheel. Good for CI checks, batch analysis, or wiring the graph into your own agent.
+Each of these returns plain Python — a `{"results": [...], "absence": {...}}` dict for the lookups,
+a list for `coverage()`. When `results` is empty, `absence` says *why*, so a script can branch on it
+instead of guessing.
+
+Same graph, same answers — just without the tool schemas in your context. It's the same Rust engine ([glia](https://github.com/James-Chahwan/glia)) the MCP server wraps; `glia-py` is its published wheel. Good for CI checks, batch analysis, or wiring the graph into your own agent.
 
 ## Supported languages
 
@@ -273,9 +279,9 @@ uvx mcp-repo-graph install --agents none --git-hook
 ```
 
 That installs a marker-fenced `pre-commit` hook that refreshes the graph and stages
-`.ai/repo-graph/` on every commit. `uvx mcp-repo-graph uninstall` removes it again.
+`.glia/graph/` on every commit. `uvx mcp-repo-graph uninstall` removes it again.
 
-> **Tip:** If you don't want graph data in version control, add `.ai/repo-graph/` to `.gitignore` and skip the hook — the watcher and cold-start refresh keep it fresh locally.
+> **Tip:** The graph dir ignores itself (`.glia/graph/.gitignore`), so it never shows up in `git status` unless the hook stages it with `git add -f`. Skip the hook and the watcher plus cold-start refresh keep it fresh locally.
 
 ## MCP tools reference
 
@@ -292,7 +298,30 @@ repo-graph exposes **6 tools** — one natural verb each, backed by a Rust engin
 
 Most tools also take a `budget` (max chars) so a result fits a small-model context window.
 
-> These 6 collapsed from an earlier 13 once the engine (v0.4.18) grew answer-shaped primitives — `blast_radius`, `cross_stack_trace`, `resolve`, `coverage` — that return complete, ranked, located, live-filtered results in one call. Fewer tools = less fixed per-turn overhead and less agent confusion.
+> These 6 collapsed from an earlier 13 once the engine grew answer-shaped primitives — `find`, `blast_radius`, `cross_stack_trace`, `resolve`, `coverage` — that return complete, ranked, located, live-filtered results in one call. Fewer tools = less fixed per-turn overhead and less agent confusion.
+
+### It tells you when it doesn't know
+
+The failure that actually costs you isn't a wrong answer — it's a silent empty one, which an
+assistant reads as "nothing uses this". Since **0.5.0** an empty result comes back as a structured
+*absence*: the reason, whether that reason is a **FACT** or a **HEURISTIC**, and which extractions
+are partial for the mechanism that came up empty.
+
+```
+  No answer (no_edges, FACT): no carry edge touches `backend::server::server` in this graph;
+  `backend::server::server` is a container: structural IMPORTS/CONTAINS/DEFINES are not carry
+  edges, so seed a symbol inside it
+    looked over: CALLS
+    blind spots (grep to confirm):
+      ⚠ CALLS (*): calls through reflection, dynamic dispatch, or higher-order indirection are
+        not resolved — verify: grep the callee name
+    searched 26 nodes
+```
+
+`orient` surfaces the same blind spots up front, so the model falls back to grep *deliberately*
+rather than trusting a gap. Alongside that, 0.5.0 adds: whole-diff `impact` in one call (unresolved
+names are reported, not dropped), ranked distinct cross-stack paths in `trace`, and role-aware labels
+so a declared component or service isn't flattened to "class".
 
 ## How it works
 
@@ -301,7 +330,7 @@ Most tools also take a `budget` (max chars) so a result fits a small-model conte
 1. **Parse** — per-language tree-sitter parsers extract raw nodes and unresolved references
 2. **Extract** — cross-cutting extractors layer on HTTP routes, data sources, CLI entrypoints, gRPC services, queue consumers
 3. **Resolve** — graph builder resolves intra-repo references; cross-graph resolvers link stacks (frontend HTTP calls → backend routes, etc.)
-4. **Store** — merged graph lands in `.ai/repo-graph/` as a zero-copy `.gmap` (rkyv + mmap) plus JSON projections for portability
+4. **Store** — merged graph lands in `.glia/graph/` as a zero-copy sharded `.gmap` (rkyv + mmap) plus a manifest
 5. **Serve** — the MCP server loads the graph into memory and exposes the 6 tools
 
 The Rust engine lives in its own [`glia`](https://github.com/James-Chahwan/glia) repo; `mcp-repo-graph` is the MCP-facing thin wrapper.
@@ -326,12 +355,14 @@ roots:           # explicit roots heuristics miss — added on top of auto-detec
 
 ## Graph data format
 
-Generated files live in `.ai/repo-graph/` inside the target repo:
+Generated files live in `.glia/graph/` inside the target repo:
 
-- **`nodes.json`** — `[{id, type, name, file_path, confidence, ...}, ...]`
-- **`edges.json`** — `[{from, to, type}, ...]`
-- **`flows/*.yaml`** — named feature flows with ordered step sequences and `kind` (`http`/`page`/`cli`/`grpc`/`queue`)
-- **`state.md`** — human-readable snapshot for quick orientation
+- **`repo-<id>.gmap`** — the graph itself, sharded, as zero-copy rkyv (mmap'd on load)
+- **`manifest.json`** — format version, repo labels, roots and parse errors, so a warm load equals a fresh generate
+- **`parse_cache.bin`** — per-file content-hashed parse cache, so an incremental rebuild only re-parses edited files
+- **`.gitignore`** — the dir ignores itself, so it never shows up in `git status`
+
+The whole directory is regenerated: delete it and the next call rebuilds it.
 
 Common edge types: `imports`, `defines`, `contains`, `uses`, `calls`, `handles`, `handled_by`, `exports`, `includes`, `tests`, cross-stack HTTP links.
 
@@ -341,7 +372,7 @@ repo-graph runs on your machine and is built to keep your code there. Full text:
 
 - **Telemetry / analytics:** None. No tracking, no update checks, no phone-home.
 - **Data collection & sharing:** None. Your source code and graph data are never sent to repo-graph, its author, or any third party.
-- **Local processing & storage:** Scanning and graph-building happen locally; the graph is cached in your project's `.ai/repo-graph/` directory and stays on your device.
+- **Local processing & storage:** Scanning and graph-building happen locally; the graph is cached in your project's `.glia/graph/` directory and stays on your device.
 - **Network access — only two cases, both user-initiated:**
   1. *Installation* — `uvx`/`pip` downloads the package and its prebuilt engine wheel from PyPI.
   2. *Git-URL targets* — if you pass a git URL to `--repo`, repo-graph runs `git clone` against the URL **you** specified; nothing is sent to repo-graph or its author. A local `--repo` path (the default) makes zero network calls.

@@ -38,5 +38,5 @@ DEMO_SPEED=1.4                        # higher = slower typing/pacing
 - Requires `tmux`, the editable repo-graph install, and a real cross-stack repo.
 - `run.sh` pre-warms the `.gmap` cache so right-pane calls are sub-second.
 - `rg()` retries past a transient engine non-determinism where `impact`/`trace`
-  occasionally return empty for a node that has results (a `repo-graph-py` bug to
+  occasionally return empty for a node that has results (a `glia-py` bug to
   fix upstream — see the engine repo).

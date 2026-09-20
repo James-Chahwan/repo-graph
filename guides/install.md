@@ -8,7 +8,7 @@ tags: [mcp, ai-coding, setup, developer-tools, codebase-navigation]
 
 repo-graph is an MCP server that hands your AI assistant a structural graph of a codebase: entities, relationships, and feature flows. Instead of grepping and reading files until it finds the right one, the model navigates straight to it. Less context burned, fewer wrong guesses, faster answers.
 
-It works across 20+ languages and frameworks, frontend to backend, including cross-stack links. The engine (`repo-graph-py`) is Rust plus tree-sitter.
+It works across 20+ languages and frameworks, frontend to backend, including cross-stack links. The engine (`glia-py`) is Rust plus tree-sitter.
 
 ## One command, every agent
 
