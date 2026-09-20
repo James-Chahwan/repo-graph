@@ -346,10 +346,10 @@ Most tools also take a `budget` (max chars) so a result fits a small-model conte
 
 ### It tells you when it doesn't know
 
-The failure that actually costs you isn't a wrong answer. It's a silent empty one, which an
-assistant reads as "nothing uses this". Since **0.5.0** an empty result comes back as a structured
-*absence*: the reason, whether that reason is a **FACT** or a **HEURISTIC**, and which extractions
-are partial for the mechanism that came up empty.
+Most tools answer an empty query with nothing, which leaves the assistant to guess whether that
+means "no such edge exists" or "I couldn't see it". Since **0.5.0** an empty result comes back as a
+structured *absence*: the reason, whether that reason is a **FACT** or a **HEURISTIC**, and which
+extractions are partial for the mechanism that came up empty.
 
 ```
   No answer (no_edges, FACT): no carry edge touches `backend::server::server` in this graph;
@@ -363,9 +363,20 @@ are partial for the mechanism that came up empty.
 ```
 
 `orient` surfaces the same blind spots up front, so the model knows when to grep instead of
-trusting a gap. 0.5.0 also adds whole-diff `impact` in one call (unresolved names are reported, not
-dropped), ranked distinct cross-stack paths in `trace`, and role-aware labels so a declared component
-or service isn't flattened to "class".
+trusting a gap.
+
+**What we measured.** 14 symbols across FastAPI, Gin, Hono and NestJS, each one a case where the
+graph honestly has no edge but real callers exist. Same agent, same task, the only difference being
+whether an empty answer explained itself. The structured absence cut cost **about 3x** on identical
+tasks, in **28 of 28** matched pairs, at the same number of turns: told why the answer is empty, the
+agent stops re-querying. It did **not** change correctness. Sonnet 5 answered "not safe to delete"
+in all 56 runs, so if you were hoping this stops an agent deleting live code, we have no evidence of
+that and some evidence against it on a careful model. Harness and raw results are in
+[`bench/absence/`](bench/absence/). One model, n=14, our own harness: treat it as directional.
+
+0.5.0 also adds whole-diff `impact` in one call (unresolved names are reported, not dropped), ranked
+distinct cross-stack paths in `trace`, and role-aware labels so a declared component or service isn't
+flattened to "class".
 
 ## How it works
 

@@ -421,10 +421,11 @@ repo-graph --repo /path/to/your/repo">copy</button></pre>
   <div class="wrap">
     <h2>It tells you when it doesn't know</h2>
     <p class="muted" style="max-width:700px">
-      Every code-graph tool looks good on the queries it can answer. The ones that burn you are the
-      silent misses. An empty result reads as "nothing uses this", so your assistant deletes the
-      thing anyway. repo-graph answers an empty query with the reason, whether that reason is a
-      <b>fact</b> or a <b>heuristic</b>, and which extractions are partial for that mechanism.
+      Every code-graph tool looks good on the queries it can answer. The ones that cost you are the
+      silent misses, where an empty result leaves your assistant guessing whether nothing uses this
+      or the tool just couldn't see it. repo-graph answers an empty query with the reason, whether
+      that reason is a <b>fact</b> or a <b>heuristic</b>, and which extractions are partial for that
+      mechanism.
     </p>
     <pre><code>  No answer (no_edges, FACT): no carry edge touches `backend::server::server` in this
   graph; `backend::server::server` is a container: structural IMPORTS/CONTAINS/DEFINES
@@ -438,6 +439,16 @@ repo-graph --repo /path/to/your/repo">copy</button></pre>
       <code>orient</code> reports the same blind spots up front, so your assistant knows when to grep
       instead of trusting a gap.
     </p>
+    <div class="proof" style="margin:24px 0 0;max-width:700px;text-align:left">
+      <b>Measured, not asserted.</b> 14 symbols across FastAPI, Gin, Hono and NestJS, each a case
+      where the graph honestly has no edge but real callers exist. Same agent, same task, the only
+      difference being whether the empty answer explained itself. Cost fell about <b>3&times;</b> on
+      identical tasks, in <b>28 of 28</b> matched pairs, at the same number of turns.
+      It did <em>not</em> change correctness: the model answered "not safe to delete" in all 56 runs,
+      so this buys cheaper answers, not safer ones. One model, n=14, our own harness, so treat it as
+      directional. Raw results:
+      <a href="https://github.com/James-Chahwan/repo-graph/tree/main/bench/absence">bench/absence</a>.
+    </div>
     <div class="grid" style="margin-top:24px">
       <div class="card"><div class="k">whole diffs</div><p class="muted" style="margin:6px 0 0">Pass every symbol a change touches. One walk, one ranking. Names that don't resolve come back listed, not silently dropped.</p></div>
       <div class="card"><div class="k">dead code</div><p class="muted" style="margin:6px 0 0">Anything unreachable from a known entry point is flagged <b>⊘</b>, so "nothing calls this" is a claim you can act on.</p></div>

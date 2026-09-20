@@ -1,0 +1,184 @@
+[
+  {
+    "repo": "fastapi",
+    "name": "url_path_for",
+    "qname": "fastapi::routing::_IncludedRouter::url_path_for",
+    "file": "fastapi/routing.py",
+    "line": 1811,
+    "reason": "no_edges",
+    "genuine_refs": 14,
+    "evidence": [
+      "assert app.url_path_for(\"int_convertor\", param=5) == \"/int/5\"",
+      "assert app.url_path_for(\"float_convertor\", param=25.5) == \"/float/25.5"
+    ]
+  },
+  {
+    "repo": "fastapi",
+    "name": "on_event",
+    "qname": "fastapi::applications::FastAPI::on_event",
+    "file": "fastapi/applications.py",
+    "line": 4662,
+    "reason": "no_edges",
+    "genuine_refs": 14,
+    "evidence": [
+      "@app.on_event(\"startup\")  # ty: ignore[deprecated]",
+      "@app.on_event(\"shutdown\")  # ty: ignore[deprecated]"
+    ]
+  },
+  {
+    "repo": "fastapi",
+    "name": "get_client",
+    "qname": "tests::test_tutorial::test_separate_openapi_schemas::test_tutorial002::get_client",
+    "file": "tests/test_tutorial/test_separate_openapi_schemas/test_tutorial002.py",
+    "line": 16,
+    "reason": "no_edges",
+    "genuine_refs": 11,
+    "evidence": [
+      "client = get_client()",
+      "client = get_client()"
+    ]
+  },
+  {
+    "repo": "fastapi",
+    "name": "add_api_route",
+    "qname": "fastapi::applications::FastAPI::add_api_route",
+    "file": "fastapi/applications.py",
+    "line": 1165,
+    "reason": "no_edges",
+    "genuine_refs": 6,
+    "evidence": [
+      "app.add_api_route(\"/items-not-decorated/{item_id}\", get_not_decorated)",
+      "app.add_api_route(f\"{ROUTE_PATH_PREFIX}{index}\", endpoint)"
+    ]
+  },
+  {
+    "repo": "gin",
+    "name": "BindBody",
+    "qname": "binding::json::jsonBinding::BindBody",
+    "file": "binding/json.go",
+    "line": 40,
+    "reason": "no_edges",
+    "genuine_refs": 21,
+    "evidence": [
+      "return bb.BindBody(body, obj)",
+      "err := yamlBinding{}.BindBody([]byte(\"foo: FOO\"), &s)"
+    ]
+  },
+  {
+    "repo": "gin",
+    "name": "IsAborted",
+    "qname": "context::Context::IsAborted",
+    "file": "context.go",
+    "line": 209,
+    "reason": "no_edges",
+    "genuine_refs": 16,
+    "evidence": [
+      "assert.False(t, c.IsAborted())",
+      "contextAborted = c.IsAborted()"
+    ]
+  },
+  {
+    "repo": "gin",
+    "name": "BindJSON",
+    "qname": "context::Context::BindJSON",
+    "file": "context.go",
+    "line": 786,
+    "reason": "no_edges",
+    "genuine_refs": 2,
+    "evidence": [
+      "require.Error(t, c.BindJSON(&obj))",
+      "require.NoError(t, c.BindJSON(&obj))"
+    ]
+  },
+  {
+    "repo": "gin",
+    "name": "DefaultPostForm",
+    "qname": "context::Context::DefaultPostForm",
+    "file": "context.go",
+    "line": 619,
+    "reason": "no_edges",
+    "genuine_refs": 2,
+    "evidence": [
+      "assert.Empty(t, c.DefaultPostForm(\"both\", \"nothing\"))",
+      "assert.Empty(t, c.DefaultPostForm(\"id\", \"nothing\"))"
+    ]
+  },
+  {
+    "repo": "hono",
+    "name": "JwtTokenIssuedAt",
+    "qname": "src::utils::jwt::types::JwtTokenIssuedAt",
+    "file": "src/utils/jwt/types.ts",
+    "line": 48,
+    "reason": "no_edges",
+    "genuine_refs": 4,
+    "evidence": [
+      "throw new JwtTokenIssuedAt(now, payload.iat)",
+      "expect(err).toEqual(new JwtTokenIssuedAt(now, iat))"
+    ]
+  },
+  {
+    "repo": "hono",
+    "name": "trimTrailingSlash",
+    "qname": "src::middleware::trailing-slash::index::trimTrailingSlash",
+    "file": "src/middleware/trailing-slash/index.ts",
+    "line": 44,
+    "reason": "no_edges",
+    "genuine_refs": 3,
+    "evidence": [
+      "import { appendTrailingSlash, trimTrailingSlash } from '.'",
+      "app.use('*', trimTrailingSlash())"
+    ]
+  },
+  {
+    "repo": "nestjs",
+    "name": "CreateCatDto",
+    "qname": "integration::mongoose::src::cats::dto::create-cat.dto::CreateCatDto",
+    "file": "integration/mongoose/src/cats/dto/create-cat.dto.ts",
+    "line": 1,
+    "reason": "no_edges",
+    "genuine_refs": 19,
+    "evidence": [
+      "import { CreateCatDto, CreateCatSchema } from './dto/create-cat.dto.js",
+      "import { CreateCatDto } from './dto/create-cat.dto.js';"
+    ]
+  },
+  {
+    "repo": "nestjs",
+    "name": "ServerRedis",
+    "qname": "packages::microservices::server::server-redis::ServerRedis",
+    "file": "packages/microservices/server/server-redis.ts",
+    "line": 31,
+    "reason": "no_edges",
+    "genuine_refs": 7,
+    "evidence": [
+      "import { ServerRedis } from '../../server/server-redis.js';",
+      "server = new ServerRedis({});"
+    ]
+  },
+  {
+    "repo": "nestjs",
+    "name": "AppModule",
+    "qname": "tools::benchmarks::src::frameworks::nest::app.module::AppModule",
+    "file": "tools/benchmarks/src/frameworks/nest/app.module.ts",
+    "line": 8,
+    "reason": "no_edges",
+    "genuine_refs": 122,
+    "evidence": [
+      "import { AppModule } from './nest/app.module';",
+      "import { AppModule } from './nest/app.module';"
+    ]
+  },
+  {
+    "repo": "nestjs",
+    "name": "configure",
+    "qname": "integration::hello-world::e2e::middleware-execute-order.spec::GlobalModule2::configure",
+    "file": "integration/hello-world/e2e/middleware-execute-order.spec.ts",
+    "line": 28,
+    "reason": "no_edges",
+    "genuine_refs": 24,
+    "evidence": [
+      "if (!instance.configure) {",
+      "await instance.configure(middlewareBuilder);"
+    ]
+  }
+]
