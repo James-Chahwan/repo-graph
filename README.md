@@ -18,6 +18,33 @@ It pays off most where that's hardest to do by hand: **large repos, monorepos th
 
 Or one command in your terminal wires up every agent you have: `uvx mcp-repo-graph install` (see [Install](#install)).
 
+---
+
+> ### ⚠️ Upgrading to 0.5.0
+>
+> **The engine package was renamed `repo-graph-py` → `glia-py`.** If you install with `uvx` or
+> `pip install mcp-repo-graph`, you don't have to do anything — the new engine is pulled in for you.
+>
+> You only need to act if you **import the engine directly**:
+>
+> ```diff
+> - import repo_graph_py as rg
+> + import glia_py as rg
+> ```
+>
+> Three other things changed in that same release:
+>
+> - **The answers are Python objects, not JSON strings.** `find`, `resolve`, `blast_radius`,
+>   `cross_stack_trace` and `governing_docs` return a `{"results": [...], "absence": {...}}` dict.
+>   If you were doing `json.loads(...)` on a result, drop it.
+> - **`find_node` and `find_nodes_by_qname` are gone** — one `find(query, top_k)` replaces both.
+> - **The graph cache moved** `.ai/repo-graph/` → `.glia/graph/`. It's rebuilt automatically, so you
+>   can delete the old directory. The new one ignores itself, so it never shows up in `git status`.
+>
+> The six MCP tools are unchanged — `orient`, `find`, `impact`, `trace`, `read`, `refresh` — so
+> nothing in your agent config needs touching. Full detail in the
+> [0.5.0 release notes](https://github.com/James-Chahwan/repo-graph/releases/tag/v0.5.0).
+
 ## Demo
 
 https://github.com/user-attachments/assets/a1e4171b-b225-40d4-9210-39453e14b76a
