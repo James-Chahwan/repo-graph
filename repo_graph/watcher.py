@@ -17,22 +17,38 @@ import threading
 from pathlib import Path
 from typing import Callable
 
-# Directories we never rebuild on: the engine's own skip set plus our cache dir.
-# `.ai` is critical — the rebuild writes the .gmap/parse cache under it, and
-# watching that would loop forever.
+# Directories we never rebuild on: the engine's own skip set. The layout dir is
+# NOT in here — it's matched by prefix in `is_ignored`, because `.glia/` also
+# holds committed *inputs* (overlay.toml, cells.jsonl, vectors.jsonl) whose edits
+# must rebuild. Only `<repo>/.glia/graph` is our own write.
 SKIP_DIRS = {
     ".git", ".ai", "target", "node_modules", ".venv", "venv", "env",
     "__pycache__", "dist", "build", ".mypy_cache", ".pytest_cache", ".ruff_cache",
     ".idea", ".vscode", ".tox", ".next", ".nuxt", ".angular", ".gradle", ".svelte-kit",
 }
 
+# Event types that mean the tree actually changed. watchdog >= 6.0 on Linux also
+# emits read-only `opened` / `closed_no_write` events, and a rebuild opens every
+# source file — so triggering on those makes each rebuild schedule the next one
+# (measured: 9161 `opened` events in 6s; ~1.2 TB written in a day, idle).
+WRITE_EVENTS = frozenset({"created", "modified", "moved", "deleted", "closed"})
+
 DEBOUNCE_SEC = 0.3
 
 
-def is_ignored(path: str) -> bool:
-    """True if `path` lies inside any skipped directory (so edits there don't
-    trigger a rebuild — most importantly our own `.ai/` cache writes)."""
-    return bool(set(Path(path).parts) & SKIP_DIRS)
+def is_ignored(path: str, layout_dir: str | None = None) -> bool:
+    """True if `path` lies inside a skipped directory, or inside our own graph
+    layout dir (`<repo>/.glia/graph`) — so our cache writes never trigger a
+    rebuild, while edits to `.glia/overlay.toml` and friends still do."""
+    if set(Path(path).parts) & SKIP_DIRS:
+        return True
+    if layout_dir:
+        try:
+            Path(path).resolve().relative_to(Path(layout_dir).resolve())
+            return True
+        except (ValueError, OSError):
+            pass
+    return False
 
 
 class Debouncer:
@@ -77,14 +93,22 @@ def start_watcher(repo_path: str, on_change: Callable[[], None],
     except Exception:
         return None
 
+    try:
+        import glia_py
+        layout_dir = glia_py.default_gmap_dir(repo_path)
+    except Exception:
+        layout_dir = str(Path(repo_path) / ".glia" / "graph")
+
     debouncer = Debouncer(delay, on_change)
 
     class _Handler(FileSystemEventHandler):
         def on_any_event(self, event):
             if getattr(event, "is_directory", False):
                 return
+            if getattr(event, "event_type", "") not in WRITE_EVENTS:
+                return
             src = getattr(event, "dest_path", "") or event.src_path
-            if is_ignored(src):
+            if is_ignored(src, layout_dir):
                 return
             debouncer.trigger()
 

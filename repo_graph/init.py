@@ -13,7 +13,7 @@ import os
 import sys
 from pathlib import Path
 
-import repo_graph_py
+import glia_py
 
 from .gitexclude import ensure_cache_excluded
 from .installer import install, format_report, REGISTRY
@@ -31,19 +31,21 @@ def init(repo_root: Path, graph_only: bool = False) -> None:
         sys.exit(1)
 
     print(f"Generating graph for {repo_root}...")
-    pg = repo_graph_py.generate(str(repo_root))
-    # Cache the .gmap so the first server query is instant and the documented
-    # pre-commit `git add .ai/repo-graph/` has something to stage.
-    if hasattr(pg, "save_to_default"):
-        try:
-            pg.save_to_default(str(repo_root))
-        except Exception:
-            pass  # read-only fs / perms shouldn't fail the bootstrap
-    # Keep the cache out of `git status` (skipped if the pre-commit hook commits it).
-    ensure_cache_excluded(repo_root / ".ai" / "repo-graph")
+    # `incremental=True` explicitly: since glia 0.5.0 the default is False (a
+    # cold full reparse), and the bootstrap wants the parse cache.
+    pg = glia_py.generate(str(repo_root), incremental=True)
+    # `generate` is a pure build now — this save is what gives the first server
+    # query a warm layout, and the documented pre-commit `git add .glia/graph`
+    # something to stage.
+    try:
+        pg.save_to_default(str(repo_root))
+    except Exception:
+        pass  # read-only fs / perms shouldn't fail the bootstrap
+    # Keep the layout out of `git status` (skipped if the pre-commit hook commits it).
+    ensure_cache_excluded(glia_py.default_gmap_dir(str(repo_root)))
     print(f"  {pg.node_count()} nodes, {pg.edge_count()} edges, "
           f"{pg.cross_edge_count()} cross-stack edges")
-    print(f"  Engine: repo-graph-py {repo_graph_py.version()}")
+    print(f"  Engine: glia-py {glia_py.version()}")
 
     if graph_only:
         # Used by the pre-commit hook: refresh + cache the graph, nothing else.

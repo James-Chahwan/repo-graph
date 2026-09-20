@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import os
 import stat
+import subprocess
 from pathlib import Path
 
 from ..gitexclude import HOOK_MARKER
@@ -23,7 +24,7 @@ _HOOK_END = "# <<< repo-graph pre-commit <<<"
 _HOOK_BODY = f"""{_HOOK_START}
 # Refresh and cache the repo-graph before committing, then stage the cache.
 uvx --from mcp-repo-graph repo-graph-init --repo . --graph-only >/dev/null 2>&1 || true
-git add -f .ai/repo-graph 2>/dev/null || true
+git add -f .glia/graph 2>/dev/null || true
 {_HOOK_END}"""
 
 # Reuse the marker engine but with the hook's own sentinels.
@@ -33,6 +34,24 @@ _HOOK_RE = re.compile(re.escape(_HOOK_START) + r".*?" + re.escape(_HOOK_END) + r
 
 
 def _hooks_dir(repo: Path) -> Path | None:
+    """Where git will actually *run* hooks from.
+
+    Ask git, because the answer isn't derivable from the layout: `core.hooksPath`
+    redirects it anywhere, and in a linked worktree git runs the main checkout's
+    hooks, not `<main>/.git/worktrees/<wt>/hooks`. Deriving it by hand (the old
+    behaviour) wrote a hook git never runs. Falls back to the layout walk only
+    when git isn't callable."""
+    try:
+        res = subprocess.run(
+            ["git", "-C", str(repo), "rev-parse", "--path-format=absolute",
+             "--git-path", "hooks"],
+            capture_output=True, text=True, timeout=5,
+        )
+        if res.returncode == 0 and res.stdout.strip():
+            return Path(res.stdout.strip())
+    except (OSError, subprocess.SubprocessError):
+        pass
+
     git = repo / ".git"
     if git.is_dir():
         return git / "hooks"

@@ -23,6 +23,7 @@ in the default loop.
 from __future__ import annotations
 
 import shutil
+import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -49,11 +50,23 @@ def target_repo(tmp_path_factory):
     return dst
 
 
+def _console_script() -> str:
+    """The `repo-graph` console script belonging to the interpreter running the
+    tests.
+
+    Plain `"repo-graph"` resolves through PATH, which can be some other
+    environment's install — the suite then silently tests a binary that isn't the
+    code under test. Prefer the script next to `sys.executable`, and fall back to
+    PATH only when there isn't one (an unusual install layout)."""
+    candidate = Path(sys.executable).parent / "repo-graph"
+    return str(candidate) if candidate.exists() else "repo-graph"
+
+
 @asynccontextmanager
 async def _connect(target_repo: Path):
     """Spawn `repo-graph --repo <target>` and yield an initialized session."""
     params = StdioServerParameters(
-        command="repo-graph",
+        command=_console_script(),
         args=["--repo", str(target_repo)],
     )
     async with stdio_client(params) as (read, write):
@@ -125,7 +138,9 @@ async def test_find_unknown_over_wire(target_repo):
     async with _connect(target_repo) as session:
         result = await session.call_tool("find", {"query": "zzz_no_such_thing_xxx"})
         body = _text(result)
-        assert "No nodes matched" in body
+        # glia 0.5.0: an empty answer is the engine's `absence` envelope (LD.8a),
+        # carrying the reason and its FACT/HEURISTIC tier.
+        assert "No answer" in body and "no_match" in body
 
 
 async def test_find_expand_over_wire(target_repo):
@@ -142,14 +157,14 @@ async def test_impact_unknown_over_wire(target_repo):
     async with _connect(target_repo) as session:
         result = await session.call_tool("impact", {"nodes": "xxx_unknown_xxx"})
         body = _text(result)
-        assert "No nodes found" in body
+        assert "No answer" in body and "unknown_symbol" in body
 
 
 async def test_trace_feature_unknown_over_wire(target_repo):
     async with _connect(target_repo) as session:
         result = await session.call_tool("trace", {"from_node": "definitely_not_a_real_feature"})
         body = _text(result)
-        assert "No trace found" in body or "Trace:" in body or "Flow:" in body
+        assert "No answer" in body or "Trace:" in body or "Flow:" in body
 
 
 async def test_trace_path_unknown_over_wire(target_repo):
@@ -177,7 +192,7 @@ async def test_orient_and_refresh_agree_on_engine_version(target_repo):
     async with _connect(target_repo) as session:
         orient_body = _text(await session.call_tool("orient", {}))
         import re
-        m = re.search(r"repo-graph-py (\S+)", orient_body)
+        m = re.search(r"glia-py (\S+)", orient_body)
         assert m, f"orient did not advertise an engine version: {orient_body[:200]}"
         version = m.group(1)
         refresh_body = _text(await session.call_tool("refresh", {}))

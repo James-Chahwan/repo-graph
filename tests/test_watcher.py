@@ -12,11 +12,13 @@ from pathlib import Path
 
 import pytest
 
-from repo_graph.watcher import Debouncer, is_ignored, start_watcher, SKIP_DIRS
+from repo_graph.watcher import (
+    Debouncer, is_ignored, start_watcher, SKIP_DIRS, WRITE_EVENTS,
+)
 
 
 def test_is_ignored_skips_cache_and_vcs():
-    assert is_ignored("/repo/.ai/repo-graph/graph.gmap")  # our own cache -> no loop
+    assert is_ignored("/repo/.ai/repo-graph/graph.gmap")  # legacy 0.4.x layout
     assert is_ignored("/repo/.git/index")
     assert is_ignored("/repo/node_modules/x/index.js")
     assert is_ignored("/repo/__pycache__/m.pyc")
@@ -24,9 +26,33 @@ def test_is_ignored_skips_cache_and_vcs():
     assert not is_ignored("/repo/app/routes/users.go")
 
 
-def test_ai_dir_is_skipped():
-    # The rebuild writes under .ai; watching it would loop forever.
-    assert ".ai" in SKIP_DIRS
+def test_layout_dir_skipped_by_prefix(tmp_path):
+    """`<repo>/.glia/graph` is our own write — skip it, or every rebuild
+    schedules the next one."""
+    layout = str(tmp_path / ".glia" / "graph")
+    assert is_ignored(str(tmp_path / ".glia" / "graph" / "parse_cache.bin"), layout)
+    assert is_ignored(str(tmp_path / ".glia" / "graph" / "repo-1.gmap"), layout)
+
+
+def test_glia_inputs_still_rebuild(tmp_path):
+    """`.glia/` also holds committed *inputs* (overlay.toml, cells.jsonl) whose
+    edits must rebuild — so the skip is the layout prefix, never the `.glia`
+    name."""
+    layout = str(tmp_path / ".glia" / "graph")
+    assert not is_ignored(str(tmp_path / ".glia" / "overlay.toml"), layout)
+    assert not is_ignored(str(tmp_path / ".glia" / "cells.jsonl"), layout)
+    assert not is_ignored(str(tmp_path / ".glia" / "vectors.jsonl"), layout)
+    assert ".glia" not in SKIP_DIRS, "a blanket .glia skip would swallow overlay edits"
+
+
+def test_read_only_events_are_not_write_events():
+    """watchdog >= 6.0 emits `opened` / `closed_no_write` on Linux. A rebuild
+    opens every source file, so triggering on those makes each rebuild schedule
+    the next one — the loop that wrote ~1.2 TB in a day while idle."""
+    assert "opened" not in WRITE_EVENTS
+    assert "closed_no_write" not in WRITE_EVENTS
+    for ev in ("created", "modified", "moved", "deleted"):
+        assert ev in WRITE_EVENTS
 
 
 def test_debouncer_coalesces_burst():
@@ -78,11 +104,31 @@ def test_start_watcher_ignores_cache_writes(tmp_path):
     observer = start_watcher(str(tmp_path), fired.set, delay=0.05)
     assert observer is not None
     try:
-        cache = tmp_path / ".ai" / "repo-graph"
+        cache = tmp_path / ".glia" / "graph"
         cache.mkdir(parents=True)
-        (cache / "graph.gmap").write_text("x")
-        # A write under .ai must NOT trigger a rebuild (else infinite loop).
+        (cache / "repo-1.gmap").write_text("x")
+        # A write under the layout dir must NOT trigger a rebuild (else loop).
         assert not fired.wait(0.6)
+    finally:
+        observer.stop()
+        observer.join(timeout=2)
+
+
+def test_start_watcher_ignores_reads(tmp_path):
+    """Reading a source file must not trigger a rebuild. This is the loop guard:
+    a rebuild reads the whole tree, so if reads fired, it would never settle."""
+    pytest.importorskip("watchdog")
+    src = tmp_path / "main.py"
+    src.write_text("print(1)\n")
+    fired = threading.Event()
+    observer = start_watcher(str(tmp_path), fired.set, delay=0.05)
+    assert observer is not None
+    try:
+        time.sleep(0.3)      # let the create settle
+        fired.clear()
+        for _ in range(5):   # what a rebuild does to every file
+            src.read_text()
+        assert not fired.wait(0.6), "reading a file triggered a rebuild"
     finally:
         observer.stop()
         observer.join(timeout=2)

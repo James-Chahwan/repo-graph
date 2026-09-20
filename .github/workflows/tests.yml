@@ -2,7 +2,7 @@ name: tests
 
 # Runs the pytest gate on every push/PR — gives Glama a CI-status signal and
 # catches regressions in the MCP tool surface. Linux x86_64 only for now (that's
-# where repo-graph-py ships a wheel); add macos/windows once their wheels are
+# where glia-py ships a wheel); add macos/windows once their wheels are
 # confirmed on PyPI.
 on:
   push:

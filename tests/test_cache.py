@@ -13,7 +13,7 @@ import time
 from pathlib import Path
 
 import pytest
-import repo_graph_py
+import glia_py
 
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
@@ -22,14 +22,14 @@ FIXTURES_DIR = Path(__file__).parent / "fixtures"
 # The 0.4.14 surface is required for these tests. If a downgrade ever happens
 # in dev, the suite skips cleanly rather than failing opaquely.
 _HAS_CACHE_API = (
-    hasattr(repo_graph_py, "load_from_gmap")
-    and hasattr(repo_graph_py, "is_stale")
-    and hasattr(repo_graph_py, "default_gmap_dir")
+    hasattr(glia_py, "load_from_gmap")
+    and hasattr(glia_py, "is_stale")
+    and hasattr(glia_py, "default_gmap_dir")
 )
 
 pytestmark = pytest.mark.skipif(
     not _HAS_CACHE_API,
-    reason="repo-graph-py < 0.4.14 (no cache API)",
+    reason="glia-py < 0.4.14 (no cache API)",
 )
 
 
@@ -52,13 +52,14 @@ def server_isolated(target_repo, monkeypatch):
 
 
 def test_cold_start_generates_and_writes_cache(server_isolated, target_repo):
-    gmap_dir = repo_graph_py.default_gmap_dir(str(target_repo))
-    assert repo_graph_py.is_stale(gmap_dir, str(target_repo)), "fixture starts with no cache"
+    gmap_dir = glia_py.default_gmap_dir(str(target_repo))
+    shutil.rmtree(gmap_dir, ignore_errors=True)
+    assert glia_py.is_stale(gmap_dir, str(target_repo)), "fixture starts with no cache"
 
     g = server_isolated.get_graph()
 
     assert g.pygraph.node_count() > 0
-    assert not repo_graph_py.is_stale(gmap_dir, str(target_repo)), \
+    assert not glia_py.is_stale(gmap_dir, str(target_repo)), \
         "first get_graph() should have written the cache"
 
 
@@ -83,8 +84,8 @@ def test_warm_start_reads_cache(server_isolated, target_repo, monkeypatch):
 
 def test_source_change_invalidates_cache(server_isolated, target_repo, monkeypatch):
     g1 = server_isolated.get_graph()
-    gmap_dir = repo_graph_py.default_gmap_dir(str(target_repo))
-    assert not repo_graph_py.is_stale(gmap_dir, str(target_repo))
+    gmap_dir = glia_py.default_gmap_dir(str(target_repo))
+    assert not glia_py.is_stale(gmap_dir, str(target_repo))
 
     # Modify a source file: append a real comment so content + mtime both
     # change. Sleep first so the new mtime is strictly > the cache mtime
@@ -93,35 +94,36 @@ def test_source_change_invalidates_cache(server_isolated, target_repo, monkeypat
     time.sleep(1.1)
     src.write_text(src.read_text() + "\n// touched by test\n")
 
-    assert repo_graph_py.is_stale(gmap_dir, str(target_repo)), \
+    assert glia_py.is_stale(gmap_dir, str(target_repo)), \
         "stale after real source change"
 
     # Reset and reload — should regenerate and re-cache with a now-newer mtime
     monkeypatch.setattr(server_isolated, "_graph", None)
     g2 = server_isolated.get_graph()
-    assert not repo_graph_py.is_stale(gmap_dir, str(target_repo)), \
+    assert not glia_py.is_stale(gmap_dir, str(target_repo)), \
         "regenerate path should rewrite the cache"
     assert g2.pygraph.node_count() == g1.pygraph.node_count()
 
 
 def test_refresh_tool_writes_cache(server_isolated, target_repo):
-    gmap_dir = repo_graph_py.default_gmap_dir(str(target_repo))
-    assert repo_graph_py.is_stale(gmap_dir, str(target_repo))
+    gmap_dir = glia_py.default_gmap_dir(str(target_repo))
+    shutil.rmtree(gmap_dir, ignore_errors=True)
+    assert glia_py.is_stale(gmap_dir, str(target_repo))
 
     out = server_isolated.refresh()
     assert out.startswith("Rebuilt")
-    assert not repo_graph_py.is_stale(gmap_dir, str(target_repo)), \
+    assert not glia_py.is_stale(gmap_dir, str(target_repo)), \
         "refresh() tool should persist the cache"
 
 
 def test_cache_load_matches_fresh_generate(target_repo):
     """The PyGraph returned from load_from_gmap should be functionally
     equivalent to the one returned by generate."""
-    pg_fresh = repo_graph_py.generate(str(target_repo))
+    pg_fresh = glia_py.generate(str(target_repo))
     pg_fresh.save_to_default(str(target_repo))
 
-    pg_cached = repo_graph_py.load_from_gmap(
-        repo_graph_py.default_gmap_dir(str(target_repo))
+    pg_cached = glia_py.load_from_gmap(
+        glia_py.default_gmap_dir(str(target_repo))
     )
 
     assert pg_cached.node_count() == pg_fresh.node_count()
@@ -132,19 +134,19 @@ def test_cache_load_matches_fresh_generate(target_repo):
 
 # ── Incremental parse cache (engine v0.4.16, GR-4) ──────────────────────────
 
-_HAS_INCREMENTAL = "incremental" in (repo_graph_py.generate.__text_signature__ or "")
+_HAS_INCREMENTAL = "incremental" in (glia_py.generate.__text_signature__ or "")
 
 incremental = pytest.mark.skipif(
     not _HAS_INCREMENTAL,
-    reason="repo-graph-py < 0.4.16 (no incremental parse cache)",
+    reason="glia-py < 0.4.16 (no incremental parse cache)",
 )
 
-_PARSE_CACHE = Path(".ai") / "repo-graph" / "parse_cache.bin"
+_PARSE_CACHE = Path(".glia") / "graph" / "parse_cache.bin"
 
 
 @incremental
 def test_incremental_writes_parse_cache(target_repo):
-    repo_graph_py.generate(str(target_repo), incremental=True)
+    glia_py.generate(str(target_repo), incremental=True)
     assert (target_repo / _PARSE_CACHE).exists(), \
         "incremental generate should write the per-file parse cache"
 
@@ -153,13 +155,13 @@ def test_incremental_writes_parse_cache(target_repo):
 def test_incremental_picks_up_edits(target_repo):
     """A warm incremental rebuild must re-parse the one changed file, not serve
     its stale cached parse — node count reflects the new symbol."""
-    g1 = repo_graph_py.generate(str(target_repo), incremental=True)
+    g1 = glia_py.generate(str(target_repo), incremental=True)
     n1 = g1.node_count()
 
     src = target_repo / "backend" / "server" / "server.go"
     src.write_text(src.read_text() + "\nfunc IncrCachePickupProbe() {}\n")
 
-    g2 = repo_graph_py.generate(str(target_repo), incremental=True)
+    g2 = glia_py.generate(str(target_repo), incremental=True)
     assert g2.node_count() == n1 + 1, \
         f"incremental rebuild missed the edit: {n1} -> {g2.node_count()}"
 
@@ -173,8 +175,8 @@ def test_incremental_false_matches_incremental(target_repo):
     nondeterministically (HashMap iteration), so byte-equality is flaky even
     full-vs-full — only a gmap round-trip is order-stable.
     """
-    warm = repo_graph_py.generate(str(target_repo), incremental=True)
-    full = repo_graph_py.generate(str(target_repo), incremental=False)
+    warm = glia_py.generate(str(target_repo), incremental=True)
+    full = glia_py.generate(str(target_repo), incremental=False)
     assert full.node_count() == warm.node_count()
     assert full.edge_count() == warm.edge_count()
     assert full.cross_edge_count() == warm.cross_edge_count()

@@ -200,8 +200,8 @@ def main() -> int:
 
     # 5) build the graph + run a real query
     gen = _run(["repo-graph-init", "--repo", str(repo), "--graph-only"], env)
-    gmap = repo / ".ai/repo-graph"
-    check("graph builds + caches (.ai/repo-graph)", gen.returncode == 0 and gmap.is_dir(), gen.stderr[:300])
+    gmap = repo / ".glia/graph"
+    check("graph builds + caches (.glia/graph)", gen.returncode == 0 and gmap.is_dir(), gen.stderr[:300])
 
     # Real MCP over stdio through the installed console script — what an agent
     # actually launches. Catches import-time breaks (e.g. an incompatible `mcp`

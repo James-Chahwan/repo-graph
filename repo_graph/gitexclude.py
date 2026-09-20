@@ -1,8 +1,13 @@
-"""Keep the `.ai/repo-graph/` cache out of `git status`.
+"""Keep the graph layout out of `git status`.
 
-The engine writes its `.gmap` shards + parse cache inside the target repo, which
-shows up as a pile of untracked files. On every cache write we add the cache dir
-to the repo's local `.git/info/exclude` (never the shared `.gitignore`).
+The engine writes its `.gmap` shards + parse cache inside the target repo
+(`<repo>/.glia/graph` since glia 0.5.0), which shows up as a pile of untracked
+files. On every cache write we add the cache dir to the repo's local
+`.git/info/exclude` (never the shared `.gitignore`).
+
+Largely redundant for the default dir now — glia 0.5.0 gives `.glia/graph/` its
+own `.gitignore` (`*`) — but it still covers a layout written elsewhere, and
+older layouts already excluded this way.
 
 Skipped when the user has opted into committing the cache — the repo-graph
 pre-commit hook is installed, or the cache is already tracked — so teams that

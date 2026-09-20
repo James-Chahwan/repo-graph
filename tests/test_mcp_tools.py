@@ -19,12 +19,35 @@ import pytest
 # ── helpers ─────────────────────────────────────────────────────────────────
 
 
+#: Containers connect through IMPORTS/CONTAINS/DEFINES, which blast_radius
+#: excludes as structural — so seeding one is a legitimate empty answer, not a
+#: working impact call. `test_impact_container_seed` covers that case on purpose.
+_CONTAINER_KINDS = {"module", "package", "project", "region", "doc_section"}
+
+
 def _real_node_name(mcp_server) -> str:
-    """Pick a real node name from the loaded graph for trace/impact/etc."""
+    """Pick a real node name from the loaded graph for trace/impact/etc.
+
+    Prefers a node that actually has a blast radius, so the impact tests
+    exercise the answering path rather than the (equally valid, separately
+    tested) empty one. A container or an edgeless leaf is the fallback."""
+    fallback = None
     for n in mcp_server._graph.nodes.values():
         name = n.get("name")
-        if name and len(name) > 1:
+        if not name or len(name) <= 1:
+            continue
+        fallback = fallback or name
+        if n.get("kind") in _CONTAINER_KINDS:
+            continue
+        try:
+            env = mcp_server._graph.pygraph.blast_radius(
+                [n["qname"]], "both", 4, None, False)
+        except Exception:
+            continue
+        if env.get("results"):
             return name
+    if fallback:
+        return fallback
     pytest.skip("fixture produced no named nodes")
 
 
@@ -47,7 +70,7 @@ def test_refresh_returns_summary(mcp_server):
     out = mcp_server.refresh()
     assert out.startswith("Rebuilt"), out
     assert "nodes" in out and "edges" in out
-    assert "Engine: repo-graph-py" in out
+    assert "Engine: glia-py" in out
 
 
 def test_refresh_deterministic_node_count(mcp_server):
@@ -121,7 +144,7 @@ def test_orient_scoped_seed(mcp_server):
 
 def test_orient_scoped_unknown_seed(mcp_server):
     out = mcp_server.orient(seed="xxx_unknown_node_xxx")
-    assert "not found" in out.lower()
+    assert "No answer" in out and "no_match" in out
 
 
 def test_orient_full_budget_truncates(mcp_server):
@@ -153,7 +176,7 @@ def test_find_keyword_shows_location(mcp_server):
 
 def test_find_unknown(mcp_server):
     out = mcp_server.find("xxx_definitely_not_a_real_symbol_xxx")
-    assert "No nodes matched" in out
+    assert "No answer" in out and "no_match" in out
 
 
 def test_find_expand_neighbourhood(mcp_server):
@@ -167,12 +190,21 @@ def test_find_signal_diff(mcp_server):
     """A file-path / diff signal resolves via the engine (old `locate`)."""
     out = mcp_server.find("backend/server/server.go", kind="diff", top_k=5)
     # either resolves to ranked nodes, or falls back cleanly to keyword/no-match
-    assert "from signal" in out or "matching" in out or "No nodes matched" in out
+    assert "from signal" in out or "matching" in out or "No answer" in out
 
 
 def test_find_signal_no_match(mcp_server):
     out = mcp_server.find("zzz/nonexistent/file_xyz_qqq.go", kind="diff")
-    assert "No nodes matched" in out or "from signal" in out
+    assert "No answer" in out or "from signal" in out
+
+
+def test_absence_carries_reason_and_tier(mcp_server):
+    """An empty answer is an engine `absence` envelope, not a wrapper guess: it
+    names the reason and whether it's FACT or HEURISTIC (LD.8a)."""
+    out = mcp_server.find("xxx_definitely_not_a_real_symbol_xxx")
+    assert "No answer" in out
+    assert "FACT" in out or "HEURISTIC" in out
+    assert "searched" in out and "nodes" in out
 
 
 def test_find_empty(mcp_server):
@@ -186,33 +218,58 @@ def test_find_empty(mcp_server):
 def test_impact_both(mcp_server):
     name = _real_node_name(mcp_server)
     out = mcp_server.impact(name)
-    assert "Impact (both)" in out or "nodes found from" in out or "nodes found" in out
+    assert "Impact (both)" in out or "No answer" in out
 
 
 def test_impact_backward(mcp_server):
     name = _real_node_name(mcp_server)
     out = mcp_server.impact(name, "backward", 3)
-    assert "Impact (backward)" in out or "backward nodes found" in out
+    assert "Impact (backward)" in out or "No answer" in out
 
 
 def test_impact_downstream_alias(mcp_server):
     """The old 'downstream' vocabulary still maps to the engine's 'forward'."""
     name = _real_node_name(mcp_server)
     out = mcp_server.impact(name, "downstream", 3)
-    assert "Impact (forward)" in out or "forward nodes found" in out
+    assert "Impact (forward)" in out or "No answer" in out
 
 
 def test_impact_unknown_node(mcp_server):
     out = mcp_server.impact("xxx_unknown_node_xxx")
-    assert "No nodes found" in out
+    assert "No answer" in out and "unknown_symbol" in out
+
+
+def test_impact_container_seed_explains_itself(mcp_server):
+    """A module/package seed is an empty blast radius by design — structural
+    import/containment edges are excluded. The engine's absence says so (it
+    replaced the wrapper's hand-written hint, LD.5)."""
+    container = next((n for n in mcp_server._graph.nodes.values()
+                      if n.get("kind") == "module" and n.get("name")), None)
+    if container is None:
+        pytest.skip("fixture has no module nodes")
+    out = mcp_server.impact(container["qname"])
+    if "No answer" not in out:
+        return  # the container did have carry edges — fine
+    assert "no_edges" in out
+
+
+def test_impact_reports_unresolved_seeds(mcp_server):
+    """Unknown names come back in the engine's `unresolved` list rather than
+    failing the whole call (LD.5: one walk, many seeds)."""
+    name = _real_node_name(mcp_server)
+    out = mcp_server.impact(f"{name},xxx_not_a_real_seed_xxx", depth=2)
+    assert "xxx_not_a_real_seed_xxx" in out
 
 
 def test_impact_multi_seed(mcp_server):
     names = [n["name"] for n in mcp_server._graph.nodes.values()
-             if n.get("name") and len(n["name"]) > 1]
+             if n.get("name") and len(n["name"]) > 1
+             and n.get("kind") not in _CONTAINER_KINDS]
+    if len(names) < 2:
+        pytest.skip("fixture has fewer than two non-container nodes")
     seeds = ",".join(names[:2])
     out = mcp_server.impact(seeds, depth=2)
-    assert "Impact (" in out or "nodes found" in out
+    assert "Impact (" in out or "No answer" in out
 
 
 def test_impact_live_only(mcp_server):
@@ -248,7 +305,7 @@ def test_trace_feature(mcp_server):
 
 def test_trace_feature_unknown_lists_entry_points(mcp_server):
     out = mcp_server.trace("definitely-not-a-real-feature-xyz")
-    assert "No trace found" in out or "Trace:" in out or "Flow:" in out
+    assert "No answer" in out or "Trace:" in out or "Flow:" in out
 
 
 # ── read (unchanged) ────────────────────────────────────────────────────────
@@ -292,6 +349,7 @@ def test_read_surfaces_context_cells(mcp_server):
     """read appends a `context:` footer from node_cells (method / cross-stack
     callers / tests / imports) — facts the source slice alone doesn't show."""
     g = mcp_server._graph
+    names = mcp_server._CELL_TYPE_NAMES
     surfaced = set(mcp_server._READ_CELL_LABELS)
     target = None
     for n in g.nodes.values():
@@ -299,12 +357,15 @@ def test_read_surfaces_context_cells(mcp_server):
             cells = g.pygraph.node_cells(n["id"])
         except Exception:
             continue
-        if any(tid in surfaced for tid, _ in cells):
+        # An empty payload (e.g. `imports: []`) renders to nothing on purpose,
+        # so only a cell with real content guarantees a footer.
+        if any(tid in surfaced and mcp_server._cell_text(names.get(tid, ""), c)
+               for tid, c in cells):
             target = n
             break
     if target is None:
         pytest.skip("fixture has no nodes with surfaced context cells")
-    out = mcp_server.read(target["name"])
+    out = mcp_server.read(target["qname"])
     assert "context:" in out
 
 

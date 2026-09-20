@@ -103,3 +103,46 @@ def test_mcp_sdk_capped_below_2():
     deps = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]["dependencies"]
     mcp = next(d for d in deps if d.startswith("mcp"))
     assert "<2" in mcp.replace(" ", ""), f"mcp dependency must be capped below 2.x: {mcp!r}"
+
+
+# ── Every distribution manifest carries the same version ────────────────────
+
+#: Each client/marketplace reads its own manifest, so a bump has to touch all of
+#: them. Historically only pyproject↔server.json were tested and the other four
+#: drifted silently (the VS Code extension sat a release behind through 0.5.0).
+_VERSIONED_MANIFESTS = {
+    "server.json": ("version",),
+    ".plugin/plugin.json": ("version",),                        # Open Plugins / cursor.directory
+    "claude-plugin/.claude-plugin/plugin.json": ("version",),   # Claude marketplace
+    "mcpb/manifest.json": ("version",),                         # MCPB bundle / Smithery
+    "vscode-extension/package.json": ("version",),              # VS Code Marketplace
+}
+
+
+def test_all_distribution_manifests_version_synced():
+    version = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]["version"]
+    drifted = {}
+    for rel, (key,) in _VERSIONED_MANIFESTS.items():
+        path = ROOT / rel
+        if not path.exists():
+            continue
+        got = json.loads(path.read_text()).get(key)
+        if got != version:
+            drifted[rel] = got
+    assert not drifted, (
+        f"manifest version drift against pyproject {version}: {drifted}. "
+        "Every one of these is read by a different client/marketplace — bump them together."
+    )
+
+
+def test_mcpb_manifest_tools_match_server_registry():
+    """The MCPB bundle advertises its tool list to Claude Desktop and Smithery,
+    so a tool-surface change has to reach it too."""
+    from repo_graph.installer.constants import TOOL_NAMES
+
+    manifest = json.loads((ROOT / "mcpb" / "manifest.json").read_text())
+    declared = {t["name"] for t in manifest.get("tools", [])}
+    assert declared == set(TOOL_NAMES), (
+        f"mcpb/manifest.json tools drifted: missing={set(TOOL_NAMES) - declared}, "
+        f"extra={declared - set(TOOL_NAMES)}"
+    )

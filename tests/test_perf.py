@@ -13,7 +13,7 @@ import time
 from pathlib import Path
 
 import pytest
-import repo_graph_py
+import glia_py
 
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
@@ -34,7 +34,7 @@ def test_generate_under_budget(fixture_name, tmp_path):
     shutil.copytree(src, dst)
 
     t0 = time.perf_counter()
-    pg = repo_graph_py.generate(str(dst))
+    pg = glia_py.generate(str(dst))
     dt = time.perf_counter() - t0
 
     assert pg.node_count() > 0, f"{fixture_name}: generate produced zero nodes"

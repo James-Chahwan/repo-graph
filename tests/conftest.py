@@ -1,7 +1,7 @@
 """Shared pytest fixtures for the MCP server tests.
 
 Each fixture copies a fixtures/* repo to a tmp dir (so analyzers don't trip
-on the '/tests/' skip rule) and runs `repo_graph_py.generate()` once per
+on the '/tests/' skip rule) and runs `glia_py.generate()` once per
 session. Tests downstream get a (PyGraph, repo_path) tuple.
 """
 
@@ -11,7 +11,7 @@ import shutil
 from pathlib import Path
 
 import pytest
-import repo_graph_py
+import glia_py
 
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
@@ -26,7 +26,7 @@ def _copy_fixture(tmp_path_factory: pytest.TempPathFactory, name: str) -> Path:
 
 
 def _generate(repo: Path):
-    pg = repo_graph_py.generate(str(repo))
+    pg = glia_py.generate(str(repo))
     return pg, repo
 
 

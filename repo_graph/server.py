@@ -2,7 +2,7 @@
 repo-graph MCP server.
 
 Structural navigation, context budgeting, and codebase health over any codebase,
-powered by the Rust repo-graph engine (repo-graph-py) via PyO3.
+powered by the Rust glia engine (glia-py) via PyO3.
 
 Six tools, each a natural verb backed by an engine primitive:
     orient   — overview + full/scoped map + coverage blind-spots (status/dense_text/graph_view/coverage)
@@ -32,9 +32,9 @@ from pydantic import Field
 from mcp.server.fastmcp import FastMCP
 from mcp.types import ToolAnnotations
 
-import repo_graph_py
+import glia_py
 
-from .graph import RustGraph
+from .graph import RustGraph, ENTRY_KIND_NAMES
 from .gitexclude import ensure_cache_excluded
 
 REPO_PATH = os.environ.get("REPO_GRAPH_REPO", os.getcwd())
@@ -97,31 +97,34 @@ def _resolve_repo(spec: str) -> str:
 
 
 def _exclude_cache(target: str) -> None:
-    """Keep the `.ai/repo-graph/` cache out of `git status` (local
-    `info/exclude`; skipped if the user commits the cache). Never raises."""
-    gmap_dir = (repo_graph_py.default_gmap_dir(target)
-                if hasattr(repo_graph_py, "default_gmap_dir")
-                else os.path.join(target, ".ai", "repo-graph"))
-    ensure_cache_excluded(gmap_dir)
+    """Keep the graph layout out of `git status` (local `info/exclude`; skipped
+    if the user commits it). Never raises.
+
+    Redundant for the default dir since glia 0.5.0 — `.glia/graph/` ships its own
+    `.gitignore` (`*`) — but kept for a layout the engine didn't place there."""
+    ensure_cache_excluded(glia_py.default_gmap_dir(target))
 
 
 def _build_graph(target: str, incremental: bool = True) -> RustGraph:
     """Generate `target`'s graph, persist the `.gmap` cache, install it as live.
 
     `incremental` (default True) reuses the per-file parse cache at
-    `<repo>/.ai/repo-graph/parse_cache.bin` so unchanged files skip tree-sitter
+    `<repo>/.glia/graph/parse_cache.bin` so unchanged files skip tree-sitter
     re-parsing; `incremental=False` forces a full reparse. Shared by `get_graph`
     (cold regen), the watcher, and `refresh`.
+
+    Since glia 0.5.0 `generate` is a pure build that writes no layout, so the
+    explicit `save_to_default` here is the only thing keeping the next cold start
+    fast.
     """
     global _graph, REPO_PATH
     with _rebuild_lock:
-        pg = repo_graph_py.generate(target, incremental=incremental)
-        if hasattr(pg, "save_to_default"):
-            try:
-                pg.save_to_default(target)
-            except Exception:
-                # Best-effort: read-only fs / perms shouldn't break the live graph.
-                pass
+        pg = glia_py.generate(target, incremental=incremental)
+        try:
+            pg.save_to_default(target)
+        except Exception:
+            # Best-effort: read-only fs / perms shouldn't break the live graph.
+            pass
         _exclude_cache(target)
         REPO_PATH = target
         _graph = RustGraph(pg, target)
@@ -141,8 +144,10 @@ def _watch_rebuild() -> None:
 def get_graph() -> RustGraph:
     """Return the in-memory graph, lazy-loading on first access.
 
-    Load order: cached `.gmap` if fresh → incremental `generate()` otherwise
-    (reusing the parse cache so the regen is cheap).
+    Since glia 0.5.0 `load_from_gmap` self-heals: given the repo path it rebuilds
+    a stale, old-format or missing layout itself and writes it back, so there's no
+    `is_stale` pre-check here any more. A `ValueError` means it couldn't — fall
+    back to a full build.
     """
     global _graph, REPO_PATH
     if _graph is not None:
@@ -150,18 +155,13 @@ def get_graph() -> RustGraph:
 
     REPO_PATH = _resolve_repo(REPO_PATH)
 
-    if hasattr(repo_graph_py, "load_from_gmap") and hasattr(repo_graph_py, "is_stale"):
-        gmap_dir = repo_graph_py.default_gmap_dir(REPO_PATH)
-        if not repo_graph_py.is_stale(gmap_dir, REPO_PATH):
-            try:
-                pg = repo_graph_py.load_from_gmap(gmap_dir)
-                _graph = RustGraph(pg, REPO_PATH)
-                return _graph
-            except Exception:
-                # Stale or unreadable cache — fall through to fresh generate.
-                pass
-
-    return _build_graph(REPO_PATH)
+    try:
+        pg = glia_py.load_from_gmap(glia_py.default_gmap_dir(REPO_PATH), REPO_PATH)
+        _exclude_cache(REPO_PATH)
+        _graph = RustGraph(pg, REPO_PATH)
+        return _graph
+    except (ValueError, OSError, RuntimeError):
+        return _build_graph(REPO_PATH)
 
 
 def _truncate(text: str, budget: int, what: str = "output") -> str:
@@ -178,16 +178,56 @@ def _truncate(text: str, budget: int, what: str = "output") -> str:
     )
 
 
-def _jload(val) -> list:
-    """Parse an engine JSON-string result into a list (engine primitives return
-    JSON arrays as strings). Empty/malformed → []."""
-    if not val:
-        return []
-    try:
-        data = json.loads(val) if isinstance(val, str) else val
-    except (ValueError, TypeError):
-        return []
-    return data if isinstance(data, list) else []
+def _rows(val) -> list:
+    """Rows out of an engine answer. Since glia 0.5.0 the primitives return native
+    dicts and lists, not JSON strings: a `{results, absence}` envelope yields its
+    results, a bare list yields itself. Anything else → []."""
+    if isinstance(val, dict):
+        return list(val.get("results") or [])
+    if isinstance(val, list):
+        return val
+    return []
+
+
+def _render_absence(absence: dict | None, fallback: str) -> str:
+    """The engine's own account of an empty answer (LD.8a): the reason, its
+    FACT/HEURISTIC tier, and what to try instead — better than the wrapper
+    guessing why nothing matched."""
+    if not isinstance(absence, dict):
+        return fallback
+    reason = absence.get("reason", "no_match")
+    tier = absence.get("tier", "")
+    note = absence.get("note") or fallback
+    lines = [f"  No answer ({reason}{', ' + tier if tier else ''}): {note}"]
+
+    mechs = absence.get("mechanisms") or []
+    if mechs:
+        lines.append("    looked over: " + ", ".join(str(m) for m in mechs[:8]))
+    for sug in (absence.get("suggestions") or [])[:5]:
+        lines.append(f"    try: {sug}")
+    # `caveats` are coverage rows, not strings — where extraction is partial for
+    # the mechanism that came up empty. Rendered like orient's blind spots.
+    caveats = absence.get("caveats") or []
+    if caveats:
+        lines.append("    blind spots (grep to confirm):")
+        for c in caveats[:5]:
+            if isinstance(c, dict):
+                cat = c.get("edge_category", "?")
+                lang = c.get("language", "*")
+                found = c.get("edges_found")
+                zero = "  [0 found]" if found == 0 else ""
+                verify = f" — verify: {c['verify']}" if c.get("verify") else ""
+                lines.append(f"      ⚠ {cat} ({lang}){zero}: {c.get('note', '')}{verify}")
+            else:
+                lines.append(f"      ⚠ {c}")
+
+    searched = absence.get("nodes_searched")
+    if searched is not None:
+        tail = f"    searched {searched} nodes"
+        if absence.get("unparsed_files"):
+            tail += f"; {absence['unparsed_files']} file(s) failed to parse — grep those"
+        lines.append(tail)
+    return "\n".join(lines)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -215,9 +255,11 @@ def orient(
     g = get_graph()
 
     if seed:
-        resolved = g.find_node(seed)
+        records, absence = g.find_records(seed, 1)
+        resolved = g.nodes.get(records[0]["id"]) if records else None
         if not resolved:
-            return f"Seed node not found: '{seed}'. Try `find` with a keyword."
+            return _render_absence(
+                absence, f"Seed node not found: '{seed}'. Try `find` with a keyword.")
         scores = g.pygraph.activate([resolved["id"]], 50)
         node_ids = [nid for nid, _ in scores] or [resolved["id"]]
         text = g.pygraph.dense_text_subset(node_ids)
@@ -255,7 +297,7 @@ def _render_located(header: str, records: list[dict], g: RustGraph, budget: int)
     a ranked, path-anchored list."""
     lines = [header, ""]
     for r in records:
-        kind = str(r.get("kind", "?")).lower()
+        kind = _record_kind(g, r)
         icon = _kind_icon(kind)
         score = r.get("score")
         score_s = f"{score:.4f}  " if isinstance(score, (int, float)) else ""
@@ -283,14 +325,18 @@ def find(
     seed_ids: list[int] = []
     header: str
 
+    absence: dict | None = None
+
     use_signal = kind not in ("symbol",) and (kind != "auto" or _looks_like_signal(q))
     if use_signal:
         # Failure signal → engine resolve (stacktrace/test/diff → located ranked nodes).
         sig_kind = kind if kind in ("stacktrace", "test", "diff") else "auto"
         try:
-            recs = _jload(g.pygraph.resolve(q, sig_kind, top_k))
+            env = g.pygraph.resolve(q, sig_kind, top_k)
         except (ValueError, RuntimeError):
-            recs = []
+            env = None
+        recs = _rows(env)
+        absence = env.get("absence") if isinstance(env, dict) else None
         if recs:
             seed_ids = [r["id"] for r in recs if "id" in r]
             if not expand:
@@ -299,19 +345,18 @@ def find(
         # else fall through to keyword lookup
 
     if not seed_ids:
-        # Keyword / symbol lookup.
-        matches = g.find_nodes(q)
-        if not matches:
-            single = g.find_node(q)
-            matches = [single] if single else []
-        if not matches:
-            return (f"No nodes matched '{query}'. If this was a stacktrace/diff, none of its "
-                    f"frames mapped to a node — try `orient` or a keyword.")
-        seed_ids = [m["id"] for m in matches]
+        # Keyword / symbol lookup — the engine's ranked `find` (LD.3b). Its rows
+        # already carry file/line/live and the match tier, so they render as-is.
+        recs, find_absence = g.find_records(q, top_k)
+        if not recs:
+            return _render_absence(
+                find_absence or absence,
+                f"No nodes matched '{query}'. If this was a stacktrace/diff, none of its "
+                f"frames mapped to a node — try `orient` or a keyword.")
+        seed_ids = [r["id"] for r in recs if "id" in r]
         if not expand:
-            recs = [_node_record(g, m) for m in matches[:top_k]]
             return _render_located(
-                f"  {len(matches)} node(s) matching '{query}':", recs, g, budget)
+                f"  {len(recs)} node(s) matching '{query}':", recs, g, budget)
 
     # expand=True → PPR-ranked neighbourhood around the seeds.
     scores = g.pygraph.activate(seed_ids, top_k)
@@ -351,55 +396,41 @@ def impact(
     g = get_graph()
     dir_engine = _DIRECTION_ALIAS.get(direction.lower().strip(), "both")
 
-    seed_qnames: list[str] = []
-    seed_ids: set[int] = set()
-    for s in nodes.split(","):
-        s = s.strip()
-        if not s:
-            continue
-        r = g.find_node(s)
-        if r:
-            seed_qnames.append(r["qname"])
-            seed_ids.add(r["id"])
-    if not seed_qnames:
+    names = [n.strip() for n in nodes.split(",") if n.strip()]
+    if not names:
         return f"No nodes found for: '{nodes}'"
 
-    # Union the per-seed engine blast_radius closures; keep the best score per node.
-    best: dict[int, dict] = {}
-    for qn in seed_qnames:
-        try:
-            recs = _jload(g.pygraph.blast_radius(qn, dir_engine, depth, None, live_only))
-        except Exception as e:
-            return f"Blast-radius failed for '{qn}': {e}"
-        for r in recs:
-            nid = r.get("id")
-            if nid is None or nid in seed_ids:
-                continue
-            prev = best.get(nid)
-            if prev is None or r.get("score", 0) > prev.get("score", 0):
-                best[nid] = r
+    # One walk, one PPR, many seeds (LD.5). The engine resolves the raw names
+    # itself — misses come back in `unresolved`, not as a wrapper lookup failure.
+    try:
+        env = g.pygraph.blast_radius(names, dir_engine, depth, None, live_only)
+    except Exception as e:
+        return f"Blast-radius failed for '{nodes}': {e}"
 
-    affected = sorted(best.values(), key=lambda r: -r.get("score", 0.0))
-    seed_label = ", ".join(seed_qnames[:4]) + (" …" if len(seed_qnames) > 4 else "")
+    affected = _rows(env)
+    seeds = env.get("seeds") or [] if isinstance(env, dict) else []
+    unresolved = env.get("unresolved") or [] if isinstance(env, dict) else []
+    resolved_qnames = [s.get("qname", s.get("query", "?")) for s in seeds]
+    seed_label = (", ".join(resolved_qnames[:4]) + (" …" if len(resolved_qnames) > 4 else "")
+                  or ", ".join(names[:4]))
+
     if not affected:
         scope = "live " if live_only else ""
-        msg = f"No {scope}{dir_engine} nodes found from {seed_label} (depth={depth})."
-        # A module/package connects almost entirely via structural edges
-        # (contains/imports/defines), which blast-radius excludes to avoid
-        # fan-out noise — so a module seed legitimately yields nothing. Point the
-        # agent at a real symbol inside it.
-        if all(g.nodes.get(sid, {}).get("kind") in ("module", "package") for sid in seed_ids):
-            msg += (" (Seed is a module/package — blast radius excludes structural "
-                    "import/containment edges. Seed a function, class, route, or handler "
-                    "inside it instead.)")
-        return msg
+        out = _render_absence(
+            env.get("absence") if isinstance(env, dict) else None,
+            f"No {scope}{dir_engine} nodes found from {seed_label} (depth={depth}).")
+        # An empty radius still has to report which of the names never resolved —
+        # with a whole diff's worth of seeds that's the actionable half.
+        if unresolved:
+            out += f"\n    unresolved seed(s): {', '.join(str(u) for u in unresolved)}"
+        return out
 
     if top_k:
         affected = affected[:top_k]
 
     lines = [f"  Impact ({dir_engine}) from {seed_label} — depth {depth}", ""]
     for r in affected:
-        kind = str(r.get("kind", "?")).lower()
+        kind = _record_kind(g, r)
         icon = _kind_icon(kind)
         score = r.get("score")
         score_s = f"{score:.3f}  " if isinstance(score, (int, float)) else ""
@@ -411,6 +442,13 @@ def impact(
 
     dead = sum(1 for r in affected if r.get("live") is False)
     lines.append("")
+    for sd in seeds:
+        linked = sd.get("linked_seeds") or []
+        if linked:
+            lines.append(f"  seed {sd.get('qname', '?')} also links: "
+                         + ", ".join(str(x) for x in linked[:5]))
+    if unresolved:
+        lines.append(f"  unresolved seed(s): {', '.join(str(u) for u in unresolved)}")
     note = f"  -- {len(affected)} nodes in blast radius"
     if dead and not live_only:
         note += (f"  ({dead} marked ⊘ are not reachable from a known entry point — likely dead, "
@@ -448,33 +486,86 @@ def trace(
     # through to the flow fallback below.
     feature = from_node.strip()
     try:
-        hops = _jload(g.pygraph.cross_stack_trace(feature, depth))
+        env = g.pygraph.cross_stack_trace(feature, depth)
     except (ValueError, RuntimeError):
-        hops = []
+        env = None
+    hops = (env.get("hops") or []) if isinstance(env, dict) else []
     if hops:
-        lines = [f"  Trace: {feature}  ({len(hops)} hops)", ""]
-        for h in hops:
-            mech = h.get("mechanism", "")
-            arrow = _MECH_ICON.get(mech, "→")
-            xs = "  ⧉ cross-service" if h.get("cross_service") else ""
-            to_kind = str(h.get("to_kind", "")).lower()
-            frm = h.get("from_qname", "?")
-            to = h.get("to_qname", "?")
-            loc = _eloc({"file": h.get("to_file"), "line": h.get("to_line")})
-            lines.append(f"    {frm}\n      {arrow} [{mech}] {to}  [{to_kind}]{loc}{xs}")
-        return _truncate("\n".join(lines), budget, "trace")
+        return _truncate(_render_trace(feature, env, hops), budget, "trace")
 
     # Fall back to the wrapper's flow layering (entry-point keyword → downstream).
     flow_nodes = g.nodes_for_feature(feature.lower())
     if not flow_nodes:
         available = ", ".join(sorted(g.flows.keys())[:30])
-        return (f"No trace found for '{feature}'. It matched no cross-stack path and no entry "
-                f"point. Available entry points: {available}")
+        return _render_absence(
+            env.get("absence") if isinstance(env, dict) else None,
+            f"No trace found for '{feature}'. It matched no cross-stack path and no entry "
+            f"point. Available entry points: {available}")
     return _truncate(_render_nodes_layered(feature, flow_nodes[:30], g), budget, "trace")
 
 
+def _render_hop(h: dict, indent: str = "    ") -> str:
+    """One `from -> [mechanism] to` hop, located and boundary-marked."""
+    mech = h.get("mechanism", "")
+    arrow = _MECH_ICON.get(mech, "→")
+    xs = ""
+    if h.get("cross_repo"):
+        xs = "  ⧉ cross-repo"
+    elif h.get("cross_service"):
+        xs = "  ⧉ cross-service"
+    to_kind = str(h.get("to_kind", "")).lower()
+    loc = _eloc({"file": h.get("to_file"), "line": h.get("to_line")})
+    live = _elive({"live": h.get("to_live")})
+    return (f"{indent}{h.get('from_qname', '?')}\n"
+            f"{indent}  {arrow} [{mech}] {h.get('to_qname', '?')}  [{to_kind}]{loc}{live}{xs}")
+
+
+def _seed_label(val) -> str:
+    """`seed` / `target` are located node records, not strings."""
+    if isinstance(val, dict):
+        return str(val.get("qname") or val.get("name") or "?")
+    return str(val or "")
+
+
+def _render_trace(feature: str, env: dict, hops: list[dict]) -> str:
+    """Render an engine cross-stack trace.
+
+    `paths` is the answer whenever the engine produced one — ranked distinct
+    routes, and with `to=` set it's the actual A→B path. `hops` is the whole
+    explored set, so it's only the fallback when there are no paths."""
+    head = f"  Trace: {feature}"
+    seed = _seed_label(env.get("seed"))
+    if seed and seed != feature:
+        head += f"  (seed {seed})"
+    target = _seed_label(env.get("target"))
+    if target:
+        head += f"  → {target}"
+    resolved_by = env.get("resolved_by") or ""
+    if resolved_by:
+        head += f"  [resolved by {resolved_by}]"
+
+    paths = env.get("paths") or []
+    lines = [head, ""]
+    if paths:
+        for pth in paths:
+            p_hops = pth.get("hops") or []
+            lines.append(f"  path {pth.get('rank', '?')}  ({len(p_hops)} hops)")
+            for h in p_hops:
+                lines.append(_render_hop(h, "      "))
+            lines.append("")
+        if env.get("truncated"):
+            lines.append(f"  -- more paths exist; showing the top {len(paths)} by rank")
+    else:
+        lines[0] = f"{head}  ({len(hops)} hops)"
+        for h in hops:
+            lines.append(_render_hop(h))
+    return "\n".join(lines).rstrip()
+
+
 def _trace_path(g: RustGraph, from_node: str, to_node: str, budget: int) -> str:
-    """Shortest path between two named nodes, hop by hop with tier transitions."""
+    """Path between two named nodes. The engine's `to=` mode first — it ranks
+    real mechanism-labelled paths across the stack — with the structural
+    shortest path as the fallback."""
     frm = g.find_node(from_node)
     to = g.find_node(to_node)
     if not frm:
@@ -482,15 +573,26 @@ def _trace_path(g: RustGraph, from_node: str, to_node: str, budget: int) -> str:
     if not to:
         return f"Node not found: '{to_node}'"
 
+    try:
+        env = g.pygraph.cross_stack_trace(frm["qname"], 12, to["qname"], 10)
+    except (ValueError, RuntimeError):
+        env = None
+    if isinstance(env, dict) and (env.get("hops") or env.get("paths")):
+        return _truncate(
+            _render_trace(f"{frm['name']} -> {to['name']}", env, env.get("hops") or []),
+            budget, "trace")
+
     path = g.shortest_path(frm["id"], to["id"])
     if path is None:
-        return f"No path between {frm['name']} and {to['name']}"
+        return _render_absence(
+            env.get("absence") if isinstance(env, dict) else None,
+            f"No path between {frm['name']} and {to['name']}")
 
     lines = [f"  Trace: {frm['name']} -> {to['name']} ({len(path)} hops)", ""]
     prev_tier = None
     for i, node in enumerate(path):
-        icon = _kind_icon(node["kind"])
-        tier = _classify_tier(node["kind"])
+        icon = _kind_icon(_effective_kind(node))
+        tier = _classify_tier(node)
         conf = _confidence_icon(node.get("confidence", "medium"))
         if tier != prev_tier:
             if prev_tier is not None:
@@ -499,7 +601,8 @@ def _trace_path(g: RustGraph, from_node: str, to_node: str, budget: int) -> str:
             lines.append(f"  [{tier}]")
             prev_tier = tier
         arrow = "  -> " if i > 0 else "     "
-        lines.append(f"  {arrow}{icon} {conf} {node['name']}  [{node['kind']}]{_loc(node)}")
+        lines.append(f"  {arrow}{icon} {conf} {node['name']}  "
+                     f"[{_effective_kind(node)}]{_loc(node)}{_elive(node)}")
     return _truncate("\n".join(lines), budget, "trace")
 
 
@@ -508,18 +611,82 @@ def _trace_path(g: RustGraph, from_node: str, to_node: str, budget: int) -> str:
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-# node_cells (repo-graph-py) — structured facets beyond the source span. `read`
+# node_cells (glia-py) — structured facets beyond the source span. `read`
 # surfaces the high-value ones: HTTP method, cross-stack callers (ENDPOINT_HIT),
 # covering tests (TEST), and semantic cells (intent/decision/constraint/failure).
 try:
-    _CELL_TYPE_NAMES = {i: n for i, n in repo_graph_py.cell_type_names()}
+    _CELL_TYPE_NAMES = {i: n for i, n in glia_py.cell_type_names()}
 except Exception:
     _CELL_TYPE_NAMES = {}
 
-_READ_CELL_LABELS = {
-    5: "method", 6: "called by (cross-stack)", 7: "tested by", 4: "intent",
-    11: "decision", 10: "constraint", 9: "failure mode", 8: "attention", 16: "imports",
+# Friendly names for the cells worth showing under a read. The ids come from the
+# engine's own `cell_type_names()` table (never hand-kept) — this map only
+# renames them and picks which ones surface. A cell the engine adds shows up
+# under its own table name as soon as it's listed in _READ_CELL_TYPES.
+_CELL_LABEL_OVERRIDES = {
+    "ROUTE_METHOD": "method", "ENDPOINT_HIT": "called by (cross-stack)",
+    "TEST": "tested by", "INTENT": "intent", "DECISION": "decision",
+    "CONSTRAINT": "constraint", "FAIL": "failure mode", "ATTN": "attention",
+    "IMPORTS": "imports", "CONV": "notes", "COVERAGE": "test coverage",
+    "ENTRYPOINT": "declared entry point", "DOC_TAGS": "doc tags",
+    "SCHEMA_FIELDS": "fields", "ACCESS_MODE": "access",
 }
+_READ_CELL_TYPES = set(_CELL_LABEL_OVERRIDES)
+
+# VECTOR is a Bytes payload — `node_cells` returns "" for it, so never show it.
+_SKIP_CELL_TYPES = {"VECTOR"}
+
+_READ_CELL_LABELS = {
+    tid: _CELL_LABEL_OVERRIDES.get(name, name.lower().replace("_", " "))
+    for tid, name in _CELL_TYPE_NAMES.items()
+    if name in _READ_CELL_TYPES and name not in _SKIP_CELL_TYPES
+}
+
+
+def _cell_text(name: str, content: str) -> str:
+    """Flatten a cell payload for the `context:` footer.
+
+    Several payloads became JSON objects/arrays in glia 0.5.0 — rendering the raw
+    JSON would just get truncated mid-object, so pull the fields that carry the
+    meaning."""
+    raw = str(content).strip()
+    if not raw or raw in ("[]", "{}"):
+        return ""
+    if raw[0] not in "[{":
+        return " ".join(raw.split())
+    try:
+        data = json.loads(raw)
+    except (ValueError, TypeError):
+        return " ".join(raw.split())
+
+    if name == "TEST" and isinstance(data, dict):
+        tests = [t.get("test", "?") for t in (data.get("tests") or [])]
+        total = data.get("total", len(tests))
+        return f"{total}: " + ", ".join(tests[:6]) if tests else ""
+    if name == "COVERAGE" and isinstance(data, dict):
+        hit, total = data.get("hit"), data.get("lines")
+        src = data.get("source", "")
+        if hit is not None and total:
+            return f"{hit}/{total} lines ({100 * hit // total}%){f' via {src}' if src else ''}"
+    if name == "ENTRYPOINT" and isinstance(data, dict):
+        return " ".join(str(data.get(k)) for k in ("decl", "pattern", "source")
+                        if data.get(k))
+    if name in ("DECISION", "CONSTRAINT", "FAIL") and isinstance(data, list):
+        out = []
+        for e in data[:3]:
+            if not isinstance(e, dict):
+                continue
+            # FAIL: `message`/`role` are the readable pair; title/text for the rest.
+            head = e.get("title") or e.get("message") or ""
+            body = e.get("text") or e.get("role") or ""
+            out.append(" — ".join(x for x in (head, body) if x) or json.dumps(e))
+        return " | ".join(out)
+    if isinstance(data, list):
+        return ", ".join(
+            x if isinstance(x, str) else json.dumps(x) for x in data[:8])
+    if isinstance(data, dict):
+        return " ".join(f"{k}={v}" for k, v in list(data.items())[:6])
+    return " ".join(raw.split())
 
 
 def _node_context(g: RustGraph, node_id: int, per_cell: int = 400) -> str:
@@ -534,7 +701,9 @@ def _node_context(g: RustGraph, node_id: int, per_cell: int = 400) -> str:
         label = _READ_CELL_LABELS.get(tid)
         if not label:
             continue
-        text = " ".join(str(content).split())
+        text = _cell_text(_CELL_TYPE_NAMES.get(tid, ""), content)
+        if not text:
+            continue
         if len(text) > per_cell:
             text = text[:per_cell] + " …"
         rows.append(f"    · {label}: {text}")
@@ -545,7 +714,7 @@ def _governing_docs_note(g: RustGraph, qname: str) -> str:
     """Doc sections that DOCUMENT this symbol (engine `governing_docs`) — 'the
     rules for X'. '' when nothing governs it or the repo has no ingested docs."""
     try:
-        recs = _jload(g.pygraph.governing_docs(qname))
+        recs = _rows(g.pygraph.governing_docs(qname))
     except Exception:
         return ""
     if not recs:
@@ -567,7 +736,7 @@ def _read_one(g: RustGraph, node: str, context_lines: int) -> str:
     if not path or not start:
         # No source span (a synthetic / cross-stack node — route, endpoint, data
         # entity). Still surface its structural cells (method, callers, tests).
-        head = f"  {resolved['qname']}  [{resolved['kind']}]  (no source span)"
+        head = f"  {resolved['qname']}  [{_effective_kind(resolved)}]  (no source span)"
         return head + ctx if ctx else (
             f"{resolved['name']} has no source span (synthetic or cross-stack node) "
             f"— nothing to read.")
@@ -585,7 +754,7 @@ def _read_one(g: RustGraph, node: str, context_lines: int) -> str:
     snippet = "\n".join(src_lines[lo - 1:hi])
 
     header = (
-        f"  {resolved['qname']}  [{resolved['kind']}]\n"
+        f"  {resolved['qname']}  [{_effective_kind(resolved)}]\n"
         f"  {path}:{start}-{end}\n"
     )
     return f"{header}\n```\n{snippet}\n```" + ctx
@@ -632,7 +801,7 @@ def refresh(
         f"{pg.edge_count()} edges, {pg.cross_edge_count()} cross-stack edges, "
         f"{len(g.flows)} entry points\n"
         f"Kinds: {type_summary}\n"
-        f"Engine: repo-graph-py {repo_graph_py.version()}"
+        f"Engine: glia-py {glia_py.version()}"
     )
 
 
@@ -640,8 +809,10 @@ def refresh(
 # Rendering helpers
 # ─────────────────────────────────────────────────────────────────────────────
 
-_ENTRY_KINDS = {"route", "grpc_service", "queue_consumer", "graphql_resolver",
-                "ws_handler", "event_handler", "cli_command", "cron_job"}
+# Straight from the engine's entry table (glia 0.5.0 / LD.6) — the same set
+# liveness seeds from, so the wrapper can't drift from it the way the old
+# hand-kept literal did (it was missing grpc_server, rpc_procedure, component).
+_ENTRY_KINDS = ENTRY_KIND_NAMES
 _SERVICE_KINDS = {"module", "package"}
 _HANDLER_KINDS = {"function", "method", "class", "struct", "interface", "enum",
                   "component", "hook", "service", "directive", "pipe", "guard",
@@ -652,7 +823,37 @@ _DATA_KINDS = {"endpoint", "grpc_client", "queue_producer", "graphql_operation",
                "data_entity", "config_key", "infra_resource", "package_dep"}
 
 
-def _classify_tier(kind: str) -> str:
+def _record_kind(g: RustGraph, rec: dict) -> str:
+    """Display kind for an ENGINE answer record.
+
+    The records carry `kind` but not `roles`, so a declared component or service
+    would render as the bare CLASS/FUNCTION it is now. Look the node up by id to
+    recover its role — the label that actually means something."""
+    node = g.nodes.get(rec.get("id"))
+    if node is not None and node.get("roles"):
+        return _effective_kind(node)
+    return str(rec.get("kind", "?")).lower()
+
+
+def _effective_kind(node: dict) -> str:
+    """What a node *acts as*, for tiering and icons.
+
+    Since glia 0.5.0 a component / service / hook / directive / pipe / guard /
+    composable with a declaration twin is a plain CLASS or FUNCTION carrying a
+    ROLE cell, surfaced as `roles`. The role is the meaningful label, so it wins
+    over the bare kind; the role vocabulary is the same words the kinds used."""
+    roles = node.get("roles") or []
+    if roles:
+        return str(roles[0]).lower()
+    return str(node.get("kind", "?")).lower()
+
+
+def _classify_tier(node: dict) -> str:
+    """Tier a node dict. `entry` is the engine's own flag (it also honours
+    entrypoints declared in `.glia/overlay.toml`), so it decides first."""
+    if node.get("entry"):
+        return "ENTRY"
+    kind = _effective_kind(node)
     if kind in _ENTRY_KINDS:
         return "ENTRY"
     if kind in _SERVICE_KINDS:
@@ -703,13 +904,17 @@ def _loc(node: dict) -> str:
 
 
 def _eloc(rec: dict) -> str:
-    """`  file:line` suffix for an ENGINE record (blast_radius/resolve/trace carry
-    `file`/`line` from the engine's own locator — no wrapper path-guessing)."""
+    """`  file:line` suffix for an ENGINE record (blast_radius/resolve/find/trace
+    carry `file`/`line` from the engine's own locator — no wrapper path-guessing).
+
+    Every answer record's `line` is 1-based since glia 0.5.0 (LD.1), matching
+    `nodes_json` spans, so the test is explicitly `is not None` — the old
+    truthiness test silently dropped a legitimate line."""
     f = rec.get("file")
     if not f:
         return ""
     line = rec.get("line")
-    return f"  {f}:{line}" if line else f"  {f}"
+    return f"  {f}:{line}" if line is not None else f"  {f}"
 
 
 def _elive(rec: dict) -> str:
@@ -727,9 +932,10 @@ def _node_record(g: RustGraph, node: dict) -> dict:
         "id": node["id"],
         "qname": node.get("qname", ""),
         "name": node.get("name", "?"),
-        "kind": node.get("kind", "?"),
+        "kind": _effective_kind(node),
         "file": node.get("path"),
         "line": node.get("start_line"),
+        "live": node.get("live"),
     }
 
 
@@ -738,7 +944,7 @@ def _coverage_note(g: RustGraph) -> str:
     is partial for the languages actually in this repo, so the agent falls back to
     grep deliberately (P2). '' when the engine build predates coverage."""
     try:
-        recs = _jload(g.pygraph.coverage())
+        recs = _rows(g.pygraph.coverage())
     except Exception:
         return ""
     if not recs:
@@ -764,7 +970,7 @@ def _render_overview(g: RustGraph) -> str:
         "",
         f"  {g.pygraph.node_count()} nodes, {g.pygraph.edge_count()} edges, "
         f"{g.pygraph.cross_edge_count()} cross-stack",
-        f"  Engine: repo-graph-py {repo_graph_py.version()} (Rust + tree-sitter)",
+        f"  Engine: glia-py {glia_py.version()} (Rust + tree-sitter)",
         "",
         f"  Confidence: {conf_counts.get('strong', 0)} strong, "
         f"{conf_counts.get('medium', 0)} medium, {conf_counts.get('weak', 0)} weak",
@@ -782,11 +988,14 @@ def _render_overview(g: RustGraph) -> str:
         flow_list = sorted(g.flows.keys())
         lines.append(f"  Entry points ({len(flow_list)} flows):")
         for f in flow_list[:20]:
-            entry = g.flows[f][0] if g.flows[f] else None
-            if entry:
-                icon = _kind_icon(entry["kind"])
-                conf = _confidence_icon(entry.get("confidence", "medium"))
-                lines.append(f"    {icon} {conf} {f}  [{entry['kind']}]")
+            flow = g.flows[f]
+            entry = flow.get("entry") or {}
+            kind = str(entry.get("kind", "?")).lower()
+            icon = _kind_icon(kind)
+            xs = "  ⧉ cross-service" if flow.get("cross_service") else ""
+            reach = flow.get("reach")
+            reach_s = f"  ·{reach} reached" if isinstance(reach, int) else ""
+            lines.append(f"    {icon} {f}  [{kind}]{reach_s}{xs}")
         if len(flow_list) > 20:
             lines.append(f"    ... and {len(flow_list) - 20} more")
 
@@ -805,7 +1014,7 @@ def _render_overview(g: RustGraph) -> str:
 def _render_nodes_layered(feature: str, nodes: list[dict], g: RustGraph) -> str:
     tiers: dict[str, list[dict]] = {"ENTRY": [], "SERVICE": [], "HANDLER": [], "DATA": []}
     for node in nodes:
-        tiers[_classify_tier(node["kind"])].append(node)
+        tiers[_classify_tier(node)].append(node)
 
     lines = [f"  Flow: {feature}", "  " + "=" * (len(feature) + 6), ""]
     tier_icons = {"ENTRY": ">>", "SERVICE": "<>", "HANDLER": "[]", "DATA": "()"}
@@ -821,9 +1030,10 @@ def _render_nodes_layered(feature: str, nodes: list[dict], g: RustGraph) -> str:
         lines.append(f"  {tier_icons[tier_name]} {tier_name}")
         lines.append("  " + "-" * 40)
         for node in items[:10]:
-            icon = _kind_icon(node["kind"])
+            icon = _kind_icon(_effective_kind(node))
             conf = _confidence_icon(node.get("confidence", "medium"))
-            lines.append(f"    {icon} {conf} {node['name']}  [{node['kind']}]{_loc(node)}")
+            lines.append(f"    {icon} {conf} {node['name']}  "
+                         f"[{_effective_kind(node)}]{_loc(node)}{_elive(node)}")
         if len(items) > 10:
             lines.append(f"    ... and {len(items) - 10} more")
         rendered_any = True

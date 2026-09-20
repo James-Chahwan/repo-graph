@@ -1,4 +1,4 @@
-"""`.ai/repo-graph/` cache is kept out of `git status` via local `info/exclude`."""
+"""`.glia/graph/` layout is kept out of `git status` via local `info/exclude`."""
 
 from __future__ import annotations
 
@@ -35,7 +35,7 @@ def make_repo(path: Path) -> Path:
 
 
 def write_cache(root: Path) -> Path:
-    cache = root / ".ai" / "repo-graph"
+    cache = root / ".glia" / "graph"
     cache.mkdir(parents=True, exist_ok=True)
     (cache / "manifest.json").write_text("{}")
     return cache
@@ -55,11 +55,11 @@ def fresh_memo():
 def test_adds_exclude_and_status_clean(tmp_path):
     repo = make_repo(tmp_path / "r")
     cache = write_cache(repo)
-    assert ".ai/" in untracked(repo)
+    assert ".glia/" in untracked(repo)
 
     assert ensure_cache_excluded(cache) == "added"
     assert untracked(repo) == ""
-    assert "/.ai/repo-graph/" in (repo / ".git/info/exclude").read_text()
+    assert "/.glia/graph/" in (repo / ".git/info/exclude").read_text()
 
 
 def test_idempotent(tmp_path):
@@ -68,14 +68,14 @@ def test_idempotent(tmp_path):
     ensure_cache_excluded(cache)
     gitexclude._done.clear()  # force a re-read of the file, not the memo
     assert ensure_cache_excluded(cache) == "present"
-    assert (repo / ".git/info/exclude").read_text().count("/.ai/repo-graph/") == 1
+    assert (repo / ".git/info/exclude").read_text().count("/.glia/graph/") == 1
 
 
 def test_target_is_subdirectory(tmp_path):
     repo = make_repo(tmp_path / "r")
     cache = write_cache(repo / "services" / "api")
     assert ensure_cache_excluded(cache) == "added"
-    assert "/services/api/.ai/repo-graph/" in (repo / ".git/info/exclude").read_text()
+    assert "/services/api/.glia/graph/" in (repo / ".git/info/exclude").read_text()
     assert untracked(repo) == ""
 
 
@@ -87,7 +87,7 @@ def test_linked_worktree_uses_common_dir(tmp_path):
 
     assert ensure_cache_excluded(cache) == "added"
     assert untracked(wt) == ""
-    assert "/.ai/repo-graph/" in (repo / ".git/info/exclude").read_text()
+    assert "/.glia/graph/" in (repo / ".git/info/exclude").read_text()
 
 
 def test_submodule(tmp_path):
@@ -110,7 +110,7 @@ def test_skipped_when_precommit_hook_installed(tmp_path):
     cache = write_cache(repo)
 
     assert ensure_cache_excluded(cache) == "skipped-hook"
-    assert ".ai/" in untracked(repo)
+    assert ".glia/" in untracked(repo)
 
 
 def test_hook_still_stages_cache_after_exclude(tmp_path):
@@ -118,19 +118,19 @@ def test_hook_still_stages_cache_after_exclude(tmp_path):
     repo = make_repo(tmp_path / "r")
     cache = write_cache(repo)
     ensure_cache_excluded(cache)
-    git(repo, "add", "-f", ".ai/repo-graph")
-    assert ".ai/repo-graph/manifest.json" in git(repo, "diff", "--cached", "--name-only")
+    git(repo, "add", "-f", ".glia/graph")
+    assert ".glia/graph/manifest.json" in git(repo, "diff", "--cached", "--name-only")
 
 
 def test_skipped_when_cache_already_tracked(tmp_path):
     repo = make_repo(tmp_path / "r")
     cache = write_cache(repo)
-    git(repo, "add", ".ai")
+    git(repo, "add", ".glia")
     git(repo, "commit", "-qm", "commit cache")
 
     assert ensure_cache_excluded(cache) == "skipped-tracked"
     assert not (repo / ".git/info/exclude").is_file() or \
-        "/.ai/repo-graph/" not in (repo / ".git/info/exclude").read_text()
+        "/.glia/graph/" not in (repo / ".git/info/exclude").read_text()
 
 
 def test_no_git(tmp_path):
@@ -148,5 +148,5 @@ def test_build_graph_leaves_status_clean(tmp_path, monkeypatch):
 
     server._build_graph(str(repo))
 
-    assert (repo / ".ai" / "repo-graph").is_dir()
+    assert (repo / ".glia" / "graph").is_dir()
     assert untracked(repo) == ""

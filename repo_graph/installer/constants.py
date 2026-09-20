@@ -73,7 +73,7 @@ Trust the graph's results — don't re-verify every node with grep, except where
 `orient`'s blind-spots note says extraction is partial. Only a trivial
 single-file lookup is faster with grep; anything structural starts here.
 
-If this project has no `.ai/repo-graph/` directory and the tools aren't connected,
+If this project has no `.glia/graph/` directory and the tools aren't connected,
 ignore this section."""
 
 
