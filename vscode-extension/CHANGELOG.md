@@ -1,5 +1,27 @@
 # Change Log
 
+## 0.5.0
+
+- Tracks `mcp-repo-graph` 0.5.0, which moves onto the **glia 0.5.0** engine
+  (the engine package is renamed `repo-graph-py` → `glia-py`). Same six tools,
+  better answers:
+  - **Empty answers now explain themselves.** When nothing matches, the engine
+    returns *why* — the reason, whether it's a fact or a heuristic, and which
+    extractions are partial for that mechanism — instead of a bare "not found".
+  - **`impact` takes a whole diff in one call.** Many seeds, one walk, one
+    ranking; names that don't resolve come back listed rather than failing the
+    call.
+  - **`trace` returns ranked distinct paths** across the stack, and a two-node
+    trace follows real mechanism-labelled hops instead of a structural
+    shortest path.
+  - **Declared components and services are labelled as such** — an Angular
+    component reads as `component`, not `class`.
+  - Entry points, liveness and cell labels all come from the engine's own
+    tables, so the extension can't drift from the engine's vocabulary.
+  - The graph cache moved from `.ai/repo-graph/` to `.glia/graph/`, which
+    ignores itself so it never shows up in `git status`.
+- No config change — the provider command is unchanged.
+
 ## 0.4.20
 
 - Tracks `mcp-repo-graph` 0.4.20: the tool surface collapses from 13 to **6** —

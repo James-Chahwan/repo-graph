@@ -6,12 +6,12 @@
     "url": "https://github.com/James-Chahwan/repo-graph.git",
     "source": "github"
   },
-  "version": "0.4.21",
+  "version": "0.5.0",
   "packages": [
     {
       "registryType": "pypi",
       "identifier": "mcp-repo-graph",
-      "version": "0.4.21",
+      "version": "0.5.0",
       "runtimeHint": "uvx",
       "transport": {
         "type": "stdio"
