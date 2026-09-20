@@ -52,7 +52,6 @@ const PIECES = [
   ['fresh', 'wow-fresh.html', 11500],
   ['dayone', 'wow-dayone.html', 12000],
   ['invisible', 'wow-invisible.html', 12500],
-  ['yours', 'wow-yours.html', 12500],
   // 0.5.0 feature demos
   ['honest', 'wow-honest.html', 13000],
   ['wholediff', 'wow-wholediff.html', 13000],

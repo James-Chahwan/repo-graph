@@ -4,7 +4,7 @@
 Simulates a clean machine (isolated HOME, a fresh sample repo) and drives the
 install flow end to end: run `repo-graph install --agents all`, assert every
 agent's config AND instructions file were written correctly, build the graph on
-the sample repo, run a real `status` query, then `repo-graph uninstall` and assert
+the sample repo, run a real `orient` query, then `repo-graph uninstall` and assert
 it all reversed. Prints a PASS/FAIL line per check and exits non-zero on any
 failure, so `docker run` (or CI) gives a single clear signal.
 

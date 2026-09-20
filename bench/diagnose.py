@@ -4,7 +4,7 @@
 Runs one headless session (default: the repo-graph "with" arm) capturing the full
 event stream, then reports: the cost/usage breakdown (fresh vs cache-creation vs
 cache-read — cache is what actually drives cost), and every tool call with the
-byte size of its result, so we can see if `dense_text`/`status` dumps are the
+byte size of its result, so we can see if `orient full=true` dumps are the
 culprit. Reuses the repo dirs prepared by run_bench.
 
   python bench/diagnose.py <repo-name> <task-id> [--arm with|without]

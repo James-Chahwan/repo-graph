@@ -3,7 +3,7 @@
 Runs as a daemon thread inside the MCP server (started from ``server.main`` unless
 ``REPO_GRAPH_WATCH=0``). On a debounced batch of source edits it triggers an
 incremental rebuild, so the next tool call sees current structure without the user
-running ``reload`` or wiring a commit hook.
+running ``refresh`` or wiring a commit hook.
 
 Requires the optional ``watchdog`` dependency. If it's unavailable the server runs
 fine without live freshness — the cold-start staleness check still refreshes the
