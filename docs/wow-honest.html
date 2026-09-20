@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>repo-graph — empty is not the same as safe</title>
+<title>repo-graph — an empty answer that explains itself</title>
 <style>
   :root{--bg:#0a0a0a;--ink:#e8ffe8;--dim:#5a6b5a;--grn:#8effc0;--grn2:#3ad17a;--red:#ff6b6b;--amb:#e8c37a;--line:#26331f;
     --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;}
@@ -48,15 +48,15 @@
   .blind .i span{color:var(--amb);flex:0 0 auto}
   .searched{margin-top:36px;color:#6b7a68;font-size:29px}
   .searched b{color:var(--grn2)}
-  .stat{position:absolute;left:0;right:0;bottom:108px;text-align:center;font-size:34px;opacity:0;transition:opacity .5s}
+  .stat{position:absolute;left:70px;right:70px;bottom:92px;text-align:center;font-size:34px;line-height:1.5;opacity:0;transition:opacity .5s}
   body.p2 .stat{opacity:1} .stat b{color:var(--grn);font-weight:800}
 </style></head>
 <body class="p0"><div id="stage">
-  <div id="mark"><b>repo-graph</b> · honest answers</div>
+  <div id="mark"><b>repo-graph</b> · measured</div>
   <div class="capbox">
-    <div class="cap c0"><h1>no results.<br>so it's <span class="bad">dead?</span></h1><div class="sub">every tool looks good until it finds nothing</div></div>
-    <div class="cap c1"><h1>empty ≠ <em>safe</em></h1><div class="sub">the silent miss is the one that costs you</div></div>
-    <div class="cap c2"><h1>it tells you<br><em>why</em> it's empty</h1></div>
+    <div class="cap c0"><h1>no results.<br>so <span class="bad">now what?</span></h1><div class="sub">every tool looks good until it finds nothing</div></div>
+    <div class="cap c1"><h1>empty, with a <em>reason</em></h1><div class="sub">fact or heuristic, and where it's blind</div></div>
+    <div class="cap c2"><h1><em>2.9×</em> cheaper<br>to answer</h1><div class="sub">same task, same turns, 28 of 28 runs</div></div>
   </div>
 
   <div class="gterm"><span class="d">$</span> grep -rn "LegacyMailer" .</div>
@@ -66,8 +66,8 @@
     <div class="zero">0</div>
     <div class="lbl">matches</div>
     <div class="verdict">
-      <div class="q">“nothing uses it — deleting”</div>
-      <div class="a">…except it's wired up by reflection,<br>and prod pages your on-call at 3am</div>
+      <div class="q">so it asks again. and again.</div>
+      <div class="a">no reason means nothing to act on,<br>so the agent re-queries and re-reasons</div>
     </div>
   </div>
 
@@ -84,7 +84,8 @@
     </div>
   </div>
 
-  <div class="stat">an empty answer that <b>explains itself</b></div>
+  <div class="stat"><b>2.9×</b> cheaper · <b>28 of 28</b> matched runs<br>
+    <span style="font-size:24px;color:#6b7a68">14 symbols · 4 repos · n is small, read the harness</span></div>
   <div id="bar"></div>
 </div>
 <script>

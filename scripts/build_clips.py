@@ -23,7 +23,7 @@ OUT = ROOT / "docs" / "clips"
 #: commands on screen match the shipped tool surface.
 SHORTS = [
     # 0.5.0 feature demos first — these are what's new
-    ("honest",        "honest",        "An empty answer that explains itself", "00:00:09"),
+    ("honest",        "honest",        "An empty answer that explains itself, and 2.9x cheaper", "00:00:10"),
     ("wholediff",     "wholediff",     "A whole diff in one call",             "00:00:09"),
     ("paths",         "paths",         "Every route the call takes, ranked",   "00:00:09"),
     ("constellation", "constellation", "Your whole codebase, as a graph",      "00:00:07"),
