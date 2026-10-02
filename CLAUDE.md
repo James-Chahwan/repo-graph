@@ -21,7 +21,7 @@ repo-graph --repo /path/to/target-repo
 repo-graph-init --repo /path/to/target-repo
 ```
 
-Python 3.11+ required. Runtime deps: `mcp[cli]>=1.0.0,<2` (2.x renamed FastMCP — port before lifting), `glia-py>=0.5.0`.
+Python 3.11+ required. Runtime deps: `mcp[cli]>=2,<3` (2.x renamed FastMCP → MCPServer; ported in 0.5.1), `glia-py==0.5.1` (glia pins consumers exactly per release), `watchdog>=3.0,<7`.
 
 ### Cache reuse on cold start
 
@@ -42,21 +42,21 @@ The layout dir ignores itself (`.glia/graph/.gitignore` = `*`), so it never show
 
 ```bash
 pip install -e ".[dev]"          # installs pytest + pytest-asyncio
-pytest                           # full suite (150 tests in ~10s, incl. e2e subprocess)
+pytest                           # full suite (161 tests in ~13s, incl. e2e subprocess)
 pytest -m "not e2e"              # fast loop — skip MCP subprocess spin-up
 pytest -m perf                   # opt-in performance gates
 pytest -m e2e                    # only MCP-over-stdio end-to-end tests
 ```
 
 Test layers:
-- `test_mcp_tools.py` — in-process @mcp.tool function calls, the 6-tool surface (38 tests)
+- `test_mcp_tools.py` — in-process @mcp.tool function calls, the 6-tool surface (41 tests)
 - `test_mcp_e2e.py` — spawn `repo-graph` subprocess, talk MCP/JSON-RPC over stdio (12 tests)
 - `test_installer.py` — `repo-graph install` config writers across agents (45 tests)
-- `test_cache.py` — `.gmap` cache reuse roundtrip + incremental parse cache (9 tests)
+- `test_cache.py` — `.gmap` cache reuse roundtrip + incremental parse cache + post-rebuild heap trim (13 tests)
 - `test_gitexclude.py` — cache kept out of `git status` via `info/exclude` (10 tests)
 - `test_watcher.py` — in-server file watcher, incl. the rebuild-loop guard (10 tests)
 - `test_grade.py` — bench recall/precision grader (7 tests)
-- `test_packaging.py` — install surface: `uvx`-runnable console script + annotations + mcp<2 cap (8 tests)
+- `test_packaging.py` — install surface: `uvx`-runnable console script + annotations + every dependency major-capped or exactly pinned (12 tests)
 - `test_perf.py` — generate/dense_text/activate budgets (6 tests)
 - `test_init.py` — `repo-graph-init` bootstrap CLI (5 tests)
 
@@ -72,7 +72,7 @@ repo_graph/
   __init__.py empty
 ```
 
-The Rust engine lives in a separate repo (`glia` at `/home/ivy/Code/glia`) as of 2026-05-09. This repo no longer carries a `rust/` subtree — it was removed on 2026-06-10 once the glia CI wheel matrix was green. This repo is purely the Python MCP wrapper; it consumes the published `glia-py` wheel (`>=0.5.0`).
+The Rust engine lives in a separate repo (`glia` at `/home/ivy/Code/glia`) as of 2026-05-09. This repo no longer carries a `rust/` subtree — it was removed on 2026-06-10 once the glia CI wheel matrix was green. This repo is purely the Python MCP wrapper; it consumes the published `glia-py` wheel (`==0.5.1`).
 
 ### The 6 MCP tools
 
@@ -82,7 +82,7 @@ Collapsed from 13 in the v0.4.18 cycle. Ported to the glia 0.5.0 primitives in t
 - **`find`** (← `find` + `locate` + `activate`) — any text → ranked located nodes. A symbol/keyword returns matches; a pasted stacktrace/failing-test/diff is resolved via engine `resolve`. `expand=true` fans out to the PPR-ranked neighbourhood. Every row carries `path:line`.
 - **`impact`** (← `impact` + `neighbours`) — blast radius via engine `blast_radius`: complete, deduped, PPR-ranked, located, live-filtered closure with a per-node `via <reason>` and `⊘` dead-code marker. Structural import/containment fan-out is excluded (no noise). `direction` forward/backward/both (downstream/upstream aliases); `live_only` drops likely-dead; depth-1 both = neighbours. Comma-separate nodes for a whole-diff radius.
 - **`trace`** (← `flow` + `trace`) — one arg: feature end-to-end via engine `cross_stack_trace` (mechanism-labelled hops, cross-service marked), falling back to entry-point flow layering. Two args: shortest path A→B.
-- **`read`** — a node's exact source sliced from its span, plus a `context:` footer from `node_cells` (method / cross-stack callers / covering tests / intent-decision-constraint). Comma-separate to batch-read a ranked set.
+- **`read`** — a node's exact source sliced from its span, plus a `context:` footer from `node_cells` (method / cross-stack callers, or `dials` on a WS / gRPC / GraphQL / tRPC client / covering tests / intent-decision-constraint). Comma-separate to batch-read a ranked set.
 - **`refresh`** (← `generate` + `reload`) — rebuild the graph; `repo_path` retargets (path or git URL), `full=true` forces a clean reparse. Incremental by default; routine edits are auto-picked-up by the file watcher.
 
 Most read tools take a `budget` char cap. Liveness (`live`/`⊘`) and `file`/`line` come from the engine now — the wrapper no longer re-derives them.
@@ -102,6 +102,15 @@ The breaking changes the wrapper absorbed (full detail in `dev-notes/repo-graph-
 - **No hand-kept id tables.** Entry kinds come from `entry_kinds()`, cell labels from `cell_type_names()`. Adding an id to a literal set in this repo is a bug.
 - **Layout moved** `.ai/repo-graph/` → `.glia/graph/` and self-ignores.
 
+### glia 0.5.1 boundary notes
+
+No pyo3 call the wrapper makes changed signature or shape, and no registry id was added (full detail in `dev-notes/repo-graph-handoff-0.5.1.md`, copied from `../glia/dev-notes/`). What the wrapper absorbed:
+
+- **Exact pin** `glia-py==0.5.1`. glia pins consumers per release because each one changes the graph contents. `test_every_dependency_caps_its_major` counts `==` as capped.
+- **`.gmap` format 2 → 3.** `load_from_gmap` rebuilds a 0.5.0 layout once, alone. Two writers on different glia versions (glia's own `install-hooks` CLI vs this wrapper's `githook.py`) rebuild each other's layout on every commit, so users reinstall the glia CLI from the tag alongside the wheel.
+- **`ENDPOINT_HIT` has three payloads.** The HTTP call site as before, plus `{via: ws|grpc, host?}` and `{via: graphql|rpc, hosts}` on client nodes, which name the host dialled, not a caller. `_dial_text()` renders those as `dials: <host> (<via>)`.
+- **Longer `coverage()` notes** (some ~1,000 chars). `_coverage_note` caps each at `_COVERAGE_NOTE_CAP`.
+
 ### Python/Rust boundary
 
 Python calls into `glia_py` (the pyo3 extension module shipped as PyPI package `glia-py`). That module re-exports a small surface: generate, load graph, list nodes/edges, run activation, write `.gmap`. Everything else — parsers, resolvers, store layout, text projection — stays in Rust.
@@ -119,7 +128,7 @@ Also registered on the MCP Registry as `io.github.James-Chahwan/repo-graph`.
 
 ### Release process (version bump)
 
-**Release gate: `pytest` must be green before any publish step.** All 150 tests across the ten layers are the contract. No PyPI upload, no MCP Registry publish, no tag, no GitHub release without this. If a test is broken, fix the test or fix the code — never skip past it.
+**Release gate: `pytest` must be green before any publish step.** All 161 tests across the ten layers are the contract. No PyPI upload, no MCP Registry publish, no tag, no GitHub release without this. If a test is broken, fix the test or fix the code — never skip past it.
 
 ```bash
 # 0. Release gate — non-negotiable
@@ -129,7 +138,7 @@ pytest -m perf                     # perf gates must pass
 # 1. Bump versions
 #    - glia/py/Cargo.toml:    version = "X.Y.Z"   (engine — source of truth is the glia repo)
 #    - glia/py/pyproject.toml: version = "X.Y.Z"
-#    - pyproject.toml:        version = "X.Y.Z"; "glia-py>=X.Y.Z"
+#    - pyproject.toml:        version = "X.Y.Z"; "glia-py==<glia version>" (exact pin)
 #    - server.json:           "version" (top-level + packages[].version)
 
 # 2. Build + publish glia-py — ALL platforms via CI, not a local single-platform build.
@@ -189,4 +198,5 @@ Always push to both: `git push github main && git push gitlab main`
 - **0.4.13** — PyPI wheel matrix via maturin GitHub Actions (linux x86_64/aarch64, macos x86_64/arm64, windows x86_64 × Python 3.11–3.14). Latent-vector hook in candle; SWE-bench Lite N=20–30 run on Runpod 4090 with Qwen 2.5 Coder 7B.
 - **Post-0.4.13** — ✅ done. Split `rust/` into its own `glia` repo (2026-05-09) and removed the stale subtree from this repo (2026-06-10). This repo stays as the Python MCP wrapper.
 - **0.5.0** — ✅ ported. The engine package renamed `repo-graph-py` → `glia-py` and the wrapper moved onto the 0.5.0 primitives (see the boundary notes above). This package is still `mcp-repo-graph`: renaming it in lockstep with the multi-domain engine (code is first primitive; video/molecules/policy slot in via registries) is still **open** — the 0.5.0 handoff left it to this repo.
+- **0.5.1 (glia)** — ✅ ported in mcp-repo-graph 0.5.2 (see the 0.5.1 boundary notes). The handoff's §4 lists new primitives worth a mode on the six tools (`pack`, `review_vs_rev`, `hotspots`, `cochange`, `communities`, `hubs`, `duplicate_flows`, the overlay loop); none adopted yet.
 - **Open after 0.5.0** — a non-MCP way in: a Claude Code skill plus a `repo-graph` CLI entry point sharing `server.py`'s renderers, for CI and low-memory machines (handoff §7b). Lifting the `mcp[cli]<2` cap (handoff §6). Both are independent of the glia release.

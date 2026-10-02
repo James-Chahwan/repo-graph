@@ -277,7 +277,10 @@ def test_impact_live_only(mcp_server):
     'nothing live' message."""
     name = _real_node_name(mcp_server)
     out = mcp_server.impact(name, live_only=True)
-    assert "Impact (" in out or "nodes found" in out
+    # Since glia 0.5.1 a radius that is all dead comes back as the engine's own
+    # absence ("none reachable from an entry point (live_only)").
+    assert ("Impact (" in out or "nodes found" in out
+            or ("No answer (" in out and "live_only" in out))
 
 
 # ── trace (← flow + trace) ──────────────────────────────────────────────────
@@ -367,6 +370,53 @@ def test_read_surfaces_context_cells(mcp_server):
         pytest.skip("fixture has no nodes with surfaced context cells")
     out = mcp_server.read(target["qname"])
     assert "context:" in out
+
+
+def _footer_for(server, *payloads):
+    """`_node_context` over a node whose only cells are these ENDPOINT_HITs."""
+    from types import SimpleNamespace
+    eh = next(t for t, n in server._CELL_TYPE_NAMES.items() if n == "ENDPOINT_HIT")
+    g = SimpleNamespace(pygraph=SimpleNamespace(
+        node_cells=lambda _id: [(eh, p) for p in payloads]))
+    return server._node_context(g, 0)
+
+
+def test_read_client_endpoint_hit_is_a_dial_target():
+    """glia 0.5.1: a WS / gRPC / GraphQL / tRPC client's ENDPOINT_HIT names the
+    host it dials. Labelling that "called by (cross-stack)" names the dial
+    target as a caller."""
+    from repo_graph import server
+    out = _footer_for(server, '{"via":"ws","host":"chat:8080"}')
+    assert "dials: chat:8080 (ws)" in out
+    assert "called by" not in out
+    assert "dials: api.a, api.b (graphql)" in _footer_for(
+        server, '{"via":"graphql","hosts":["api.a","api.b"]}')
+    # quokka's gRPC clients name no literal host; one row however many sites.
+    out = _footer_for(server, '{"via":"grpc"}', '{"via":"grpc"}')
+    assert out.count("dials: host not named in source (grpc)") == 1
+
+
+def test_blind_spot_footer_caps_each_note():
+    """orient prints this footer every call; glia 0.5.1 notes run to ~1,000 chars."""
+    from types import SimpleNamespace
+    from repo_graph import server
+    long_note = "repo markdown is ingested only from the well-known files " * 20
+    g = SimpleNamespace(pygraph=SimpleNamespace(coverage=lambda: {"results": [
+        {"language": "*", "edge_category": "DOCUMENTS", "edges_found": 3, "note": long_note},
+        {"language": "*", "edge_category": "CALLS", "edges_found": 9, "note": "short one"},
+    ]}))
+    out = server._coverage_note(g)
+    docs, calls = [l for l in out.splitlines() if "⚠" in l]
+    assert docs.endswith(" …") and len(docs) < server._COVERAGE_NOTE_CAP + 40
+    assert calls.endswith(": short one")
+
+
+def test_read_http_endpoint_hit_keeps_caller_label():
+    from repo_graph import server
+    out = _footer_for(server, '{"method":"GET","path":"/api/x","file":"web/a.ts",'
+                              '"line":3,"col":5,"confidence":"strong","external":true}')
+    assert "called by (cross-stack): method=GET path=/api/x file=web/a.ts" in out
+    assert "dials" not in out
 
 
 # ── Smoke: confirm exactly the 6 tools are registered ───────────────────────

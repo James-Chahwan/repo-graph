@@ -20,6 +20,25 @@ Or one command in your terminal wires up every agent you have: `uvx mcp-repo-gra
 
 ---
 
+> ### Upgrading to 0.5.2
+>
+> **Most people don't have to do anything.** `uvx` and `pip install mcp-repo-graph` pull in the new
+> engine (glia 0.5.1, pinned exactly). The cached graph in `.glia/graph/` is in a new format, so the
+> first start in each repo rebuilds it once. After that it's back to normal.
+>
+> You only need to act if you **also run glia's own CLI hooks** (`glia install-hooks`) in the same
+> repo. Reinstall the CLI from the `v0.5.1` tag too. If the CLI and the server are on different glia
+> versions, they rebuild each other's cache on every commit.
+>
+> The same goes for a team that **commits the cache** with repo-graph's pre-commit hook: the next
+> commit re-adds it once in the new format, and anyone whose server still runs the glia 0.5.0 engine
+> rebuilds it on every load until they upgrade (`uv tool upgrade mcp-repo-graph` if you installed it
+> as a uv tool).
+>
+> What's better: a richer graph (mounted Go routes carry their prefix, frontend endpoints pair through
+> their base URL, many more calls resolve), `read` shows the host a WebSocket / gRPC / GraphQL client
+> dials, and the server no longer creeps up in memory over long sessions.
+>
 > ### ⚠️ Upgrading to 0.5.0
 >
 > **The engine package was renamed `repo-graph-py` to `glia-py`.** If you install with `uvx` or
@@ -56,7 +75,7 @@ Same bug, same model, same prompt — the only difference is whether repo-graph 
 
 **The task:** fix a reversed comparison operator in a Go + Angular monorepo.
 
-*(Recorded on an earlier engine, which mapped that repo to 566 nodes / 620 edges. The 0.5.0 engine extracts far more from the same code, 2,939 nodes and 5,129 edges, so the graph the model gets today is richer than the one in the video. The token and time figures are from the recorded run and are left as measured.)*
+*(Recorded on an earlier engine, which mapped that repo to 566 nodes / 620 edges. The glia 0.5.1 engine extracts far more from the same code, 3,466 nodes and 6,869 edges (measured 2026-10-02), so the graph the model gets today is richer than the one in the video. The token and time figures are from the recorded run and are left as measured.)*
 
 | | Without repo-graph | With repo-graph |
 |---|---|---|
@@ -337,7 +356,7 @@ repo-graph exposes **6 tools** — one natural verb each, backed by a Rust engin
 | `find` | `query`, `expand`, `kind`, `top_k`, `budget` | Turn any text into the ranked nodes that matter — a symbol/keyword, or a pasted stacktrace / failing-test id / diff (resolved to the code it implicates). `expand=true` fans out to the surrounding neighbourhood. Every row carries `path:line` |
 | `impact` | `nodes` *(comma-separated)*, `direction`, `depth`, `live_only`, `top_k`, `budget` | Blast radius: what a change affects (`forward`) or depends on / is used by (`backward`), as a ranked, located closure — each row with the edge `via` reason and a `⊘` when the engine finds it unreachable (likely dead). Pass several nodes for a whole-diff radius |
 | `trace` | `from_node`, `to_node` *(optional)*, `depth`, `budget` | One arg: a feature end-to-end across the stack, each hop labelled with its mechanism (call / HTTP / queue / event) and cross-service hops marked. Two args: the shortest path between two nodes |
-| `read` | `node` *(comma-separated)*, `context_lines`, `budget` | A node's exact source, sliced from its file by the graph's line span, plus a `context:` footer (HTTP method, cross-stack callers, covering tests, governing docs). Comma-separate to batch-read a ranked set |
+| `read` | `node` *(comma-separated)*, `context_lines`, `budget` | A node's exact source, sliced from its file by the graph's line span, plus a `context:` footer (HTTP method, cross-stack callers or a client's dial target, covering tests, governing docs). Comma-separate to batch-read a ranked set |
 | `refresh` | `repo_path` *(optional)*, `full` | Rebuild the graph (incremental by default — only changed files re-parse). `repo_path` retargets a different path or git URL; `full=true` forces a clean reparse. Routine edits are auto-picked-up by the file watcher |
 
 Most tools also take a `budget` (max chars) so a result fits a small-model context window.

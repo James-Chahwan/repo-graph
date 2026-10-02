@@ -1,5 +1,18 @@
 # Change Log
 
+## 0.5.2
+
+- Tracks `mcp-repo-graph` 0.5.2, which moves onto the **glia 0.5.1** engine,
+  pinned exactly. Same six tools; the graph is richer (on our Go + Angular demo
+  repo, 2,939 → 3,466 nodes and 5,129 → 6,869 edges). Mounted Go routes carry
+  their prefix, frontend endpoints pair through their base URL, and many more
+  Go / Swift / C++ / Dart / TS calls resolve.
+- `read` on a WebSocket / gRPC / GraphQL / tRPC client now shows the host it
+  dials, instead of listing it as a caller.
+- The server holds its memory over long sessions. It used to grow on every
+  background rebuild (2.4 GB after two days on a busy repo); it now levels off.
+- The cached graph rebuilds once on first start after the upgrade.
+
 ## 0.5.1
 
 - Tracks `mcp-repo-graph` 0.5.1, which moves the server onto the **MCP Python SDK

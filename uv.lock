@@ -221,15 +221,15 @@ wheels = [
 
 [[package]]
 name = "glia-py"
-version = "0.5.0"
+version = "0.5.1"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/5a/fa/49e32ae1a824fd00b9eb10697182a54121f802c429ebbb344ccc7327c202/glia_py-0.5.0.tar.gz", hash = "sha256:8a62478b6db944211b33cb00be29a3e9a63b403a5c71924d421dd2e94775ace1", size = 2564204, upload-time = "2026-09-20T04:45:38.885Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/16/b5/79ffd265770bbb82a76fb5b1d4f43768ca95828d0b9a08d1d1a08040c402/glia_py-0.5.1.tar.gz", hash = "sha256:4871ceb25567644c3a5bc1a005dcada51b4ab3950b51f9fc12be3b4c39a2f23c", size = 3574304, upload-time = "2026-10-02T08:12:46.493Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/f9/38/1ed9b532a854a1ae109dba9a351653cbb3b14904b0672136a6895bee362a/glia_py-0.5.0-cp311-abi3-macosx_10_12_x86_64.whl", hash = "sha256:24333812d304be4d3056f88670c13175587c2525542aa415706369ea76ff72f4", size = 9216871, upload-time = "2026-09-20T04:45:28.951Z" },
-    { url = "https://files.pythonhosted.org/packages/cb/93/3cb5aa581522021baa99b63608229e5dc8de5bf109f19716f226fd7ddef0/glia_py-0.5.0-cp311-abi3-macosx_11_0_arm64.whl", hash = "sha256:f3bcec405dcbecacf64aa8883c67d0018ff045fde404b0d27d3c4cc018b4ddde", size = 9083935, upload-time = "2026-09-20T04:45:31.203Z" },
-    { url = "https://files.pythonhosted.org/packages/b2/ca/fe49a8ba6e4c0600e316018f4d296916e2d76b1f948dc4460593876082b3/glia_py-0.5.0-cp311-abi3-manylinux_2_28_aarch64.whl", hash = "sha256:5e9530c0ebad075f4ca0f0abbd8ed4a94ec09a4027079221c23af4361c2fa31d", size = 9340105, upload-time = "2026-09-20T04:45:32.966Z" },
-    { url = "https://files.pythonhosted.org/packages/90/d9/f8e5efd97a5d98075fe7c5b23be738b75f7b7eb596bdc870e4931c2472e2/glia_py-0.5.0-cp311-abi3-manylinux_2_28_x86_64.whl", hash = "sha256:cd3ac37d04ecc64205406895d7a5513b7f667846c60bd8a4c98ae8eda6493aff", size = 9585187, upload-time = "2026-09-20T04:45:34.869Z" },
-    { url = "https://files.pythonhosted.org/packages/cc/38/de3cc1619a780dfa893431c91f2bcc13bf328aa72b8eb713d0a418a0a240/glia_py-0.5.0-cp311-abi3-win_amd64.whl", hash = "sha256:8aa398b15afe5691b7171361329277e43c7142a797aa3234b44ff3e194361263", size = 8735353, upload-time = "2026-09-20T04:45:36.985Z" },
+    { url = "https://files.pythonhosted.org/packages/f3/50/cce96cf8bca34d4e170f4b56eac9a081655975509ddbb976dcf0785c7476/glia_py-0.5.1-cp311-abi3-macosx_10_12_x86_64.whl", hash = "sha256:f275dcba32c4e8aaa92085f651a58e7546eae3c17a039fc1c7abf17162ebed71", size = 11166546, upload-time = "2026-10-02T08:12:35.834Z" },
+    { url = "https://files.pythonhosted.org/packages/8f/d7/807dee61bfe156f853fa3202b4a535824ce15a682f802d0f05a881249cec/glia_py-0.5.1-cp311-abi3-macosx_11_0_arm64.whl", hash = "sha256:093fdc2bba065150c76e312f104c466d7556bfad4b5cb8e6afdbc47c544de472", size = 10842986, upload-time = "2026-10-02T08:12:37.936Z" },
+    { url = "https://files.pythonhosted.org/packages/88/1c/18d49facb55ac57c4cf1afa0cfb9c7d1a2131f33e95d151e292f95e660f1/glia_py-0.5.1-cp311-abi3-manylinux_2_28_aarch64.whl", hash = "sha256:b18e8c8ce278167d565823cc352b690e06353c688985d3a9d4de22cebc2e6557", size = 11248275, upload-time = "2026-10-02T08:12:40.089Z" },
+    { url = "https://files.pythonhosted.org/packages/88/ea/cd06cc410bd42604454a388c21993eb477b393b0c0147ee06108f2471537/glia_py-0.5.1-cp311-abi3-manylinux_2_28_x86_64.whl", hash = "sha256:b82ed92d7444dc9d5c7394fbffc8d17ec079d147eca0f7e1d9b6add6099e760b", size = 11596621, upload-time = "2026-10-02T08:12:42.057Z" },
+    { url = "https://files.pythonhosted.org/packages/d8/f3/83c0466565852591ee3575bac41e1fab73285145d408f62c2f434e274697/glia_py-0.5.1-cp311-abi3-win_amd64.whl", hash = "sha256:d0218df0fe69f2f8de8ddcd096bca82a4f94a34dd85a879be7324b9f5d394424", size = 10569865, upload-time = "2026-10-02T08:12:44.581Z" },
 ]
 
 [[package]]
@@ -370,7 +370,7 @@ cli = [
 
 [[package]]
 name = "mcp-repo-graph"
-version = "0.5.1"
+version = "0.5.2"
 source = { editable = "." }
 dependencies = [
     { name = "glia-py" },
@@ -386,7 +386,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "glia-py", specifier = ">=0.5.0,<0.6" },
+    { name = "glia-py", specifier = "==0.5.1" },
     { name = "mcp", extras = ["cli"], specifier = ">=2,<3" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.0" },
     { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.23" },
@@ -899,8 +899,8 @@ name = "uvicorn"
 version = "0.53.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "click" },
-    { name = "h11" },
+    { name = "click", marker = "python_full_version < '3.12' or python_full_version >= '3.14' or sys_platform != 'emscripten'" },
+    { name = "h11", marker = "python_full_version < '3.12' or python_full_version >= '3.14' or sys_platform != 'emscripten'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/5d/ad/04bbb797c84fc1f26cb171f7394716f4865ffb8d8c5e1eef42565c2dfa6b/uvicorn-0.53.0.tar.gz", hash = "sha256:a9356f0cb89b3b8621529c5d5eebd69bfe154f4c3f68b4cf2de47e45fa855c2e", size = 110881, upload-time = "2026-09-14T07:44:23.815Z" }
 wheels = [

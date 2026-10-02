@@ -112,9 +112,10 @@ def test_every_dependency_caps_its_major():
     """A published package resolves its dependencies fresh on the user's machine,
     so an uncapped major is a time bomb: `mcp>=1` let 2.0 in and broke every
     fresh install for two months before anyone noticed. Each cap is lifted by
-    hand, after the port."""
+    hand, after the port. An exact pin (`==`) is capped too: glia-py is pinned
+    that way because each glia release changes the graph contents."""
     deps = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]["dependencies"]
-    uncapped = [d for d in deps if "<" not in d]
+    uncapped = [d for d in deps if "<" not in d and "==" not in d]
     assert not uncapped, (
         f"these dependencies have no upper bound: {uncapped}. A breaking major "
         "upstream would reach users as a runtime crash.")

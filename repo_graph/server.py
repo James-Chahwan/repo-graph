@@ -643,8 +643,9 @@ def _trace_path(g: RustGraph, from_node: str, to_node: str, budget: int) -> str:
 
 
 # node_cells (glia-py) — structured facets beyond the source span. `read`
-# surfaces the high-value ones: HTTP method, cross-stack callers (ENDPOINT_HIT),
-# covering tests (TEST), and semantic cells (intent/decision/constraint/failure).
+# surfaces the high-value ones: HTTP method, cross-stack callers or a client's
+# dial target (ENDPOINT_HIT), covering tests (TEST), and semantic cells
+# (intent/decision/constraint/failure).
 try:
     _CELL_TYPE_NAMES = {i: n for i, n in glia_py.cell_type_names()}
 except Exception:
@@ -720,9 +721,28 @@ def _cell_text(name: str, content: str) -> str:
     return " ".join(raw.split())
 
 
+def _dial_text(content: str) -> str | None:
+    """The dial target a client node's ENDPOINT_HIT records, or None.
+
+    Since glia 0.5.1 a WS / gRPC / GraphQL / tRPC client's ENDPOINT_HIT is
+    `{"via": "ws", "host": "chat:8080"}` or `{"via": "graphql", "hosts": [..]}`:
+    the host the client dials, not a cross-stack caller. Rendered `chat:8080 (ws)`.
+    None for an HTTP call-site payload, which keeps the caller label."""
+    try:
+        data = json.loads(content)
+    except (ValueError, TypeError):
+        return None
+    if not isinstance(data, dict) or "via" not in data:
+        return None
+    hosts = data.get("hosts") or ([data["host"]] if data.get("host") else [])
+    target = ", ".join(map(str, hosts)) if hosts else "host not named in source"
+    return f"{target} ({data['via']})"
+
+
 def _node_context(g: RustGraph, node_id: int, per_cell: int = 400) -> str:
     """High-value `node_cells` facets shown under a read — method, cross-stack
-    callers, covering tests, semantic cells. '' when the node has none."""
+    callers or dial target, covering tests, semantic cells. '' when the node has
+    none."""
     try:
         cells = g.pygraph.node_cells(node_id)
     except Exception:
@@ -732,12 +752,21 @@ def _node_context(g: RustGraph, node_id: int, per_cell: int = 400) -> str:
         label = _READ_CELL_LABELS.get(tid)
         if not label:
             continue
-        text = _cell_text(_CELL_TYPE_NAMES.get(tid, ""), content)
+        name = _CELL_TYPE_NAMES.get(tid, "")
+        dial = _dial_text(content) if name == "ENDPOINT_HIT" else None
+        if dial is not None:
+            label, text = "dials", dial
+        else:
+            text = _cell_text(name, content)
         if not text:
             continue
         if len(text) > per_cell:
             text = text[:per_cell] + " …"
-        rows.append(f"    · {label}: {text}")
+        row = f"    · {label}: {text}"
+        # One ENDPOINT_HIT per call site; dial payloads carry no file/line, so
+        # a client dialled from three sites would repeat the same row.
+        if row not in rows:
+            rows.append(row)
     return ("\n  context:\n" + "\n".join(rows)) if rows else ""
 
 
@@ -797,7 +826,7 @@ def read(
     context_lines: Annotated[int, Field(description="Lines of padding above and below the node's span. Default 0.", default=0, ge=0, le=200)] = 0,
     budget: Annotated[int, Field(description="Max chars in the result (shared across all nodes when several are given). 0 = no cap.", default=0, ge=0)] = 0,
 ) -> str:
-    """Return the source code for one or more nodes, sliced from their files by the graph's line spans. Use after `find`/`impact` to read the exact code without grepping — comma-separate several node names to read the whole ranked set in a single call. Each node is a code block headed by its qname and `path:start-end`, plus a `context:` footer with structural facts the source alone doesn't show: HTTP method, cross-stack callers, covering tests, and intent/decision/constraint cells when present."""
+    """Return the source code for one or more nodes, sliced from their files by the graph's line spans. Use after `find`/`impact` to read the exact code without grepping — comma-separate several node names to read the whole ranked set in a single call. Each node is a code block headed by its qname and `path:start-end`, plus a `context:` footer with structural facts the source alone doesn't show: HTTP method, cross-stack callers (or, on a WS / gRPC / GraphQL / tRPC client, the host it dials), covering tests, and intent/decision/constraint cells when present."""
     g = get_graph()
     names = [s.strip() for s in node.split(",") if s.strip()]
     if not names:
@@ -970,6 +999,12 @@ def _node_record(g: RustGraph, node: dict) -> dict:
     }
 
 
+# Per-caveat cap in the blind-spot footer. glia 0.5.1's notes run to ~1,000
+# chars (the DOCUMENTS and GRAPHQL_CALLS rows), which took orient's footer from
+# ~2k to ~3k chars on every call; the head of each note carries the warning.
+_COVERAGE_NOTE_CAP = 200
+
+
 def _coverage_note(g: RustGraph) -> str:
     """Compact blind-spot footer from the engine's `coverage()` — where extraction
     is partial for the languages actually in this repo, so the agent falls back to
@@ -987,6 +1022,8 @@ def _coverage_note(g: RustGraph) -> str:
         found = r.get("edges_found")
         zero = "  [0 found]" if found == 0 else ""
         note = r.get("note", "")
+        if len(note) > _COVERAGE_NOTE_CAP:
+            note = note[:_COVERAGE_NOTE_CAP].rsplit(" ", 1)[0] + " …"
         lines.append(f"    ⚠ {cat} ({lang}){zero}: {note}")
     return "\n".join(lines)
 
