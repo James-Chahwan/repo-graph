@@ -105,6 +105,35 @@ def _exclude_cache(target: str) -> None:
     ensure_cache_excluded(glia_py.default_gmap_dir(target))
 
 
+def _load_malloc_trim():
+    """glibc's `malloc_trim`, or None where there isn't one (macOS, Windows, musl)."""
+    try:
+        import ctypes
+        return ctypes.CDLL(None).malloc_trim
+    except Exception:
+        return None
+
+
+_malloc_trim = _load_malloc_trim()
+
+
+def _release_freed_memory() -> None:
+    """Hand the heap a rebuild just freed back to the OS. Never raises.
+
+    `generate` builds on a thread pool, and glibc gives each worker thread its own
+    malloc arena. The old graph's memory is freed into those arenas but stays
+    mapped, fragmented, so RSS ratchets up on every rebuild — measured on the glia
+    repo: 399 → 929 MB over 15 rebuilds, still climbing; 2.4 GB after two days of
+    watcher rebuilds. Trimming after each rebuild levels it off at ~450 MB (80
+    rebuilds). No-op off glibc.
+    """
+    if _malloc_trim is not None:
+        try:
+            _malloc_trim(0)
+        except Exception:
+            pass
+
+
 def _build_graph(target: str, incremental: bool = True) -> RustGraph:
     """Generate `target`'s graph, persist the `.gmap` cache, install it as live.
 
@@ -128,6 +157,8 @@ def _build_graph(target: str, incremental: bool = True) -> RustGraph:
         _exclude_cache(target)
         REPO_PATH = target
         _graph = RustGraph(pg, target)
+        # The swap above dropped the old graph; return its memory.
+        _release_freed_memory()
         return _graph
 
 

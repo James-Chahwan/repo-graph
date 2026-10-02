@@ -8,6 +8,7 @@ source changes invalidate it.
 from __future__ import annotations
 
 import os
+import platform
 import shutil
 import time
 from pathlib import Path
@@ -197,3 +198,34 @@ def test_refresh_tool_reflects_edits(server_isolated, target_repo):
     out2 = server_isolated.refresh()
     assert out2.startswith("Rebuilt")
     assert server_isolated.get_graph().pygraph.node_count() == n1 + 1
+
+
+def test_rebuild_trims_heap_after_the_swap(server_isolated, target_repo, monkeypatch):
+    """Each rebuild trims the heap once the new graph is installed. Without it
+    glibc keeps the old graph parked in per-thread arenas and RSS ratchets up on
+    every watcher rebuild (2.4 GB after two days on the glia repo)."""
+    live_at_trim = []
+    monkeypatch.setattr(server_isolated, "_malloc_trim",
+                        lambda pad: live_at_trim.append(server_isolated._graph))
+
+    g1 = server_isolated._build_graph(str(target_repo))
+    g2 = server_isolated._build_graph(str(target_repo))
+
+    # Trimmed after each swap, so the graph it replaced was already dropped.
+    assert live_at_trim == [g1, g2]
+
+
+@pytest.mark.parametrize("trim", [None, lambda pad: 1 / 0], ids=["unavailable", "raises"])
+def test_rebuild_survives_missing_or_failing_trim(server_isolated, target_repo,
+                                                  monkeypatch, trim):
+    """No malloc_trim (macOS, Windows, musl) or a failing one never breaks a rebuild."""
+    monkeypatch.setattr(server_isolated, "_malloc_trim", trim)
+    g = server_isolated._build_graph(str(target_repo))
+    assert server_isolated._graph is g and g.pygraph.node_count() > 0
+
+
+@pytest.mark.skipif(platform.libc_ver()[0] != "glibc", reason="malloc_trim is glibc-only")
+def test_malloc_trim_resolves_on_glibc():
+    """The ctypes lookup must actually find it here, or the fix is silently a no-op."""
+    from repo_graph import server
+    assert server._malloc_trim is not None
