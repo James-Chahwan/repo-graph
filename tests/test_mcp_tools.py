@@ -200,10 +200,10 @@ def test_find_signal_no_match(mcp_server):
 
 def test_absence_carries_reason_and_tier(mcp_server):
     """An empty answer is an engine `absence` envelope, not a wrapper guess: it
-    names the reason and whether it's FACT or HEURISTIC (LD.8a)."""
+    names the reason and whether it's fact or heuristic (LD.8a)."""
     out = mcp_server.find("xxx_definitely_not_a_real_symbol_xxx")
     assert "No answer" in out
-    assert "FACT" in out or "HEURISTIC" in out
+    assert "fact" in out or "heuristic" in out  # lowercase since glia 0.5.4
     assert "searched" in out and "nodes" in out
 
 
@@ -281,6 +281,94 @@ def test_impact_live_only(mcp_server):
     # absence ("none reachable from an entry point (live_only)").
     assert ("Impact (" in out or "nodes found" in out
             or ("No answer (" in out and "live_only" in out))
+
+
+def test_impact_rows_are_never_nameless(mcp_server):
+    """glia 0.5.4 leaves `name` out of a cut answer's row when it repeats the
+    qname tail. The wrapper falls back to that tail, never prints `?`."""
+    name = _real_node_name(mcp_server)
+    out = mcp_server.impact(name)
+    if "Impact (" not in out:
+        pytest.skip("fixture node has no blast radius")
+    rows = [l for l in out.splitlines() if l.startswith("    ") and "[" in l]
+    assert rows and not any(" ? [" in l or l.strip().startswith("? ") for l in rows)
+
+
+def _fake_impact(monkeypatch, env, calls=None):
+    from types import SimpleNamespace
+    from repo_graph import server
+
+    def blast(*a, **k):
+        if calls is not None:
+            calls.append((a, k))
+        return env
+    g = SimpleNamespace(nodes={}, pygraph=SimpleNamespace(blast_radius=blast))
+    monkeypatch.setattr(server, "get_graph", lambda: g)
+    return server
+
+
+_CUT_ENV = {
+    "seeds": [{"qname": "engine::answers::blast_radius"}],
+    "results": [
+        {"qname": "engine::answers::BlastOptions::default", "kind": "METHOD", "reason": "CALLS",
+         "depth": 2, "score": 0.02475, "live": True, "file": "engine/src/answers.rs",
+         "line": 1118, "seed_index": 0},
+        {"qname": "py::blast::PyGraph::blast", "name": "blast_radius_py", "kind": "METHOD",
+         "reason": "CALLS", "depth": 1, "score": 0.0211, "live": False, "file": "py/src/blast.rs",
+         "line": 9, "seed_index": 0},
+    ],
+    "files": [{"rank": 1, "file": "core/src/lib.rs", "ppr": 0.003, "rows": 0},
+              {"rank": 2, "file": "graph/src/blast.rs", "cochange": 0.4, "rows": 3}],
+    "areas": [{"area": "glia-engine", "rows": 3447, "files": 300,
+               "top_file": "engine/src/answers.rs", "scope": "glia-engine"},
+              {"area": "glia-py", "rows": 279, "files": 50, "top_file": "py/src/blast.rs",
+               "scope": "py"}],
+    "selection": {"set": "SELh0", "shape": "k1", "pick": "H10", "source": "fallback",
+                  "reason": "absent", "test_commits": 0},
+    "truncated": {"results": 6723, "seeds": 0, "areas": 32,
+                  "next": {"scope": "glia-engine", "offset": 25}},
+    "blind": [{"tier": "fact", "mechanism": "http", "verdict": "DEGRADED",
+               "reason": "clients_unpaired", "measure": "clients paired 7% of 14"}],
+}
+
+
+def test_impact_renders_the_overview_answer(monkeypatch):
+    """glia 0.5.4's compact blast radius: slim rows, then where the rest went,
+    the likely files, the ranking used, and what the graph is blind to."""
+    server = _fake_impact(monkeypatch, _CUT_ENV)
+    out = server.impact("blast_radius")
+    assert "default  [method]" in out  # name left out → qname tail
+    assert "blast_radius_py  [method]" in out  # name given → kept
+    assert "rows 1-2 of 6723 in blast radius" in out
+    assert "next page: scope=glia-engine offset=25" in out
+    assert "glia-engine: 3447 rows in 300 files, most in engine/src/answers.rs" in out
+    assert "    py: 279 rows" in out  # the area's `scope`, the value to pass back
+    assert "likely files: core/src/lib.rs, graph/src/blast.rs (co-change)" in out
+    assert "ranked by H10 (fallback: absent)" in out
+    assert "⚠ DEGRADED on http: clients paired 7% of 14" in out
+
+
+def test_impact_passes_page_scope_and_full_through(monkeypatch):
+    """`top_k` 0 is the engine's overview (None), `scope` / `offset` page it, and
+    `full` drops both, since the engine refuses `full` with `top_k` / `offset`."""
+    calls = []
+    server = _fake_impact(monkeypatch, {"results": [], "seeds": []}, calls)
+    server.impact("x")
+    server.impact("x", top_k=10, scope="py", offset=25)
+    server.impact("x", top_k=10, offset=25, full=True)
+    (a0, k0), (a1, k1), (a2, k2) = calls
+    assert a0[3] is None and a0[5] is None and k0 == {"full": False, "offset": 0}
+    assert a1[3] == 10 and a1[5] == "py" and k1 == {"full": False, "offset": 25}
+    assert a2[3] is None and k2 == {"full": True, "offset": 0}
+
+
+def test_impact_full_answer_has_no_overview_footer(monkeypatch):
+    """A full answer (glia 0.5.4 `full=True`) carries no `truncated` / `areas`."""
+    env = {k: v for k, v in _CUT_ENV.items() if k not in ("truncated", "areas", "blind")}
+    server = _fake_impact(monkeypatch, env)
+    out = server.impact("blast_radius", full=True, top_k=1)
+    assert "-- 1 nodes in blast radius" in out
+    assert "next page" not in out and "areas" not in out
 
 
 # ── trace (← flow + trace) ──────────────────────────────────────────────────
@@ -372,12 +460,12 @@ def test_read_surfaces_context_cells(mcp_server):
     assert "context:" in out
 
 
-def _footer_for(server, *payloads):
-    """`_node_context` over a node whose only cells are these ENDPOINT_HITs."""
+def _footer_for(server, *payloads, cell="ENDPOINT_HIT"):
+    """`_node_context` over a node whose only cells are these payloads."""
     from types import SimpleNamespace
-    eh = next(t for t, n in server._CELL_TYPE_NAMES.items() if n == "ENDPOINT_HIT")
+    tid = next(t for t, n in server._CELL_TYPE_NAMES.items() if n == cell)
     g = SimpleNamespace(pygraph=SimpleNamespace(
-        node_cells=lambda _id: [(eh, p) for p in payloads]))
+        node_cells=lambda _id: [(tid, p) for p in payloads]))
     return server._node_context(g, 0)
 
 
@@ -417,6 +505,148 @@ def test_read_http_endpoint_hit_keeps_caller_label():
                               '"line":3,"col":5,"confidence":"strong","external":true}')
     assert "called by (cross-stack): method=GET path=/api/x file=web/a.ts" in out
     assert "dials" not in out
+
+
+def test_read_graphql_transport_is_an_http_call_site():
+    """glia 0.5.2: an Apollo / urql client's POST /graphql is an HTTP call site
+    that also carries `via`. It has a caller, not a dial target."""
+    from repo_graph import server
+    out = _footer_for(server, '{"method":"POST","path":"/graphql","file":"admin/src/client.ts",'
+                              '"line":4,"col":8,"confidence":"strong",'
+                              '"host":"localhost:8080","via":"graphql"}')
+    assert "called by (cross-stack): method=POST path=/graphql" in out
+    assert "dials" not in out
+
+
+def test_read_external_dial_target_says_so():
+    """glia 0.5.2 marks a client whose every host is public and unconfigured."""
+    from repo_graph import server
+    out = _footer_for(server, '{"via":"ws","host":"stream.binance.com","external":true}')
+    assert "dials: stream.binance.com (ws, external)" in out
+
+
+def test_read_evm_client_names_library_and_abi():
+    """glia 0.5.2 EVM clients name no host: the library and ABI are the target."""
+    from repo_graph import server
+    out = _footer_for(server, '{"via":"evm","lib":"ethers","args":[1],'
+                              '"abi_ref":{"name":"SHOP_ABI","from":"./abi"},"abi_from":"src/abi.ts"}')
+    assert "dials: contract via ethers, ABI SHOP_ABI from src/abi.ts (evm)" in out
+    assert "host not named" not in out
+    assert "dials: contract via geth (evm)" in _footer_for(
+        server, '{"via":"evm","lib":"geth","args":[1]}')
+
+
+def test_read_model_fields_render_as_name_type():
+    """glia 0.5.2 SCHEMA_FIELDS: `name: type`, `?` on an optional field."""
+    from repo_graph import server
+    out = _footer_for(server, '{"fields":[{"name":"id","required":true,"type":"string"},'
+                              '{"name":"joinedAt","required":false,"type":"string"}],'
+                              '"format":"ts"}', cell="SCHEMA_FIELDS")
+    assert "fields: id: string, joinedAt?: string (ts)" in out
+    out = _footer_for(server, '{"extends":["Base"],"fields":[{"name":"n","type":"int"}],'
+                              '"format":"go"}', cell="SCHEMA_FIELDS")
+    assert "fields: extends Base; n: int (go)" in out
+    out = _footer_for(server, '{"extends":"Base","fields":[]}', cell="SCHEMA_FIELDS")
+    assert "fields: extends Base\n" in out + "\n"
+
+
+def test_read_main_guard_is_not_a_declared_entry():
+    """glia 0.5.2 reads an entry off a `__main__` guard; nobody declared it."""
+    from repo_graph import server
+    out = _footer_for(server, '{"decl":"scripts/tool.py:12","source":"main_guard"}',
+                      cell="ENTRYPOINT")
+    assert "· entry point: scripts/tool.py:12 (__main__ guard)" in out
+    assert "declared" not in out
+    declared = _footer_for(server, '{"decl":"cmd/run.go:3","source":"overlay"}',
+                           cell="ENTRYPOINT")
+    assert "declared entry point: cmd/run.go:3 overlay" in declared
+
+
+def test_read_entries_glia_reads_off_the_code(monkeypatch):
+    """glia 0.5.6: a TS / JS guard writes `main_guard` too, scripts are entries
+    by `shebang` / `script_arg`, and `host:<h>` names what starts the code."""
+    from repo_graph import server
+    cases = {
+        '{"decl":"scripts/gen.ts:40","source":"main_guard"}':
+            "· entry point: scripts/gen.ts:40 (main guard)",
+        '{"decl":"bin/tool.lua:1","source":"shebang"}':
+            "· entry point: bin/tool.lua:1 (#! script)",
+        '{"decl":"run.lua:1","source":"script_arg"}':
+            "· entry point: run.lua:1 (script)",
+        '{"decl":"api/main.py:1","source":"host:compose","host":"infra:service:api",'
+        '"trigger":"container_start"}':
+            "· entry point: api/main.py:1 (started by compose on container start via infra:service:api)",
+        '{"decl":"src/extension.ts:5","source":"host:vscode"}':
+            "· entry point: src/extension.ts:5 (started by vscode)",
+    }
+    for payload, want in cases.items():
+        out = _footer_for(server, payload, cell="ENTRYPOINT")
+        assert want in out, (payload, out)
+        assert "declared" not in out and "__main__" not in out
+
+
+def test_trace_says_when_the_graph_is_blind():
+    """glia 0.5.4 puts `blind` on a trace answer when a mechanism is BLIND /
+    DEGRADED: the trace may be missing hops through it."""
+    from repo_graph import server
+    env = {"paths": [], "blind": [{"mechanism": "grpc", "verdict": "BLIND",
+                                   "reason": "no_servers", "measure": "0 servers"}]}
+    out = server._render_trace("checkout", env, [])
+    assert "⚠ BLIND on grpc: 0 servers" in out
+
+
+def test_identity_note_counts_members_a_capped_answer_cut():
+    """glia 0.5.4 cuts `also_in` to 3 in a capped answer and counts the rest."""
+    from repo_graph import server
+    ident = dict(_IDENTITY, also_in=_IDENTITY["also_in"][:2], also_in_count=7)
+    assert "+5 more" in server._identity_note(ident, "")
+
+
+_IDENTITY = {"tier": "derived", "rules": ["http_model"], "diverged": True, "also_in": [
+    {"repo": "shop", "qname": "web::models::Order", "file": "web/models.ts", "line": 60},
+    {"repo": "shop", "qname": "api::models::Order", "file": "api/models.go", "line": 20},
+]}
+
+
+def test_identity_note_lists_folded_members():
+    """glia 0.5.2 folds a client model and its server struct into one row; the
+    others ride in `identity.also_in`. One repo, so no repo label."""
+    from repo_graph import server
+    note = server._identity_note(_IDENTITY, "  ")
+    assert note == "\n  ≡ also in: web/models.ts:60; api/models.go:20  (http_model, diverged)"
+    assert server._identity_note(None, "  ") == ""
+    assert server._identity_note({"also_in": []}, "  ") == ""
+
+
+def test_identity_note_labels_repos_when_they_differ():
+    from repo_graph import server
+    ident = {"rules": ["package_name"], "also_in": [
+        {"repo": "web", "qname": "pkg:left-pad"},
+        {"repo": "api", "qname": "pkg:left-pad", "file": "api/package.json", "line": 3},
+    ]}
+    note = server._identity_note(ident, "")
+    assert "web: pkg:left-pad; api: api/package.json:3  (package_name)" in note
+
+
+def test_folded_rows_render_in_find_impact_and_trace(monkeypatch):
+    """find / impact rows carry `identity`, a trace hop `to_identity`."""
+    from types import SimpleNamespace
+    from repo_graph import server
+    row = {"id": 1, "qname": "app::models::Order", "name": "Order", "kind": "CLASS",
+           "file": "app/models.dart", "line": 5, "live": True, "identity": _IDENTITY}
+    g = SimpleNamespace(
+        nodes={},
+        find_records=lambda q, k: ([row], None),
+        pygraph=SimpleNamespace(
+            blast_radius=lambda *a, **k: {"results": [dict(row, reason="CALLS", depth=1)],
+                                     "seeds": [{"qname": "x"}], "unresolved": []}))
+    monkeypatch.setattr(server, "get_graph", lambda: g)
+    also = "≡ also in: web/models.ts:60; api/models.go:20"
+    assert also in server.find("Order")
+    assert also in server.impact("x")
+    hop = server._render_hop({"mechanism": "CALLS", "from_qname": "a", "to_qname": "b",
+                              "to_kind": "CLASS", "to_identity": _IDENTITY})
+    assert also in hop
 
 
 # ── Smoke: confirm exactly the 6 tools are registered ───────────────────────

@@ -36,11 +36,21 @@ WRITE_EVENTS = frozenset({"created", "modified", "moved", "deleted", "closed"})
 DEBOUNCE_SEC = 0.3
 
 
-def is_ignored(path: str, layout_dir: str | None = None) -> bool:
+def is_ignored(path: str, layout_dir: str | None = None, root: str | None = None) -> bool:
     """True if `path` lies inside a skipped directory, or inside our own graph
     layout dir (`<repo>/.glia/graph`) — so our cache writes never trigger a
-    rebuild, while edits to `.glia/overlay.toml` and friends still do."""
-    if set(Path(path).parts) & SKIP_DIRS:
+    rebuild, while edits to `.glia/overlay.toml` and friends still do.
+
+    Given `root` (the watched repo), only the part of `path` under it is
+    checked: a repo that itself sits under a dir named `build`, `env` or
+    `target` must still update."""
+    parts = Path(path).parts
+    if root:
+        try:
+            parts = Path(path).relative_to(root).parts
+        except ValueError:
+            pass
+    if set(parts) & SKIP_DIRS:
         return True
     if layout_dir:
         try:
@@ -87,6 +97,9 @@ def start_watcher(repo_path: str, on_change: Callable[[], None],
     """
     if not Path(repo_path).is_dir():
         return None
+    # Absolute, so the event paths watchdog reports sit under the root
+    # `is_ignored` strips.
+    root = str(Path(repo_path).absolute())
     try:
         from watchdog.observers import Observer
         from watchdog.events import FileSystemEventHandler
@@ -108,12 +121,12 @@ def start_watcher(repo_path: str, on_change: Callable[[], None],
             if getattr(event, "event_type", "") not in WRITE_EVENTS:
                 return
             src = getattr(event, "dest_path", "") or event.src_path
-            if is_ignored(src, layout_dir):
+            if is_ignored(src, layout_dir, root):
                 return
             debouncer.trigger()
 
     observer = Observer()
-    observer.schedule(_Handler(), repo_path, recursive=True)
+    observer.schedule(_Handler(), root, recursive=True)
     observer.daemon = True
     observer.start()
     return observer

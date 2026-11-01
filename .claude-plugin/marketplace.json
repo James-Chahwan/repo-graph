@@ -4,11 +4,12 @@
     "name": "James Chahwan",
     "url": "https://github.com/James-Chahwan"
   },
+  "description": "repo-graph: a structural map of your codebase for Claude Code, as an MCP server plus skills.",
   "plugins": [
     {
       "name": "repo-graph",
       "source": "./claude-plugin",
-      "description": "Structural graph memory for AI coding assistants — navigate any codebase by structure, not guesswork."
+      "description": "Structural graph memory for AI coding assistants \u2014 navigate any codebase by structure, not guesswork."
     }
   ]
 }

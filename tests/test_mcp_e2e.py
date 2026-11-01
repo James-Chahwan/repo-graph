@@ -63,13 +63,14 @@ def _console_script() -> str:
 
 
 @asynccontextmanager
-async def _connect(target_repo: Path):
-    """Spawn `repo-graph --repo <target>` and yield an initialized session."""
+async def _connect(target_repo: Path, errlog=None):
+    """Spawn `repo-graph --repo <target>` and yield an initialized session.
+    `errlog` (a real file) captures the server's stderr."""
     params = StdioServerParameters(
         command=_console_script(),
         args=["--repo", str(target_repo)],
     )
-    async with stdio_client(params) as (read, write):
+    async with stdio_client(params, errlog=errlog or sys.stderr) as (read, write):
         async with ClientSession(read, write) as session:
             await session.initialize()
             yield session
@@ -139,7 +140,7 @@ async def test_find_unknown_over_wire(target_repo):
         result = await session.call_tool("find", {"query": "zzz_no_such_thing_xxx"})
         body = _text(result)
         # glia 0.5.0: an empty answer is the engine's `absence` envelope (LD.8a),
-        # carrying the reason and its FACT/HEURISTIC tier.
+        # carrying the reason and its fact / heuristic tier.
         assert "No answer" in body and "no_match" in body
 
 
@@ -229,3 +230,45 @@ async def test_all_tools_callable_no_errors(target_repo):
             assert not result.is_error, f"{name}({args}) returned is_error=True: {result}"
             # Every tool must return at least one content block
             assert result.content, f"{name}({args}) returned no content"
+
+
+# ── Live freshness ──────────────────────────────────────────────────────────
+
+
+async def test_watch_session_serves_an_edit(tmp_path):
+    """The running server's watcher opens a glia WatchSession, and an edit saved
+    while it serves shows up in the next answer through that session (the
+    engine's `[watch] update` line), not a whole rebuild."""
+    import asyncio
+    import time
+
+    repo = tmp_path / "target"
+    shutil.copytree(FIXTURES_DIR / "http_stack_smoke", repo)
+    log_path = tmp_path / "server.err"
+
+    async def wait_for(pred, what, timeout=30.0):
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            if await pred():
+                return
+            await asyncio.sleep(0.2)
+        pytest.fail(f"timed out waiting for {what}; server stderr:\n{log_path.read_text()[-2000:]}")
+
+    async def logged(marker):
+        return marker in log_path.read_text()
+
+    with open(log_path, "w") as errlog:
+        async with _connect(repo, errlog) as session:
+            await wait_for(lambda: logged("[watch] session"), "the watch session to open")
+            before = _text(await session.call_tool("find", {"query": "LiveEditProbe"}))
+            assert "No answer" in before
+
+            src = repo / "backend" / "server" / "server.go"
+            src.write_text(src.read_text() + "\nfunc LiveEditProbe() {}\n")
+
+            async def found():
+                body = _text(await session.call_tool("find", {"query": "LiveEditProbe"}))
+                return "server.go" in body and "LiveEditProbe" in body
+            await wait_for(found, "the edit to be served")
+            assert "[watch] update" in log_path.read_text()
+            assert "watch rebuilt" not in log_path.read_text()

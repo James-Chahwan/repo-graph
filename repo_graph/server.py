@@ -20,6 +20,8 @@ import os
 import re
 import sys
 import json
+import time
+import atexit
 import shutil
 import hashlib
 import tempfile
@@ -56,8 +58,24 @@ mcp = MCPServer(
 _graph: RustGraph | None = None
 
 # Serializes graph rebuilds so the background watcher and a manual `refresh` (or a
-# concurrent tool call's cold build) can't race on the `_graph` global.
+# concurrent tool call's cold build) can't race on the `_graph` global. Also the
+# watch session's one-caller rule: a second thread calling into it mid-update
+# gets "Already borrowed" instead of waiting.
 _rebuild_lock = threading.Lock()
+
+# The watcher's held engine build (glia 0.5.2 `WatchSession`): an edit re-reads
+# only the changed files and rebuilds only the language groups they feed, instead
+# of a whole `generate` per change. Opened off the request path by `main()`; None
+# before that, with REPO_GRAPH_WATCH=0, or after a retarget.
+_session = None
+_session_repo: str | None = None
+_session_seq = 0                # the engine's update counter; a no-op update keeps it
+_session_dirty = False          # updates not yet persisted to `.glia/graph/`
+_last_persist = 0.0
+
+# Persist the session's layout at most this often (and at exit), never per edit:
+# the same interval `glia watch` uses.
+PERSIST_EVERY_SEC = 60.0
 
 
 _GIT_URL_RE = re.compile(r"^(https?://|git@|ssh://|git\+)", re.IGNORECASE)
@@ -105,46 +123,18 @@ def _exclude_cache(target: str) -> None:
     ensure_cache_excluded(glia_py.default_gmap_dir(target))
 
 
-def _load_malloc_trim():
-    """glibc's `malloc_trim`, or None where there isn't one (macOS, Windows, musl)."""
-    try:
-        import ctypes
-        return ctypes.CDLL(None).malloc_trim
-    except Exception:
-        return None
-
-
-_malloc_trim = _load_malloc_trim()
-
-
-def _release_freed_memory() -> None:
-    """Hand the heap a rebuild just freed back to the OS. Never raises.
-
-    `generate` builds on a thread pool, and glibc gives each worker thread its own
-    malloc arena. The old graph's memory is freed into those arenas but stays
-    mapped, fragmented, so RSS ratchets up on every rebuild — measured on the glia
-    repo: 399 → 929 MB over 15 rebuilds, still climbing; 2.4 GB after two days of
-    watcher rebuilds. Trimming after each rebuild levels it off at ~450 MB (80
-    rebuilds). No-op off glibc.
-    """
-    if _malloc_trim is not None:
-        try:
-            _malloc_trim(0)
-        except Exception:
-            pass
-
-
 def _build_graph(target: str, incremental: bool = True) -> RustGraph:
     """Generate `target`'s graph, persist the `.gmap` cache, install it as live.
 
     `incremental` (default True) reuses the per-file parse cache at
     `<repo>/.glia/graph/parse_cache.bin` so unchanged files skip tree-sitter
     re-parsing; `incremental=False` forces a full reparse. Shared by `get_graph`
-    (cold regen), the watcher, and `refresh`.
+    (cold regen), `refresh`, and the watcher until its session is open.
 
     Since glia 0.5.0 `generate` is a pure build that writes no layout, so the
     explicit `save_to_default` here is the only thing keeping the next cold start
-    fast.
+    fast. The heap the swap frees goes back to the OS on its own: since glia
+    0.5.2 a dropped graph trims the allocator (`[memory] malloc_trim`).
     """
     global _graph, REPO_PATH
     with _rebuild_lock:
@@ -157,19 +147,95 @@ def _build_graph(target: str, incremental: bool = True) -> RustGraph:
         _exclude_cache(target)
         REPO_PATH = target
         _graph = RustGraph(pg, target)
-        # The swap above dropped the old graph; return its memory.
-        _release_freed_memory()
         return _graph
 
 
-def _watch_rebuild() -> None:
-    """Watcher callback: incrementally rebuild the graph after source edits.
-    Logs to stderr (safe for the MCP stdio channel); never raises."""
+def _open_session(repo: str) -> None:
+    """Open the watch session for `repo`, then catch up on edits saved while it
+    built. Runs on a background thread so `mcp.run()` isn't held up; never raises.
+    Without a session the watcher falls back to a whole rebuild per change."""
+    global _session, _session_repo, _session_seq, _session_dirty, _last_persist
     try:
-        g = _build_graph(REPO_PATH, incremental=True)
-        print(f"[watch] rebuilt: {g.pygraph.node_count()} nodes", file=sys.stderr)
+        session = glia_py.WatchSession(repo)
     except Exception as e:
-        print(f"[watch] rebuild failed: {e}", file=sys.stderr)
+        print(f"[repo-graph] watch session unavailable, rebuilding per change: {e}",
+              file=sys.stderr)
+        return
+    with _rebuild_lock:
+        if repo != REPO_PATH:
+            return  # retargeted while it opened
+        _session, _session_repo, _session_seq = session, repo, 0
+        _session_dirty, _last_persist = False, time.monotonic()
+        # An edit saved mid-open went to a whole rebuild the session never saw;
+        # its own stat scan finds it.
+        try:
+            _install_update(session.poll())
+        except Exception as e:
+            print(f"[repo-graph] watch update failed: {e}", file=sys.stderr)
+
+
+def _install_update(update: dict | None) -> None:
+    """Serve the session's graph once an update changed something, and persist
+    it if the last persist is old. Caller holds `_rebuild_lock`."""
+    global _graph, _session_seq, _session_dirty
+    if not update or update.get("seq") == _session_seq:
+        return
+    _session_seq = update.get("seq", _session_seq)
+    # A snapshot is an independent copy, so a later update never changes the
+    # graph a tool call is still reading.
+    _graph = RustGraph(_session.snapshot(), _session_repo)
+    _session_dirty = True
+    if time.monotonic() - _last_persist >= PERSIST_EVERY_SEC:
+        _persist_session()
+
+
+def _persist_session() -> None:
+    """Write the session's graph and parse cache to `.glia/graph/` when updates
+    are waiting. Best-effort, like `save_to_default`. Caller holds `_rebuild_lock`."""
+    global _session_dirty, _last_persist
+    if _session is None or not _session_dirty:
+        return
+    _last_persist = time.monotonic()
+    try:
+        _session.persist()
+        _exclude_cache(_session_repo)
+        _session_dirty = False
+    except Exception as e:
+        print(f"[repo-graph] watch persist failed: {e}", file=sys.stderr)
+
+
+def _close_session() -> None:
+    """Persist and drop the session (a retarget, or a full refresh that re-opens
+    it). Caller holds `_rebuild_lock`."""
+    global _session, _session_repo
+    _persist_session()
+    _session, _session_repo = None, None
+
+
+def _persist_at_exit() -> None:
+    """atexit: write what the session holds, so the next cold start loads it.
+    Bounded wait: an update in flight finishes first."""
+    if _rebuild_lock.acquire(timeout=10):
+        try:
+            _persist_session()
+        finally:
+            _rebuild_lock.release()
+
+
+def _watch_rebuild() -> None:
+    """Watcher callback after a debounced burst of edits. With the session open
+    its stat scan finds what changed and only that is re-read; before it opens
+    (or if it can't), a whole incremental rebuild. Logs to stderr (safe for the
+    MCP stdio channel); never raises."""
+    try:
+        with _rebuild_lock:
+            if _session is not None and _session_repo == REPO_PATH:
+                _install_update(_session.poll())
+                return
+        g = _build_graph(REPO_PATH, incremental=True)
+        print(f"[repo-graph] watch rebuilt: {g.pygraph.node_count()} nodes", file=sys.stderr)
+    except Exception as e:
+        print(f"[repo-graph] watch update failed: {e}", file=sys.stderr)
 
 
 def get_graph() -> RustGraph:
@@ -222,8 +288,10 @@ def _rows(val) -> list:
 
 def _render_absence(absence: dict | None, fallback: str) -> str:
     """The engine's own account of an empty answer (LD.8a): the reason, its
-    FACT/HEURISTIC tier, and what to try instead — better than the wrapper
-    guessing why nothing matched."""
+    tier (`fact` / `heuristic`, lowercase since glia 0.5.4), and what to try
+    instead — better than the wrapper guessing why nothing matched. With a vocab
+    snapshot (glia 0.5.4) a `no_match` note also says where the identifier
+    occurs though no node carries it."""
     if not isinstance(absence, dict):
         return fallback
     reason = absence.get("reason", "no_match")
@@ -334,7 +402,7 @@ def _render_located(header: str, records: list[dict], g: RustGraph, budget: int)
         score_s = f"{score:.4f}  " if isinstance(score, (int, float)) else ""
         lines.append(
             f"    {score_s}{icon} {r.get('name', '?')}  [{kind}]  {r.get('qname', '')}"
-            f"{_eloc(r)}{_elive(r)}"
+            f"{_eloc(r)}{_elive(r)}{_identity_note(r.get('identity'), '        ')}"
         )
     return _truncate("\n".join(lines), budget, "find")
 
@@ -420,10 +488,13 @@ def impact(
     direction: Annotated[str, Field(description="'forward' (what it affects), 'backward' (what it depends on / who uses it), or 'both'. (Aliases: downstream=forward, upstream=backward.)", default="both")] = "both",
     depth: Annotated[int, Field(description="How many hops to fan out. Default 4.", default=4, ge=1, le=10)] = 4,
     live_only: Annotated[bool, Field(description="Drop nodes not reachable from any entry point (likely-dead code). Default False = show all, marking dead ones ⊘.", default=False)] = False,
-    top_k: Annotated[int, Field(description="Cap the ranked result. 0 = no cap.", default=0, ge=0, le=200)] = 0,
+    top_k: Annotated[int, Field(description="Rows to return. 0 = the engine's overview: the top 25 rows plus the areas the rest fall in, so you can drill down with `scope`.", default=0, ge=0, le=200)] = 0,
+    scope: Annotated[str, Field(description="Only rows under this repo-relative path or project label. Use an area's scope from the footer to drill into it.", default="")] = "",
+    offset: Annotated[int, Field(description="Skip the first N ranked rows to read the next page. The footer names the next offset.", default=0, ge=0)] = 0,
+    full: Annotated[bool, Field(description="Every row, uncut. Can be thousands of rows on a hub node; prefer scope/offset.", default=False)] = False,
     budget: Annotated[int, Field(description="Max chars in the result. 0 = no cap.", default=0, ge=0)] = 0,
 ) -> str:
-    """Blast radius in one call: fan out from one or more nodes to everything they affect (forward) or depend on / are used by (backward), returned as a complete, deduped, Personalized-PageRank-ranked, located closure. Each row carries `path:line`, the edge `via` reason it's in scope, and a `⊘` when the engine finds it unreachable from any entry point (likely dead). Structural import/containment fan-out is excluded — no noise. Depth-1 in both directions is a node's immediate neighbours. Pass several comma-separated nodes to assess a whole diff at once."""
+    """Blast radius in one call: fan out from one or more nodes to everything they affect (forward) or depend on / are used by (backward), returned as a deduped, ranked, located closure. Ranking is co-change first where the repo has git history synced, then Personalized PageRank. Each row carries `path:line`, the edge `via` reason it's in scope, and a `⊘` when the engine finds it unreachable from any entry point (likely dead). Structural import/containment fan-out is excluded, so there's no noise. A large radius comes back as the top rows plus the areas and files the rest fall in; page with `offset`, drill in with `scope`. Depth-1 in both directions is a node's immediate neighbours. Pass several comma-separated nodes to assess a whole diff at once."""
     g = get_graph()
     dir_engine = _DIRECTION_ALIAS.get(direction.lower().strip(), "both")
 
@@ -433,8 +504,12 @@ def impact(
 
     # One walk, one PPR, many seeds (LD.5). The engine resolves the raw names
     # itself — misses come back in `unresolved`, not as a wrapper lookup failure.
+    # Since glia 0.5.4 the answer is cut to an overview (25 rows) unless `full`;
+    # `full` with `top_k` / `offset` is an engine ValueError, so `full` wins.
     try:
-        env = g.pygraph.blast_radius(names, dir_engine, depth, None, live_only)
+        env = g.pygraph.blast_radius(
+            names, dir_engine, depth, None if full else (top_k or None), live_only,
+            scope.strip() or None, full=full, offset=0 if full else offset)
     except Exception as e:
         return f"Blast-radius failed for '{nodes}': {e}"
 
@@ -456,10 +531,11 @@ def impact(
             out += f"\n    unresolved seed(s): {', '.join(str(u) for u in unresolved)}"
         return out
 
-    if top_k:
+    if full and top_k:
         affected = affected[:top_k]
 
-    lines = [f"  Impact ({dir_engine}) from {seed_label} — depth {depth}", ""]
+    where = f" under {scope.strip()}" if scope.strip() else ""
+    lines = [f"  Impact ({dir_engine}) from {seed_label}{where} — depth {depth}", ""]
     for r in affected:
         kind = _record_kind(g, r)
         icon = _kind_icon(kind)
@@ -469,7 +545,8 @@ def impact(
         d = r.get("depth")
         depth_s = f"  ·{d}" if isinstance(d, int) else ""
         lines.append(
-            f"    {score_s}{icon} {r.get('name', '?')}  [{kind}]{_eloc(r)}{_elive(r)}{via}{depth_s}")
+            f"    {score_s}{icon} {_row_name(r)}  [{kind}]{_eloc(r)}{_elive(r)}{via}{depth_s}"
+            f"{_identity_note(r.get('identity'), '        ')}")
 
     dead = sum(1 for r in affected if r.get("live") is False)
     lines.append("")
@@ -480,13 +557,72 @@ def impact(
                          + ", ".join(str(x) for x in linked[:5]))
     if unresolved:
         lines.append(f"  unresolved seed(s): {', '.join(str(u) for u in unresolved)}")
-    note = f"  -- {len(affected)} nodes in blast radius"
+
+    cut = env.get("truncated") or {}
+    total = cut.get("results") if isinstance(cut.get("results"), int) else None
+    if total is not None and total > len(affected):
+        first = cut.get("offset", offset) + 1
+        note = (f"  -- rows {first}-{first + len(affected) - 1} of {total} in blast radius")
+    else:
+        note = f"  -- {len(affected)} nodes in blast radius"
     if dead and not live_only:
         note += (f"  ({dead} marked ⊘ are not reachable from a known entry point — likely dead, "
                  f"or an entry kind the engine doesn't yet recognise; re-run with live_only=true to drop them)")
     lines.append(note)
+    lines.extend(_impact_footer(env))
 
     return _truncate("\n".join(lines), budget, "impact")
+
+
+def _row_name(r: dict) -> str:
+    """A row's display name. Since glia 0.5.4 a cut answer leaves `name` out when
+    it equals the qname's last `::` segment, so fall back to that segment."""
+    return r.get("name") or str(r.get("qname", "?")).rsplit("::", 1)[-1]
+
+
+def _impact_footer(env: dict) -> list[str]:
+    """What a glia 0.5.4+ blast radius adds beyond its rows: the next page, the
+    areas a cut answer's other rows fall in (each with the `scope` that selects
+    it), the files the change most likely touches, which ranking ordered the rows,
+    and any mechanism the graph is blind to. Every key is absent when empty."""
+    out = []
+    nxt = (env.get("truncated") or {}).get("next")
+    if isinstance(nxt, dict) and "offset" in nxt:
+        args = [f"offset={nxt['offset']}"]
+        if nxt.get("scope"):
+            args.insert(0, f"scope={nxt['scope']}")
+        out.append(f"  next page: {' '.join(args)}  (or full=true for every row)")
+
+    areas = [a for a in env.get("areas") or [] if isinstance(a, dict)]
+    if areas:
+        out.append("  areas (drill in with scope=<scope>):")
+        for a in areas[:10]:
+            top = f", most in {a['top_file']}" if a.get("top_file") else ""
+            out.append(f"    {a.get('scope') or a.get('area', '?')}: {a.get('rows', '?')} rows "
+                       f"in {a.get('files', '?')} files{top}")
+
+    files = [f for f in env.get("files") or [] if isinstance(f, dict) and f.get("file")]
+    if files:
+        tagged = [f"{f['file']}{' (co-change)' if f.get('cochange') else ''}" for f in files[:10]]
+        out.append("  likely files: " + ", ".join(tagged))
+
+    sel = env.get("selection")
+    if isinstance(sel, dict) and sel.get("pick"):
+        why = sel.get("source", "")
+        if sel.get("reason"):
+            why += f": {sel['reason']}"
+        out.append(f"  ranked by {sel['pick']}{f' ({why})' if why else ''}")
+
+    return out + _blind_lines(env)
+
+
+def _blind_lines(env: dict) -> list[str]:
+    """glia 0.5.4 `blind`: a mechanism (http, grpc, queue, ...) the graph is
+    BLIND or DEGRADED on, beside a non-empty answer. A fact about the graph, not
+    a claim the answer is wrong: the answer may be missing links through it."""
+    return [f"  ⚠ {b.get('verdict', 'BLIND')} on {b.get('mechanism', '?')}: "
+            f"{b.get('measure') or b.get('reason', '')}. Links through it may be missing; grep to confirm."
+            for b in env.get("blind") or [] if isinstance(b, dict)]
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -547,8 +683,9 @@ def _render_hop(h: dict, indent: str = "    ") -> str:
     to_kind = str(h.get("to_kind", "")).lower()
     loc = _eloc({"file": h.get("to_file"), "line": h.get("to_line")})
     live = _elive({"live": h.get("to_live")})
+    also = _identity_note(h.get("to_identity"), indent + "      ")
     return (f"{indent}{h.get('from_qname', '?')}\n"
-            f"{indent}  {arrow} [{mech}] {h.get('to_qname', '?')}  [{to_kind}]{loc}{live}{xs}")
+            f"{indent}  {arrow} [{mech}] {h.get('to_qname', '?')}  [{to_kind}]{loc}{live}{xs}{also}")
 
 
 def _seed_label(val) -> str:
@@ -590,6 +727,9 @@ def _render_trace(feature: str, env: dict, hops: list[dict]) -> str:
         lines[0] = f"{head}  ({len(hops)} hops)"
         for h in hops:
             lines.append(_render_hop(h))
+    blind = _blind_lines(env)
+    if blind:
+        lines += [""] + blind
     return "\n".join(lines).rstrip()
 
 
@@ -665,14 +805,21 @@ _CELL_LABEL_OVERRIDES = {
 }
 _READ_CELL_TYPES = set(_CELL_LABEL_OVERRIDES)
 
-# VECTOR is a Bytes payload — `node_cells` returns "" for it, so never show it.
-_SKIP_CELL_TYPES = {"VECTOR"}
-
+# VECTOR never reaches here: since glia 0.5.4 vectors are query-time and
+# `node_cells` doesn't return them.
 _READ_CELL_LABELS = {
     tid: _CELL_LABEL_OVERRIDES.get(name, name.lower().replace("_", " "))
     for tid, name in _CELL_TYPE_NAMES.items()
-    if name in _READ_CELL_TYPES and name not in _SKIP_CELL_TYPES
+    if name in _READ_CELL_TYPES
 }
+
+
+def _json_or_none(content):
+    try:
+        data = json.loads(content)
+    except (ValueError, TypeError):
+        return None
+    return data if isinstance(data, dict) else None
 
 
 def _cell_text(name: str, content: str) -> str:
@@ -701,8 +848,22 @@ def _cell_text(name: str, content: str) -> str:
         if hit is not None and total:
             return f"{hit}/{total} lines ({100 * hit // total}%){f' via {src}' if src else ''}"
     if name == "ENTRYPOINT" and isinstance(data, dict):
+        how = _entry_read_from(data)
+        if how:
+            return f"{data.get('decl', '?')} ({how})"
         return " ".join(str(data.get(k)) for k in ("decl", "pattern", "source")
                         if data.get(k))
+    if name == "SCHEMA_FIELDS" and isinstance(data, dict):
+        # glia 0.5.2: a model's declared fields, `name: type`, `?` when optional.
+        fields = [f"{f.get('name', '?')}{'' if f.get('required', True) else '?'}: "
+                  f"{f.get('type', '?')}"
+                  for f in (data.get("fields") or []) if isinstance(f, dict)]
+        ext = data.get("extends")
+        if isinstance(ext, list):
+            ext = ", ".join(map(str, ext))
+        parts = ([f"extends {ext}"] if ext else []) + ([", ".join(fields)] if fields else [])
+        fmt = f" ({data['format']})" if data.get("format") else ""
+        return "; ".join(parts) + fmt if parts else ""
     if name in ("DECISION", "CONSTRAINT", "FAIL") and isinstance(data, list):
         out = []
         for e in data[:3]:
@@ -721,22 +882,61 @@ def _cell_text(name: str, content: str) -> str:
     return " ".join(raw.split())
 
 
+def _entry_read_from(data: dict) -> str | None:
+    """How glia found an ENTRYPOINT it read off the code rather than one somebody
+    declared (an overlay row), or None for a declared one.
+
+    `main_guard`: Python `if __name__ == "__main__":` (0.5.2), or TS / JS
+    `require.main === module` / `import.meta.main` (0.5.6). `shebang` /
+    `script_arg`: a script run by its interpreter (0.5.6). `host:<h>`: the code a
+    plugin host or a container / process start runs, with the infra node as `host`
+    and why it starts as `trigger` (0.5.6)."""
+    source = str(data.get("source") or "")
+    if source == "main_guard":
+        decl = str(data.get("decl", ""))
+        return "__main__ guard" if decl.split(":", 1)[0].endswith(".py") else "main guard"
+    if source == "shebang":
+        return "#! script"
+    if source == "script_arg":
+        return "script"
+    if source.startswith("host:"):
+        how = f"started by {source[5:]}"
+        if data.get("trigger"):
+            how += f" on {str(data['trigger']).replace('_', ' ')}"
+        if data.get("host"):
+            how += f" via {data['host']}"
+        return how
+    return None
+
+
 def _dial_text(content: str) -> str | None:
     """The dial target a client node's ENDPOINT_HIT records, or None.
 
     Since glia 0.5.1 a WS / gRPC / GraphQL / tRPC client's ENDPOINT_HIT is
     `{"via": "ws", "host": "chat:8080"}` or `{"via": "graphql", "hosts": [..]}`:
-    the host the client dials, not a cross-stack caller. Rendered `chat:8080 (ws)`.
-    None for an HTTP call-site payload, which keeps the caller label."""
+    the host the client dials, not a cross-stack caller. Rendered `chat:8080 (ws)`,
+    plus `external` when glia found every host public and unconfigured (0.5.2).
+    An EVM client (0.5.2, `{"via": "evm", "lib": .., "abi_ref"?: ..}`) names no
+    host: rendered as the library and the ABI it calls through.
+
+    None for an HTTP call-site payload (it has a `method`), which keeps the caller
+    label. That includes a GraphQL transport's POST (0.5.2), which carries `via`
+    too."""
     try:
         data = json.loads(content)
     except (ValueError, TypeError):
         return None
-    if not isinstance(data, dict) or "via" not in data:
+    if not isinstance(data, dict) or "via" not in data or "method" in data:
         return None
+    if data["via"] == "evm":
+        ref = data.get("abi_ref")
+        abi = f", ABI {ref['name']}" if isinstance(ref, dict) and ref.get("name") else ""
+        src = f" from {data['abi_from']}" if data.get("abi_from") else ""
+        return f"contract via {data.get('lib') or '?'}{abi}{src} (evm)"
     hosts = data.get("hosts") or ([data["host"]] if data.get("host") else [])
     target = ", ".join(map(str, hosts)) if hosts else "host not named in source"
-    return f"{target} ({data['via']})"
+    ext = ", external" if data.get("external") else ""
+    return f"{target} ({data['via']}{ext})"
 
 
 def _node_context(g: RustGraph, node_id: int, per_cell: int = 400) -> str:
@@ -758,6 +958,8 @@ def _node_context(g: RustGraph, node_id: int, per_cell: int = 400) -> str:
             label, text = "dials", dial
         else:
             text = _cell_text(name, content)
+            if name == "ENTRYPOINT" and _entry_read_from(_json_or_none(content) or {}):
+                label = "entry point"  # read off the source, not declared
         if not text:
             continue
         if len(text) > per_cell:
@@ -852,6 +1054,17 @@ def refresh(
         g = _build_graph(target, incremental=not full)
     except Exception as e:
         return f"Refresh failed: {e}"
+
+    # The watch session belongs to the repo it was opened on: a retarget drops
+    # it (the watcher still watches the old repo), and a full refresh starts it
+    # clean too.
+    reopen = None
+    with _rebuild_lock:
+        if _session is not None and (full or _session_repo != target):
+            reopen = _session_repo if _session_repo == target else None
+            _close_session()
+    if reopen:
+        threading.Thread(target=_open_session, args=(reopen,), daemon=True).start()
 
     pg = g.pygraph
     kind_counts: dict[str, int] = Counter(n["kind"] for n in g.nodes.values())
@@ -983,6 +1196,37 @@ def _elive(rec: dict) -> str:
     Liveness is the engine's `entrypoint_reachable` (only present on records that
     carry it, e.g. blast_radius). Absent `live` key → no marker (unknown, not dead)."""
     return " ⊘" if rec.get("live") is False else ""
+
+
+def _identity_note(ident, indent: str) -> str:
+    """`≡ also in:` line for a row that stands for a whole identity class.
+
+    Since glia 0.5.2 find / blast_radius / trace fold the members of one class
+    (a client model and the server struct it mirrors, two copies of one contract
+    op) into the best-ranked member's row, with the rest in `identity.also_in`
+    (`to_identity` on a trace hop). `diverged` means the copies differ. The repo
+    label only shows when the members span more than one repo. '' for an
+    ordinary row."""
+    if not isinstance(ident, dict):
+        return ""
+    members = [m for m in (ident.get("also_in") or []) if isinstance(m, dict)]
+    if not members:
+        return ""
+    multi_repo = len({m.get("repo") for m in members}) > 1
+    shown = []
+    for m in members[:4]:
+        where = _eloc(m).strip() or str(m.get("qname", "?"))
+        shown.append(f"{m.get('repo')}: {where}" if multi_repo and m.get("repo") else where)
+    # A capped answer (glia 0.5.4) cuts `also_in` to 3 and counts the rest.
+    total = ident.get("also_in_count")
+    total = total if isinstance(total, int) and total >= len(members) else len(members)
+    if total > len(shown):
+        shown.append(f"+{total - len(shown)} more")
+    tags = [str(r) for r in ident.get("rules") or []]
+    if ident.get("diverged"):
+        tags.append("diverged")
+    tag_s = f"  ({', '.join(tags)})" if tags else ""
+    return f"\n{indent}≡ also in: {'; '.join(shown)}{tag_s}"
 
 
 def _node_record(g: RustGraph, node: dict) -> dict:
@@ -1122,7 +1366,17 @@ def main():
         from .installer import main as installer_main
         raise SystemExit(installer_main(argv))
 
-    parser = argparse.ArgumentParser(description="repo-graph MCP server")
+    # `repo-graph find checkout` etc. answer one question and exit, no server.
+    from . import cli
+    if argv and argv[0] in cli.POSITIONAL:
+        raise SystemExit(cli.run(argv))
+
+    parser = argparse.ArgumentParser(
+        description="repo-graph MCP server",
+        epilog="One-shot commands, no server: repo-graph {"
+               + ",".join(cli.POSITIONAL) + "} ... (see `repo-graph <tool> --help`). "
+               "Wire it into your agents: repo-graph install.",
+    )
     parser.add_argument(
         "--repo",
         default=os.environ.get("REPO_GRAPH_REPO", os.getcwd()),
@@ -1136,12 +1390,15 @@ def main():
     REPO_PATH = _resolve_repo(args.repo)
     os.environ["REPO_GRAPH_REPO"] = REPO_PATH
 
-    # Live freshness: watch the repo and incrementally rebuild on edits, unless
-    # disabled (REPO_GRAPH_WATCH=0) or watchdog isn't installed.
+    # Live freshness: watch the repo and update the graph on edits through a held
+    # engine session, unless disabled (REPO_GRAPH_WATCH=0) or watchdog isn't
+    # installed. Until the session opens, a change falls back to a whole rebuild.
     if os.environ.get("REPO_GRAPH_WATCH", "1") != "0":
         from .watcher import start_watcher
         if start_watcher(REPO_PATH, _watch_rebuild) is not None:
-            print(f"[watch] watching {REPO_PATH} for changes", file=sys.stderr)
+            print(f"[repo-graph] watching {REPO_PATH} for changes", file=sys.stderr)
+            threading.Thread(target=_open_session, args=(REPO_PATH,), daemon=True).start()
+            atexit.register(_persist_at_exit)
 
     mcp.run()
 

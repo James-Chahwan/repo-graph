@@ -20,6 +20,31 @@ Or one command in your terminal wires up every agent you have: `uvx mcp-repo-gra
 
 ---
 
+> ### Upgrading to 0.5.3
+>
+> **Most people don't have to do anything.** `uvx` and `pip install mcp-repo-graph` pull in the new
+> engine (glia 0.5.6, pinned exactly). The first start in each repo reparses everything once.
+>
+> Three things changed that you might notice:
+>
+> - **`impact` answers big radiuses as an overview.** A hub node used to return every row (thousands
+>   on a large repo). It now returns the top 25, then the areas and files the rest fall in. Drill in
+>   with `scope=<area>`, page with `offset`, or pass `full=true` for the old every-row answer. If a
+>   script parses `repo-graph impact` output and needs every row, add `--full`.
+> - **The skills are renamed** `repo-graph-<verb>` → `glia-<verb>` (`/repo-graph:glia-find`). They
+>   now live in glia and also show the `glia` CLI command. The plugin updates them for you.
+> - **Absence tiers are lowercase**: `No answer (no_match, fact)`, not `FACT`.
+>
+> If you **also run glia's own CLI hooks** in the same repo, reinstall the CLI at `v0.5.6` too, or
+> the two rebuild each other's cache on every commit.
+>
+> What's better: rankings put files that historically change together first (once you've run
+> `uvx --from glia-cli glia history sync .`), far fewer phantom edges in every language, routes carry their mount prefix
+> (Django, Flask / FastAPI, Express / Koa / NestJS, gin groups), the graph knows what a Dockerfile,
+> compose service, Procfile or systemd unit starts, Lua is parsed, and the file watcher updates the
+> graph in place instead of rebuilding it. Every tool is also a shell command (`uvx mcp-repo-graph
+> find checkout`), no server needed.
+>
 > ### Upgrading to 0.5.2
 >
 > **Most people don't have to do anything.** `uvx` and `pip install mcp-repo-graph` pull in the new
@@ -145,11 +170,37 @@ Strong fits:
 - **Large single codebases** — thousands of files where orientation itself is the cost.
 - **Unfamiliar or legacy code** — where you don't yet know what touches what.
 
-Where it *doesn't* pull its weight: a **small, single-language repo with a clear task**. The model can just read the files — grep wins and the graph is overhead. Don't reach for it to shave tokens, either: the MCP layer is a fixed per-turn cost, so on easy tasks it can cost *more*. The token win shows up only when it heads off a grep-read-grep spiral (like the demo above). What it reliably buys you is **correct, complete, cross-boundary answers in a few calls** on code too big or too interconnected to fit in context — yours or the model's. (Don't want the MCP layer at all? [Skip it](#use-it-without-mcp) and call the engine directly.)
+Where it *doesn't* pull its weight: a **small, single-language repo with a clear task**. The model can just read the files — grep wins and the graph is overhead. Don't reach for it to shave tokens, either: the MCP layer is a fixed per-turn cost, so on easy tasks it can cost *more*. The token win shows up only when it heads off a grep-read-grep spiral (like the demo above). What it reliably buys you is **correct, complete, cross-boundary answers in a few calls** on code too big or too interconnected to fit in context — yours or the model's. (Don't want the MCP layer at all? [Skip it](#use-it-without-mcp): every tool is also a shell command.)
 
 ## Use it without MCP
 
-The MCP server is the zero-config path, but the graph isn't tied to it. The engine ships as a plain Python wheel — `pip install glia-py` — so you can build the graph and call the same answer primitives directly, from a script or your own tooling, with **none of the per-turn MCP cost**:
+The MCP server is the zero-config path for an agent session. The graph isn't tied to it, though. Each of the six tools is also a shell command: it loads the cached graph (rebuilding it first if the code changed), prints the same text the MCP tool returns, and exits.
+
+```bash
+uvx mcp-repo-graph orient                                     # repo shape, entry points, blind spots
+uvx mcp-repo-graph find checkout                              # ranked, located nodes
+pytest -x 2>&1 | uvx mcp-repo-graph find - --kind stacktrace  # pipe a failure in with -
+uvx mcp-repo-graph impact "Cart.add,checkout" --direction backward
+uvx mcp-repo-graph trace login
+uvx mcp-repo-graph read handleLogin --context-lines 3
+```
+
+The flags are the MCP tool's parameters (`top_k` becomes `--top-k`). `repo-graph <tool> --help` lists them.
+
+Which to pick:
+
+- **MCP server** for an always-on agent session. The graph stays in memory and a file watcher keeps it fresh on save.
+- **Shell commands** for occasional questions, CI, scripts, and machines that can't spare a resident process. Nothing stays running. A call costs the graph load: about 0.6 s and 90 MB on a 3k-node repo (starlette), 1.7 s and 355 MB on a 71k-node one (django), freed when it exits.
+
+### Skills
+
+[`skills/`](skills/) holds glia's agent skills: six task skills, `glia-orient`, `-find`, `-debug`, `-impact`, `-trace` and `-init`, plus `glia` (the full CLI reference) and `glia-overlay`. Each task skill shows the MCP call, the `glia` CLI command and the `uvx mcp-repo-graph` command side by side, so it works however repo-graph or glia is installed. The skills live in [glia](https://github.com/James-Chahwan/glia) and are copied here. The [Claude Code plugin](#claude-code-plugin) bundles them. For any other agent that reads `SKILL.md`, copy the folders into its skills directory (`~/.claude/skills/` for Claude Code without the plugin).
+
+> **Upgrading from 0.5.2:** the skills were renamed `repo-graph-<verb>` → `glia-<verb>` (`/repo-graph:glia-find`, not `/repo-graph:repo-graph-find`). A copy you made of the old folders by hand keeps working but stops getting updates.
+
+### From Python
+
+The engine ships as a plain Python wheel, `pip install glia-py`, so you can build the graph and call the same answer primitives from a script or your own tooling:
 
 ```python
 import glia_py as rg
@@ -163,11 +214,11 @@ g.resolve(open("error.log").read())             # stacktrace / test / diff → t
 g.coverage()                                    # where extraction is partial (grep those)
 ```
 
-Each of these returns plain Python — a `{"results": [...], "absence": {...}}` dict for the lookups,
+Each of these returns plain Python: a `{"results": [...], "absence": {...}}` dict for the lookups,
 a list for `coverage()`. When `results` is empty, `absence` says *why*, so a script can branch on it
 instead of guessing.
 
-Same graph, same answers — just without the tool schemas in your context. It's the same Rust engine ([glia](https://github.com/James-Chahwan/glia)) the MCP server wraps; `glia-py` is its published wheel. Good for CI checks, batch analysis, or wiring the graph into your own agent.
+It's the same Rust engine ([glia](https://github.com/James-Chahwan/glia)) the MCP server wraps; `glia-py` is its published wheel. Good for batch analysis, or wiring the graph into your own agent.
 
 ## Supported languages
 
@@ -260,6 +311,14 @@ claude mcp add repo-graph -- uvx mcp-repo-graph --repo .
 
 (`--repo .` points the graph at the current project; use an absolute path to pin it.)
 
+### Claude Code plugin
+
+The plugin brings the MCP server and the six [skills](#skills) in one install:
+
+```
+/plugin install repo-graph --marketplace James-Chahwan/repo-graph
+```
+
 ### VS Code
 
 One command — adds the server to your user config:
@@ -325,14 +384,18 @@ The AI assistant now has access to all 6 tools. Example queries it can answer:
 
 ### 3. Freshness (automatic)
 
-The graph stays current on its own. While the server is running it watches the repo
-and does an incremental rebuild a moment after you save, so a structural question
-right after an edit reflects the change with no manual `refresh`. On top of that, the
+The graph stays current on its own. While the server is running it keeps the build
+open and watches the repo. A moment after you save, it re-reads only the files that
+changed and rebuilds only the language groups they feed, so a structural question
+right after an edit reflects the change with no manual `refresh`. The cache on disk
+is rewritten at most once a minute and when the server exits. On top of that, the
 graph heals itself on cold start — if the cached `.gmap` is stale, an old format, or missing, the
 engine rebuilds it and writes it back, so it's never stale when your assistant connects.
 
-The watcher is on by default. Set `REPO_GRAPH_WATCH=0` to disable it (the cold-start
-refresh still applies). It needs the `watchdog` package, which ships as a dependency.
+The watcher is on by default. Keeping the build open costs memory: about 1.2x the graph
+alone on a mid-size app (quokka-stack, 3.5k nodes: ~165 MB vs ~140 MB), nearer 2x on a large
+repo (glia, 37k nodes: ~940 MB vs ~500 MB). Set `REPO_GRAPH_WATCH=0` to disable it (the
+cold-start refresh still applies). It needs the `watchdog` package, which ships as a dependency.
 
 Want the cache pre-built and committed so teammates and CI get it too? Add the
 pre-commit hook automatically:
@@ -354,12 +417,14 @@ repo-graph exposes **6 tools** — one natural verb each, backed by a Rust engin
 |------|-----------|-------------|
 | `orient` | `seed` *(optional)*, `full`, `budget` | The first call on a repo: node/edge counts, detected kinds, entry points, and a **blind-spots** note flagging which languages/edges are under-linked (so you grep those deliberately). `seed=<node>` → scoped map; `full=true` → whole-repo dense map |
 | `find` | `query`, `expand`, `kind`, `top_k`, `budget` | Turn any text into the ranked nodes that matter — a symbol/keyword, or a pasted stacktrace / failing-test id / diff (resolved to the code it implicates). `expand=true` fans out to the surrounding neighbourhood. Every row carries `path:line` |
-| `impact` | `nodes` *(comma-separated)*, `direction`, `depth`, `live_only`, `top_k`, `budget` | Blast radius: what a change affects (`forward`) or depends on / is used by (`backward`), as a ranked, located closure — each row with the edge `via` reason and a `⊘` when the engine finds it unreachable (likely dead). Pass several nodes for a whole-diff radius |
+| `impact` | `nodes` *(comma-separated)*, `direction`, `depth`, `live_only`, `top_k`, `scope`, `offset`, `full`, `budget` | Blast radius: what a change affects (`forward`) or depends on / is used by (`backward`), as a ranked, located closure — each row with the edge `via` reason and a `⊘` when the engine finds it unreachable (likely dead). A big radius comes back as the top 25 rows plus the areas and files the rest fall in: drill in with `scope`, page with `offset`, or take every row with `full=true`. Pass several nodes for a whole-diff radius |
 | `trace` | `from_node`, `to_node` *(optional)*, `depth`, `budget` | One arg: a feature end-to-end across the stack, each hop labelled with its mechanism (call / HTTP / queue / event) and cross-service hops marked. Two args: the shortest path between two nodes |
 | `read` | `node` *(comma-separated)*, `context_lines`, `budget` | A node's exact source, sliced from its file by the graph's line span, plus a `context:` footer (HTTP method, cross-stack callers or a client's dial target, covering tests, governing docs). Comma-separate to batch-read a ranked set |
 | `refresh` | `repo_path` *(optional)*, `full` | Rebuild the graph (incremental by default — only changed files re-parse). `repo_path` retargets a different path or git URL; `full=true` forces a clean reparse. Routine edits are auto-picked-up by the file watcher |
 
 Most tools also take a `budget` (max chars) so a result fits a small-model context window.
+
+Each tool is also a shell command with the same parameters as flags: `uvx mcp-repo-graph find checkout --top-k 5`. See [Use it without MCP](#use-it-without-mcp).
 
 > These 6 collapsed from an earlier 13 once the engine grew answer-shaped primitives — `find`, `blast_radius`, `cross_stack_trace`, `resolve`, `coverage` — that return complete, ranked, located, live-filtered results in one call. Fewer tools = less fixed per-turn overhead and less agent confusion.
 
@@ -367,11 +432,11 @@ Most tools also take a `budget` (max chars) so a result fits a small-model conte
 
 Most tools answer an empty query with nothing, which leaves the assistant to guess whether that
 means "no such edge exists" or "I couldn't see it". Since **0.5.0** an empty result comes back as a
-structured *absence*: the reason, whether that reason is a **FACT** or a **HEURISTIC**, and which
+structured *absence*: the reason, whether that reason is a **fact** or a **heuristic**, and which
 extractions are partial for the mechanism that came up empty.
 
 ```
-  No answer (no_edges, FACT): no carry edge touches `backend::server::server` in this graph;
+  No answer (no_edges, fact): no carry edge touches `backend::server::server` in this graph;
   `backend::server::server` is a container: structural IMPORTS/CONTAINS/DEFINES are not carry
   edges, so seed a symbol inside it
     looked over: CALLS

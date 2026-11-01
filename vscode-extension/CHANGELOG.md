@@ -1,5 +1,20 @@
 # Change Log
 
+## 0.5.3
+
+- Tracks `mcp-repo-graph` 0.5.3, which moves onto the **glia 0.5.6** engine,
+  pinned exactly. Same six tools.
+- `impact` on a busy node returns the top 25 rows plus the areas and files the
+  rest fall in, instead of every row. Drill in with `scope`, page with `offset`,
+  or pass `full=true` for every row.
+- Rankings put files that historically change together first, once the repo's
+  git history is synced (`glia history sync`).
+- A cleaner, fuller graph: far fewer phantom edges, routes carry their mount
+  prefix, Lua is parsed, and the graph knows what a Dockerfile / compose
+  service / Procfile / systemd unit starts.
+- The server updates the graph in place on save instead of rebuilding it.
+- The cached graph rebuilds once on first start after the upgrade.
+
 ## 0.5.2
 
 - Tracks `mcp-repo-graph` 0.5.2, which moves onto the **glia 0.5.1** engine,

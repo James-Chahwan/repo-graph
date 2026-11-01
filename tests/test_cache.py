@@ -200,32 +200,15 @@ def test_refresh_tool_reflects_edits(server_isolated, target_repo):
     assert server_isolated.get_graph().pygraph.node_count() == n1 + 1
 
 
-def test_rebuild_trims_heap_after_the_swap(server_isolated, target_repo, monkeypatch):
-    """Each rebuild trims the heap once the new graph is installed. Without it
-    glibc keeps the old graph parked in per-thread arenas and RSS ratchets up on
-    every watcher rebuild (2.4 GB after two days on the glia repo)."""
-    live_at_trim = []
-    monkeypatch.setattr(server_isolated, "_malloc_trim",
-                        lambda pad: live_at_trim.append(server_isolated._graph))
-
-    g1 = server_isolated._build_graph(str(target_repo))
-    g2 = server_isolated._build_graph(str(target_repo))
-
-    # Trimmed after each swap, so the graph it replaced was already dropped.
-    assert live_at_trim == [g1, g2]
-
-
-@pytest.mark.parametrize("trim", [None, lambda pad: 1 / 0], ids=["unavailable", "raises"])
-def test_rebuild_survives_missing_or_failing_trim(server_isolated, target_repo,
-                                                  monkeypatch, trim):
-    """No malloc_trim (macOS, Windows, musl) or a failing one never breaks a rebuild."""
-    monkeypatch.setattr(server_isolated, "_malloc_trim", trim)
-    g = server_isolated._build_graph(str(target_repo))
-    assert server_isolated._graph is g and g.pygraph.node_count() > 0
-
-
 @pytest.mark.skipif(platform.libc_ver()[0] != "glibc", reason="malloc_trim is glibc-only")
-def test_malloc_trim_resolves_on_glibc():
-    """The ctypes lookup must actually find it here, or the fix is silently a no-op."""
-    from repo_graph import server
-    assert server._malloc_trim is not None
+def test_engine_trims_heap_when_a_rebuild_drops_the_old_graph(server_isolated, target_repo,
+                                                              capfd):
+    """The wrapper no longer trims the heap itself: since glia 0.5.2 a dropped
+    graph does (`[memory] malloc_trim site=pygraph_drop`). Without it glibc keeps
+    the old graph parked in per-thread arenas and RSS ratchets up on every
+    rebuild (2.4 GB after two days of watcher rebuilds on the glia repo), so an
+    engine that stops trimming has to fail here, not in production."""
+    server_isolated._build_graph(str(target_repo))
+    capfd.readouterr()
+    server_isolated._build_graph(str(target_repo))  # the swap drops the first graph
+    assert "[memory] malloc_trim site=pygraph_drop" in capfd.readouterr().err
