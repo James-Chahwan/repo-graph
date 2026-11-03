@@ -25,7 +25,7 @@ git diff | repo-graph find - --kind diff      # `-` reads a positional from stdi
 repo-graph-init --repo /path/to/target-repo
 ```
 
-Python 3.11+ required. Runtime deps: `mcp[cli]>=2,<3` (2.x renamed FastMCP → MCPServer; ported in 0.5.1), `glia-py==0.5.6` (glia pins consumers exactly per release), `watchdog>=3.0,<7`.
+Python 3.11+ required. Runtime deps: `mcp[cli]>=2,<3` (2.x renamed FastMCP → MCPServer; ported in 0.5.1), `glia-py==0.5.7` (glia pins consumers exactly per release), `watchdog>=3.0,<7`.
 
 ### Cache reuse on cold start
 
@@ -79,7 +79,7 @@ repo_graph/
   __init__.py empty
 ```
 
-The Rust engine lives in a separate repo (`glia` at `/home/ivy/Code/glia`) as of 2026-05-09. This repo no longer carries a `rust/` subtree — it was removed on 2026-06-10 once the glia CI wheel matrix was green. This repo is purely the Python MCP wrapper; it consumes the published `glia-py` wheel (`==0.5.6`).
+The Rust engine lives in a separate repo (`glia` at `/home/ivy/Code/glia`) as of 2026-05-09. This repo no longer carries a `rust/` subtree — it was removed on 2026-06-10 once the glia CI wheel matrix was green. This repo is purely the Python MCP wrapper; it consumes the published `glia-py` wheel (`==0.5.7`).
 
 ### The 6 MCP tools
 
@@ -150,6 +150,19 @@ Four glia releases in one port (mcp-repo-graph 0.5.3). Full detail in `dev-notes
 - **0.5.5** is Lua only: `.lua` parses; no API change.
 - **0.5.6 entries.** A TS / JS `require.main === module` / `import.meta.main` guard writes `source: main_guard` too, and there are new sources `shebang`, `script_arg`, `host:<h>` (with `host` / `trigger` keys on infra starts). `_entry_read_from()` labels all of them `entry point`: `(__main__ guard)` for `.py`, `(main guard)` otherwise, `(started by compose on container start via infra:service:api)` for a host start. Trace may say `[resolved by concept]`. Edge order out of `bfs` / `predecessors` is canonical. Routes gain mount prefixes, host / infra nodes appear. Every addition is a trailing keyword or a new method, so nothing binds differently.
 - **Not adopted yet** (all optional, listed in the handoffs): `find_files` (text → files), `find_flows` / `concept_flows`, `health()` in `orient`, `vocab_sync` (`named_in` on a `no_match`), `embed`, `WatchSession(memory_budget_mb=)`, `review_vs_rev(title=)`, history sync + calibrate on `refresh`.
+
+### glia 0.5.6 → 0.5.7 boundary notes
+
+No code change: every pyo3 call the wrapper makes keeps its signature, and 0.5.7's additions are trailing keywords, new methods or new dict keys. No new id in the code block. Full detail in `dev-notes/repo-graph-handoff-0.5.7.md`, copied from `../glia/dev-notes/`.
+
+- **Exact pin** `glia-py==0.5.7`. PARSER_STAMP / BUILD_STAMP moved, so the first build after the upgrade reparses everything. A calibration record is read only by the build that wrote it.
+- **More entries.** Every node with an ENTRYPOINT cell (host starts, scripts, `__main__` guards, overlay `[entrypoints]`) is now a flow entry, so `entry_flows` gains keys and `nodes_json`'s `entry` reads true for them. `_entry_read_from()` already labels these.
+- **MCP servers are hosts.** Python `@mcp.tool()` / `.prompt()` / `.resource()` and TypeScript `McpServer` registrations mint `host_cmd:mcp:tool:<name>` / `host_event:mcp:resource:<uri>` nodes, HANDLED_BY the function. On this repo the six tools in `server.py` are entries and their functions read live, no longer `⊘`.
+- **Coverage notes moved**: new `ruby` HANDLED_BY and `solidity` EVENT_FLOWS rows, rewritten Python / TypeScript host notes. `_coverage_note` shows the first 8 rows, so a new row can push an older one past the cut.
+- **Overlay origin.** An unmarked or `origin = "llm"` `[[wrapper]]` / `[constants]` / `[[route_prefix]]` stanza now tiers its pairings heuristic (rule `<rule>/overlay_llm`); people should write `origin = "human"` on stanzas they wrote by hand.
+- **Graph content moves**, with no wrapper change: Rails nested resources, C# verb-constrained routes and every `using` in IMPORT_BINDINGS, Angular lazy / computed nav paths (page qnames may hold a `~<name>` segment, rendered as is), Solidity events, heritage never ending at a namespace, nearer same-stem TESTS, fewer Python ATTRIBUTEs, fewer DOCUMENTS.
+- **The skills moved too**: glia's `glia` CLI reference gained `targets`, MCP hosts and `precision`. Synced from the `v0.5.7` tag.
+- **Not adopted yet** (optional): `precision` beside each tier on `why` / `check` / `query` / `implementors` / `review_vs_rev` (`precision=False` gives the 0.5.6 bytes; the wrapper calls none of these yet), and the Bazel build-target answers `targets_sync` / `PyGraph.targets_*`.
 
 ### Python/Rust boundary
 
@@ -246,4 +259,5 @@ Always push to both: `git push github main && git push gitlab main`
 - **0.5.1 (glia)** — ✅ ported in mcp-repo-graph 0.5.2 (see the 0.5.1 boundary notes). The handoff's §4 lists new primitives worth a mode on the six tools (`pack`, `review_vs_rev`, `hotspots`, `cochange`, `communities`, `hubs`, `duplicate_flows`, the overlay loop); none adopted yet.
 - **0.5.2 (glia)** — ✅ ported (see the 0.5.2 boundary notes): the watcher holds a `WatchSession`, folded identity rows render `also in`, the new cells render in `read`. The handoff's §5 adds `query` / `query_gql` (Datalog / GQL, a candidate single `query` tool) and `identity_classes` to the unadopted list.
 - **0.5.3 → 0.5.6 (glia)** — ✅ ported together, pinned `==0.5.6`, released as mcp-repo-graph 0.5.3 (see the 0.5.3 → 0.5.6 boundary notes). The unadopted list there is the next candidate work: `find_files` and `health()` look like the cheapest wins.
+- **0.5.7 (glia)** — ✅ ported, pinned `==0.5.7`, released as mcp-repo-graph 0.5.4 (see the 0.5.6 → 0.5.7 boundary notes). A pin bump plus the skills sync; the MCP tools now read as live entries on this repo.
 - **After 0.5.0**: the non-MCP way in (handoff §7b) is ✅ built, unreleased. `repo-graph <tool>` one-shot commands plus six skills that show the MCP call and the shell command side by side, bundled into the Claude Code plugin. Lifting the `mcp[cli]<2` cap (handoff §6): ✅ done in 0.5.1.

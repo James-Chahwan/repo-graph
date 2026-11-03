@@ -1,5 +1,17 @@
 # Change Log
 
+## 0.5.4
+
+- Tracks `mcp-repo-graph` 0.5.4, which moves onto the **glia 0.5.7** engine,
+  pinned exactly. Same six tools.
+- MCP servers are read as hosts, so their tool functions are entry points, not
+  dead code. Every declared entry (host starts, scripts, `__main__` guards)
+  starts a flow.
+- Better Rails, C#, Angular and Solidity graphs; less noisy test pairing.
+- Hand-written `.glia/overlay.toml` stanzas need `origin = "human"`, or their
+  links are ranked heuristic.
+- The cached graph rebuilds once on first start after the upgrade.
+
 ## 0.5.3
 
 - Tracks `mcp-repo-graph` 0.5.3, which moves onto the **glia 0.5.6** engine,

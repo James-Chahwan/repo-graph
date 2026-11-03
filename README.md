@@ -20,6 +20,26 @@ Or one command in your terminal wires up every agent you have: `uvx mcp-repo-gra
 
 ---
 
+> ### Upgrading to 0.5.4
+>
+> **Most people don't have to do anything.** `uvx` and `pip install mcp-repo-graph` pull in the new
+> engine (glia 0.5.7, pinned exactly). The first start in each repo reparses everything once. Same
+> six tools, same arguments.
+>
+> You only need to act in two cases:
+>
+> - **You hand-wrote stanzas in `.glia/overlay.toml`.** Add `origin = "human"` to each `[[wrapper]]`,
+>   `[constants]` and `[[route_prefix]]` stanza you wrote yourself. An unmarked stanza is now treated
+>   as model-written, and the links it creates are ranked heuristic.
+> - **You also run glia's own CLI hooks** in the same repo. Reinstall the CLI at `v0.5.7` too, or the
+>   two rebuild each other's cache on every commit.
+>
+> What's better: MCP servers (Python `@mcp.tool()`, the TypeScript SDK's `McpServer`) are read as
+> hosts, so their tool functions are entry points, not dead code. Every declared entry (host starts,
+> scripts, `__main__` guards) now starts a flow. Rails nested resources, C# `[HttpX]` + `[Route]`
+> actions, Angular lazy routes and Solidity events come out right. Test-to-code pairing and Python
+> attributes are less noisy.
+>
 > ### Upgrading to 0.5.3
 >
 > **Most people don't have to do anything.** `uvx` and `pip install mcp-repo-graph` pull in the new

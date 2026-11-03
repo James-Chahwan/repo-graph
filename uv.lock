@@ -221,15 +221,15 @@ wheels = [
 
 [[package]]
 name = "glia-py"
-version = "0.5.6"
+version = "0.5.7"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/16/1b/20485809add5514e64b73bbdc6527010ac1a5e385743e3d126c47909924b/glia_py-0.5.6.tar.gz", hash = "sha256:64d717eb64bcf8a082a979e1213631ba214b0c5210ba9f2e7bbd7cd27afb8ebf", size = 7235975, upload-time = "2026-11-01T13:54:19.042Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/fe/e4/1cfc9964003abc3659be635d2d5cea2dfb5b95fba4f59f689b014a0d704b/glia_py-0.5.7.tar.gz", hash = "sha256:76a549adcf6b8289b70cba381c00147dd2a0d44f145778449c963641c723a730", size = 7468894, upload-time = "2026-11-03T09:37:47.895Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/8d/86/949c648fb3e67b572da7b41a7068f2950d50d1f2eca31356827652b11ee5/glia_py-0.5.6-cp311-abi3-macosx_10_12_x86_64.whl", hash = "sha256:6f128c9ddb8478c1de800236e6b2dfc91ea26a455679cea95807568062eb09ee", size = 17634558, upload-time = "2026-11-01T13:54:04.059Z" },
-    { url = "https://files.pythonhosted.org/packages/b6/a0/669c606304fe67e841d21032d6fe4b3c9e34a0914a5a41c0111723838c06/glia_py-0.5.6-cp311-abi3-macosx_13_0_arm64.whl", hash = "sha256:5e44efcfc2909f6fbb3d05e2c1174e113252263f24893bce4929f7147f58137a", size = 40295657, upload-time = "2026-11-01T13:54:06.691Z" },
-    { url = "https://files.pythonhosted.org/packages/ba/6b/81150181e34ad76a278835c3cdc677f99d25f4559abdaed604edb378735a/glia_py-0.5.6-cp311-abi3-manylinux_2_28_aarch64.whl", hash = "sha256:51f9d0bdead238c2ae8fd7d6ae08ac3b25a20387df87556c84c0331ee882948c", size = 30610556, upload-time = "2026-11-01T13:54:09.709Z" },
-    { url = "https://files.pythonhosted.org/packages/f1/7f/5ff0117cb2e79dfa02cc7ba514ce08d4311bd13b17bc582b951d1139ce67/glia_py-0.5.6-cp311-abi3-manylinux_2_28_x86_64.whl", hash = "sha256:7268ea362209401f0aebf4bfbaeb1cb7aeb449151dacaf5041f8549f609afa6a", size = 48764986, upload-time = "2026-11-01T13:54:13.196Z" },
-    { url = "https://files.pythonhosted.org/packages/54/83/5d51db184f2ee683aead4568b6032db3634d23a896ecca7b57ad1cd973ce/glia_py-0.5.6-cp311-abi3-win_amd64.whl", hash = "sha256:14a66d7fbf25fc585b0f9d987544170c95c759d0a544c0dead19d379fd6323f2", size = 46109738, upload-time = "2026-11-01T13:54:16.465Z" },
+    { url = "https://files.pythonhosted.org/packages/ca/17/12fc594499c21e2f4bd4ab058ab20800851f254972134502d5cc2227c4bc/glia_py-0.5.7-cp311-abi3-macosx_10_12_x86_64.whl", hash = "sha256:6b8dbe798bb493d858f5b36a7e64eb4bc5ed009e480b36f9bd279dd3ba4f37c1", size = 18062424, upload-time = "2026-11-03T09:37:30.6Z" },
+    { url = "https://files.pythonhosted.org/packages/6d/fd/e28c58aa30c53c4338cea61855e2ac94f95b8d23953224038fbf9dbdbf9d/glia_py-0.5.7-cp311-abi3-macosx_13_0_arm64.whl", hash = "sha256:6502fd30342ad712ab5029b433fcbbacaecd988f25f1463993043cb1c7c48a01", size = 40706850, upload-time = "2026-11-03T09:37:34.023Z" },
+    { url = "https://files.pythonhosted.org/packages/cc/61/0910a45ed6ad22e3384294c7f98fccd280c0de1957a6e707703362ac3558/glia_py-0.5.7-cp311-abi3-manylinux_2_28_aarch64.whl", hash = "sha256:7dc7a6b8dabf1658077abc12ea9db7c66bed6e1ac395ad7207704f3869bdcb22", size = 31035416, upload-time = "2026-11-03T09:37:37.644Z" },
+    { url = "https://files.pythonhosted.org/packages/66/c5/ccf9683e8478508bbcdb4eab0ea2dc10703ce69bff3f9c2c71a3d73fe81c/glia_py-0.5.7-cp311-abi3-manylinux_2_28_x86_64.whl", hash = "sha256:dfec3ba7ec184d5c86288f12ae9d32d404fd4df5103d1b171e15969c45dff275", size = 49166113, upload-time = "2026-11-03T09:37:41.505Z" },
+    { url = "https://files.pythonhosted.org/packages/00/5b/207e70625099280826b0cfb08185318e82a8753fd1ab3774a6d111218120/glia_py-0.5.7-cp311-abi3-win_amd64.whl", hash = "sha256:9941fea8ab9bd820f1e2e0daaef5658cfe412f5b4f1322362f60b37cf608b9f2", size = 46463773, upload-time = "2026-11-03T09:37:45.185Z" },
 ]
 
 [[package]]
@@ -370,7 +370,7 @@ cli = [
 
 [[package]]
 name = "mcp-repo-graph"
-version = "0.5.3"
+version = "0.5.4"
 source = { editable = "." }
 dependencies = [
     { name = "glia-py" },
@@ -386,7 +386,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "glia-py", specifier = "==0.5.6" },
+    { name = "glia-py", specifier = "==0.5.7" },
     { name = "mcp", extras = ["cli"], specifier = ">=2,<3" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.0" },
     { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.23" },
